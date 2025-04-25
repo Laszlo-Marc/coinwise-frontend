@@ -29,7 +29,7 @@ export const colors = {
 
   error: "#DC2626",
   success: "#10B981",
-
+  accentBlue: "008080",
   gradients: {
     ggoldgreen: {
       background:

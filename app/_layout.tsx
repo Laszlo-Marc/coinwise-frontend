@@ -1,7 +1,23 @@
 import { AuthProvider } from "@/contexts/AuthContext";
-import { Stack } from "expo-router";
-
+import { useFonts } from "expo-font";
+import { SplashScreen, Stack } from "expo-router";
+import { useEffect } from "react";
 export default function RootLayout() {
+  const [fontsLoaded] = useFonts({
+    Montserrat: require("../assets/fonts/Montserat.ttf"),
+  });
+
+  useEffect(() => {
+    if (fontsLoaded) {
+      SplashScreen.hideAsync(); // Hide splash when fonts are ready
+    }
+  }, [fontsLoaded]);
+
+  if (!fontsLoaded) {
+    SplashScreen.preventAutoHideAsync(); // Keep splash visible
+    return null;
+  }
+
   return (
     <AuthProvider>
       <Stack>

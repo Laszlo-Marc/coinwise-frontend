@@ -34,7 +34,7 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
     >
       <View style={{ padding: 20 }}>
         <Text style={{ color: colors.text, fontSize: 24, fontWeight: "bold" }}>
-          App Name
+          CoinWise
         </Text>
       </View>
       <View style={{ flex: 1 }}>
