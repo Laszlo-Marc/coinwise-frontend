@@ -1,26 +1,43 @@
-/**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
- */
-
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
-
-export const Colors = {
-  light: {
-    text: '#11181C',
-    background: '#fff',
-    tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
+export const colors = {
+  background: "#1C1C1C",
+  primary: {
+    "50": "#FBF6E5",
+    "100": "#F7EDCC",
+    "200": "#F0DB99",
+    "300": "#E8C966",
+    "400": "#E1B733",
+    "500": "#D4AF37",
+    "600": "#AA8C2C",
+    "700": "#7F6921",
+    "800": "#554616",
+    "900": "#2A230B",
   },
-  dark: {
-    text: '#ECEDEE',
-    background: '#151718',
-    tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
+  secondary: "#2F4F4F",
+  accent: "#F7E7CE",
+  backgroundLight: "#2A2A2A",
+  backgroundDark: "#141414",
+  primaryLight: "#E5C55A",
+  primaryDark: "#B38F1F",
+  secondaryLight: "#3F5F5F",
+  secondaryDark: "#1F3F3F",
+  accentLight: "#F9F0E0",
+  accentDark: "#E5D5B5",
+
+  text: "#FFFFFF",
+  textSecondary: "#A3A3A3",
+  textMuted: "#999999",
+
+  error: "#DC2626",
+  success: "#10B981",
+
+  gradients: {
+    ggoldgreen: {
+      background:
+        "linear-gradient(90deg,rgba(42, 123, 155, 1) 0%, rgba(237, 221, 83, 1) 100%)",
+    },
+    greenFresh: {
+      background:
+        "linear-gradient(90deg,rgba(42, 123, 155, 1) 0%, rgba(128, 255, 234, 1) 100%)",
+    },
   },
-};
+} as const;
