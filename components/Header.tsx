@@ -112,7 +112,7 @@ export default function Header() {
               returnKeyType="search"
               autoCapitalize="none"
               autoCorrect={false}
-              color={colors.text}
+              
             />
             {searchText !== "" && isFocused && (
               <TouchableOpacity

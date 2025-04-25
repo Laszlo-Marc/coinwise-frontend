@@ -121,8 +121,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     overflow: "hidden",
-    borderTopWidth: 0.5,
-    borderTopColor: `${colors.secondaryLight}60`, // Adding some transparency to the border
+    borderTopWidth: 1,
+    borderTopColor: `${colors.secondaryLight}`, // Adding some transparency to the border
   },
   androidBackground: {
     backgroundColor: `${colors.secondary}99`, // Adding transparency to the secondary color

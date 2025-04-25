@@ -40,7 +40,6 @@ export default function HomePage() {
   const [isFocused, setIsFocused] = useState(false);
   const [searchText, setSearchText] = useState("");
 
-  // Animation value for search bar focus effect
   const [focusAnim] = useState(new Animated.Value(0));
 
   const handleFocus = () => {
@@ -81,10 +80,11 @@ export default function HomePage() {
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 150 }}
       >
         {/* Main Balance Section with Gradient */}
         <LinearGradient
-          colors={["rgba(42, 123, 155, 0.9)", "rgba(237, 221, 83, 0.8)"]}
+          colors={["rgba(253, 187, 45, 1)", "rgba(34, 193, 195, 1)"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.balanceSection}
@@ -128,7 +128,6 @@ export default function HomePage() {
                     returnKeyType="search"
                     autoCapitalize="none"
                     autoCorrect={false}
-                    color={colors.text}
                   />
                   {searchText !== "" && isFocused && (
                     <TouchableOpacity
@@ -399,12 +398,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 8,
     fontWeight: "500",
+    fontFamily: "Montserrat",
   },
   balanceAmount: {
     color: colors.text,
     fontSize: 48,
     fontWeight: "bold",
     marginBottom: 16,
+    fontFamily: "Montserrat",
   },
   accountsButton: {
     backgroundColor: "rgba(255, 255, 255, 0.25)",

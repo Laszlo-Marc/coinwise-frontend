@@ -12,7 +12,19 @@ export const colors = {
     "800": "#554616",
     "900": "#2A230B",
   },
-  secondary: "#2F4F4F",
+  secondary: {
+    "50": "#E6EBEB",
+    "100": "#CCD7D7",
+    "200": "#99AFAF",
+    "300": "#668888",
+    "400": "#336060",
+    "500": "#2F4F4F", // base
+    "600": "#263F3F",
+    "700": "#1C2F2F",
+    "800": "#131F1F",
+    "900": "#090F0F",
+  },
+
   accent: "#F7E7CE",
   backgroundLight: "#2A2A2A",
   backgroundDark: "#141414",

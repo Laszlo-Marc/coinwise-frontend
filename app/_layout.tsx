@@ -20,13 +20,24 @@ export default function RootLayout() {
 
   return (
     <AuthProvider>
-      <Stack>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          animation: "fade_from_bottom",
+        }}
+      >
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="sign-in" options={{ headerShown: false }} />
         <Stack.Screen name="sign-up" options={{ headerShown: false }} />
         <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
         <Stack.Screen name="onboarding" options={{ headerShown: false }} />
         <Stack.Screen name="profile" options={{ headerShown: false }} />
+        <Stack.Screen name="transactions" options={{ headerShown: false }} />
+        <Stack.Screen name="financial-goals" options={{ headerShown: false }} />
+        <Stack.Screen name="budgets" options={{ headerShown: false }} />
+        <Stack.Screen name="finances" options={{ headerShown: false }} />
+        <Stack.Screen name="statistics" options={{ headerShown: false }} />
+        <Stack.Screen name="settings" options={{ headerShown: false }} />
       </Stack>
     </AuthProvider>
   );
