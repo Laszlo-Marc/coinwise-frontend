@@ -6,6 +6,9 @@ interface TransactionItemProps {
   date: string;
   category: string;
   type: "income" | "expense";
+  onEdit?: () => void;
+  onDelete?: () => void;
+  onPress?: () => void;
 }
 
 export default function TransactionItem({
@@ -14,6 +17,9 @@ export default function TransactionItem({
   date,
   category,
   type,
+  onEdit,
+  onDelete,
+  onPress,
 }: TransactionItemProps) {
   return (
     <View style={styles.container}>

@@ -16,7 +16,11 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-export default function MainSection() {
+export default function MainSection({
+  actionButtons,
+}: {
+  actionButtons?: React.ReactNode;
+}) {
   const [focusAnim] = useState(new Animated.Value(0));
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -121,6 +125,7 @@ export default function MainSection() {
         <Text style={styles.balanceLabel}>Main · USD</Text>
         <Text style={styles.balanceAmount}>$0</Text>
       </View>
+      <View style={styles.quickActions}>{actionButtons}</View>
     </LinearGradient>
   );
 }
@@ -221,5 +226,11 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginBottom: 16,
     fontFamily: "Montserrat",
+  },
+  quickActions: {
+    flexDirection: "row",
+    paddingHorizontal: 10,
+    alignItems: "center",
+    justifyContent: "space-between",
   },
 });

@@ -1,6 +1,10 @@
+import BottomBar from "@/components/BottomBar";
+import DocumentPickerComponent from "@/components/DocumentPicker";
 import MainSection from "@/components/MainSection";
 import Ionicons from "@expo/vector-icons/build/Ionicons";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import { useRouter } from "expo-router";
+import { Pen, Plus, Trash } from "lucide-react-native";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   Modal,
@@ -23,9 +27,9 @@ interface Transaction {
   date: string;
   category: string;
   type: "income" | "expense";
-  onEdit: () => void;
-  onDelete: () => void;
-  onPress: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
+  onPress?: () => void;
 }
 
 export default function TransactionsListScreen() {
@@ -37,6 +41,7 @@ export default function TransactionsListScreen() {
   const [datePickerMode, setDatePickerMode] = useState<"start" | "end">(
     "start"
   );
+  const router = useRouter();
 
   const fetchTransactions = async () => {
     setRefreshing(true);
@@ -174,10 +179,38 @@ export default function TransactionsListScreen() {
       <Text style={styles.emptyText}>No transactions found</Text>
     </View>
   );
+  const renderHeader = () => (
+    <View>
+      <MainSection
+        actionButtons={
+          <>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => router.push("/add-transactions")}
+            >
+              <View style={styles.actionIconContainer}>
+                <Plus color={colors.text} size={24} />
+              </View>
+              <Text style={styles.actionText}>Add transactions</Text>
+            </TouchableOpacity>
 
-  return (
-    <View style={styles.container}>
-      <MainSection />
+            <TouchableOpacity style={styles.actionButton}>
+              <View style={styles.actionIconContainer}>
+                <Pen color={colors.text} size={24} />
+              </View>
+              <Text style={styles.actionText}>Edit multiple</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.actionButton}>
+              <View style={styles.actionIconContainer}>
+                <Trash color={colors.text} size={24} />
+              </View>
+              <Text style={styles.actionText}>Delete multiple</Text>
+            </TouchableOpacity>
+          </>
+        }
+      />
+      <DocumentPickerComponent />
       <View style={styles.contentContainer}>
         {/* Period Picker Section - Vertically stacked for better layout */}
         <View style={styles.dateFilterSection}>
@@ -200,29 +233,7 @@ export default function TransactionsListScreen() {
             </TouchableOpacity>
           </View>
         </View>
-
-        {/* Transactions List */}
-        <SwipeListView
-          data={transactions}
-          keyExtractor={(item) => item.id}
-          renderItem={renderItem}
-          renderHiddenItem={renderHiddenItem}
-          rightOpenValue={-150}
-          leftOpenValue={150}
-          disableRightSwipe={false}
-          disableLeftSwipe={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={colors.primary[500]}
-            />
-          }
-          contentContainerStyle={{ flexGrow: 1 }}
-          ListEmptyComponent={renderEmpty}
-        />
       </View>
-
       {/* Date Picker Modal for iOS */}
       {Platform.OS === "ios" && datePickerVisible && (
         <Modal
@@ -270,6 +281,36 @@ export default function TransactionsListScreen() {
       )}
     </View>
   );
+
+  return (
+    <View style={styles.container}>
+      {/* Transactions List */}
+      <SwipeListView
+        data={transactions}
+        keyExtractor={(item) => item.id}
+        renderItem={renderItem}
+        renderHiddenItem={renderHiddenItem}
+        rightOpenValue={-150}
+        leftOpenValue={150}
+        disableRightSwipe={false}
+        disableLeftSwipe={false}
+        showsVerticalScrollIndicator={false}
+        showsHorizontalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary[500]}
+          />
+        }
+        contentContainerStyle={{ paddingBottom: 150 }}
+        ListHeaderComponent={renderHeader}
+        ListEmptyComponent={renderEmpty}
+      />
+
+      <BottomBar />
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -277,10 +318,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  scrollView: {
+    flex: 1,
+  },
   contentContainer: {
     flex: 1,
     padding: 16,
   },
+
   dateFilterSection: {
     marginBottom: 16,
     backgroundColor: colors.backgroundLight,
@@ -325,9 +370,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     fontFamily: "Montserrat",
   },
-  listContainer: {
-    flexGrow: 1,
-  },
+
   emptyContainer: {
     flex: 1,
     justifyContent: "center",
@@ -399,5 +442,21 @@ const styles = StyleSheet.create({
     height: "100%",
     justifyContent: "center",
     alignItems: "center",
+  },
+  actionButton: {
+    alignItems: "center",
+  },
+  actionIconContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "rgba(255, 255, 255, 0.25)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 8,
+  },
+  actionText: {
+    color: colors.text,
+    fontSize: 14,
   },
 });
