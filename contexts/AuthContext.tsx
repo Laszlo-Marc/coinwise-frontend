@@ -42,16 +42,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  useEffect(() => {
-    if (!user) {
-      // Redirect to the sign-in page.
-      router.push("/sign-in");
-    } else if (user) {
-      // Redirect away from the sign-in page.
-      router.replace("/");
-    }
-  }, [user]);
-
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({
       email,

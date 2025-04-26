@@ -170,14 +170,16 @@ export default function Finances() {
             {selectedDate.toDateString()}
           </Text>
         </TouchableOpacity>
-        {showPicker && (
-          <DateTimePicker
-            value={selectedDate}
-            mode="date"
-            display={Platform.OS === "ios" ? "inline" : "default"}
-            onChange={onChange}
-          />
-        )}
+        <View style={{ alignItems: "center" }}>
+          {showPicker && (
+            <DateTimePicker
+              value={selectedDate}
+              mode="date"
+              display={Platform.OS === "ios" ? "inline" : "default"}
+              onChange={onChange}
+            />
+          )}
+        </View>
 
         {/* Income */}
         <View style={styles.card}>
