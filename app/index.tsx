@@ -1,6 +1,5 @@
-import { supabase } from "@/lib/supabase";
 import { LinearGradient } from "expo-linear-gradient";
-import { SplashScreen, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import {
   Archive,
   ChevronRight,
@@ -16,7 +15,7 @@ import {
   User,
   Wallet,
 } from "lucide-react-native";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   Animated,
   Keyboard,
@@ -42,27 +41,6 @@ export default function HomePage() {
 
   const [appIsReady, setAppIsReady] = useState(false);
   const [focusAnim] = useState(new Animated.Value(0));
-  useEffect(() => {
-    async function prepare() {
-      try {
-        SplashScreen.preventAutoHideAsync(); // Force splash until ready
-
-        // Check Supabase session
-        const { data, error } = await supabase.auth.getSession();
-        if (error || !data.session) {
-          router.replace("/sign-in");
-        } else {
-          router.replace("/");
-        }
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setAppIsReady(true); // App is ready
-      }
-    }
-
-    prepare();
-  }, []);
 
   const handleFocus = () => {
     setIsFocused(true);

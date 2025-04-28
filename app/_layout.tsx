@@ -10,7 +10,8 @@ export default function RootLayout() {
   });
   const [appIsReady, setAppIsReady] = useState(false);
   useEffect(() => {
-    if (fontsLoaded && appIsReady) {
+    if (fontsLoaded) {
+      setAppIsReady(true);
       SplashScreen.hideAsync();
     }
   }, [fontsLoaded, appIsReady]);
@@ -51,6 +52,19 @@ export default function RootLayout() {
           <Stack.Screen name="finances" options={{ headerShown: false }} />
           <Stack.Screen name="stats" options={{ headerShown: false }} />
           <Stack.Screen name="settings" options={{ headerShown: false }} />
+          <Stack.Screen name="add-goal" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="goal-details/[id]"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="edit-goal/[id]"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="goal-details/add-contribution/[id]"
+            options={{ headerShown: false }}
+          />
         </Stack>
       </AuthProvider>
     </GestureHandlerRootView>
