@@ -1,6 +1,6 @@
-import BottomBar from "@/components/BottomBar";
-import DocumentPickerComponent from "@/components/DocumentPicker";
-import MainSection from "@/components/MainSection";
+import DocumentPickerComponent from "@/components/financesComponents/DocumentPicker";
+import BottomBar from "@/components/mainComponents/BottomBar";
+import MainSection from "@/components/mainComponents/MainSection";
 import Ionicons from "@expo/vector-icons/build/Ionicons";
 import { useRouter } from "expo-router";
 import { Pen, Plus, Trash } from "lucide-react-native";
@@ -8,7 +8,7 @@ import React, { useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Animated, { FadeInLeft, FadeInRight } from "react-native-reanimated";
 import { SwipeListView } from "react-native-swipe-list-view";
-import TransactionItem from "../components/TransactionItem";
+import TransactionItem from "../components/financesComponents/TransactionItem";
 import { colors } from "../constants/colors";
 
 interface Transaction {

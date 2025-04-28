@@ -1,7 +1,7 @@
 import { MaterialIcons } from "@expo/vector-icons";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { colors } from "../constants/colors";
+import { colors } from "../../constants/colors";
 
 type SimpleCardProps = {
   header: string;
@@ -44,7 +44,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 16,
-    
   },
   sectionHeaderText: {
     color: colors.text,

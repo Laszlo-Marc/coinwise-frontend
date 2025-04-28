@@ -94,7 +94,7 @@ const GoalDetailsScreen = () => {
 
   const handleEditGoal = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push(`/edit-goal/${goal?.id}`); // ✅
+    router.push(`/edit-goal/${goal?.id}`);
   };
 
   if (!goal) return null;

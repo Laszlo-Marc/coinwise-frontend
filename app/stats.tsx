@@ -1,4 +1,4 @@
-import BottomBar from "@/components/BottomBar";
+import BottomBar from "@/components/mainComponents/BottomBar";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import {

@@ -13,7 +13,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors } from "../constants/colors";
+import { colors } from "../../constants/colors";
 
 export default function Header() {
   const insets = useSafeAreaInsets();
@@ -112,7 +112,6 @@ export default function Header() {
               returnKeyType="search"
               autoCapitalize="none"
               autoCorrect={false}
-              
             />
             {searchText !== "" && isFocused && (
               <TouchableOpacity

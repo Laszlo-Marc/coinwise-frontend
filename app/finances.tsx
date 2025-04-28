@@ -1,4 +1,4 @@
-import BottomBar from "@/components/BottomBar";
+import BottomBar from "@/components/mainComponents/BottomBar";
 import { colors } from "@/constants/colors";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { LinearGradient } from "expo-linear-gradient";

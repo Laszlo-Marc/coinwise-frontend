@@ -1,4 +1,4 @@
-import BottomBar from "@/components/BottomBar";
+import BottomBar from "@/components/mainComponents/BottomBar";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";

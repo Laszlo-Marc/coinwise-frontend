@@ -30,7 +30,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import BottomBar from "../components/BottomBar";
+import BottomBar from "../components/mainComponents/BottomBar";
 import { colors } from "../constants/colors";
 
 export default function HomePage() {
