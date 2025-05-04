@@ -22,9 +22,7 @@ import BudgetModal from "../components/budgetsComponents/BudgetModal";
 import EmptyState from "../components/budgetsComponents/EmptyState";
 import BottomBar from "../components/mainComponents/BottomBar";
 
-const initialBudgets: Budget[] = [
-  /* your mock budgets here */
-];
+const initialBudgets: Budget[] = [];
 
 const BudgetsScreen = () => {
   const insets = useSafeAreaInsets();

@@ -1,13 +1,7 @@
 import { colors } from "@/constants/colors";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { Link, usePathname } from "expo-router";
-import {
-  Home,
-  PieChart,
-  PiggyBankIcon,
-  Trophy,
-  Wallet,
-} from "lucide-react-native";
 import React, { useMemo } from "react";
 import {
   Platform,
@@ -17,32 +11,45 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
 const tabs = [
   {
     name: "Finances",
     href: "/finances" as const,
-    icon: Wallet,
+    icon: (color: string, size: number) => (
+      <Feather name="credit-card" color={color} size={size} />
+    ),
   },
   {
     name: "Stats",
     href: "/stats" as const,
-    icon: PieChart,
+    icon: (color: string, size: number) => (
+      <Feather name="bar-chart" color={color} size={size} />
+    ),
   },
   {
     name: "Home",
     href: "/" as const,
-    icon: Home,
+    icon: (color: string, size: number) => (
+      <Feather name="home" color={color} size={size} />
+    ),
   },
   {
     name: "Goals",
     href: "/financial-goals" as const,
-    icon: Trophy,
+    icon: (color: string, size: number) => (
+      <Feather name="award" color={color} size={size} />
+    ),
   },
   {
     name: "Budgets",
     href: "/budgets" as const,
-    icon: PiggyBankIcon,
+    icon: (color: string, size: number) => (
+      <MaterialCommunityIcons
+        name="piggy-bank-outline"
+        size={size}
+        color={color}
+      />
+    ),
   },
 ];
 
@@ -50,12 +57,10 @@ export default function BottomBar() {
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
 
-  // Calculate bottom padding to account for safe area
   const bottomPadding = useMemo(() => {
     return Math.max(insets.bottom, 10);
   }, [insets.bottom]);
 
-  // Render the glass effect background based on platform
   const renderBackground = () => {
     if (Platform.OS === "ios") {
       return (
@@ -81,18 +86,13 @@ export default function BottomBar() {
       {renderBackground()}
       <View style={styles.container}>
         {tabs.map((tab) => {
-          const Icon = tab.icon;
           const isActive = pathname === tab.href;
 
           return (
             <Link key={tab.href} href={tab.href} asChild>
               <TouchableOpacity style={styles.tab} activeOpacity={0.7}>
                 <View style={styles.iconContainer}>
-                  <Icon
-                    size={24}
-                    color={isActive ? colors.primary[500] : colors.text}
-                    strokeWidth={isActive ? 2.2 : 1.8}
-                  />
+                  {tab.icon(isActive ? colors.primary[500] : colors.text, 24)}
                 </View>
                 <Text
                   style={[

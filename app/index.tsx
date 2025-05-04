@@ -1,20 +1,12 @@
+import {
+  AntDesign,
+  Entypo,
+  Feather,
+  Ionicons,
+  SimpleLineIcons,
+} from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import {
-  Archive,
-  ChevronRight,
-  CreditCard,
-  Link as LinkIcon,
-  List,
-  PieChart,
-  Plane,
-  Search,
-  Settings,
-  Target,
-  TrendingUp,
-  User,
-  Wallet,
-} from "lucide-react-native";
 import React, { useState } from "react";
 import {
   Animated,
@@ -97,7 +89,11 @@ export default function HomePage() {
                   onPress={() => router.push("/settings")}
                   activeOpacity={0.7}
                 >
-                  <Settings color={colors.text} size={24} />
+                  <Ionicons
+                    name="settings-outline"
+                    size={24}
+                    color={colors.text}
+                  />
                 </TouchableOpacity>
 
                 <Animated.View
@@ -109,7 +105,8 @@ export default function HomePage() {
                     },
                   ]}
                 >
-                  <Search
+                  <Ionicons
+                    name="search-sharp"
                     color={
                       isFocused ? colors.primary[400] : colors.textSecondary
                     }
@@ -147,7 +144,7 @@ export default function HomePage() {
                   onPress={() => router.push("/profile")}
                   activeOpacity={0.7}
                 >
-                  <User color={colors.text} size={24} />
+                  <Feather name="user" size={24} color={colors.text} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -167,28 +164,32 @@ export default function HomePage() {
               onPress={() => router.push("/transactions")}
             >
               <View style={styles.actionIconContainer}>
-                <Wallet color={colors.text} size={24} />
+                <Ionicons name="wallet-outline" size={24} color={colors.text} />
               </View>
               <Text style={styles.actionText}>Transactions</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.actionButton}>
               <View style={styles.actionIconContainer}>
-                <Archive color={colors.text} size={24} />
+                <Feather name="archive" size={24} color={colors.text} />
               </View>
               <Text style={styles.actionText}>Archive</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.actionButton}>
               <View style={styles.actionIconContainer}>
-                <Plane color={colors.text} size={24} />
+                <SimpleLineIcons
+                  name="paper-plane"
+                  size={24}
+                  color={colors.text}
+                />
               </View>
               <Text style={styles.actionText}>Travel account</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.actionButton}>
               <View style={styles.actionIconContainer}>
-                <List color={colors.text} size={24} />
+                <Feather name="list" size={24} color={colors.text} />
               </View>
               <Text style={styles.actionText}>Details</Text>
             </TouchableOpacity>
@@ -209,7 +210,7 @@ export default function HomePage() {
         <View style={styles.card}>
           <TouchableOpacity style={styles.sectionHeaderButton}>
             <Text style={styles.sectionHeaderText}>Total wealth</Text>
-            <ChevronRight color={colors.textSecondary} size={20} />
+            <Entypo name="chevron-right" size={24} color={colors.text} />
           </TouchableOpacity>
 
           <Text style={styles.totalAmount}>$0</Text>
@@ -217,18 +218,18 @@ export default function HomePage() {
           {/* Account Items */}
           <TouchableOpacity style={styles.accountItem}>
             <View style={[styles.accountIcon, { backgroundColor: "#4169E1" }]}>
-              <Wallet color={colors.text} size={24} />
+              <Ionicons name="wallet-outline" size={24} color={colors.text} />
             </View>
             <View style={styles.accountInfo}>
               <Text style={styles.accountTitle}>Cash</Text>
               <Text style={styles.accountSubtitle}>0 Accounts</Text>
             </View>
-            <ChevronRight color={colors.textSecondary} size={20} />
+            <Entypo name="chevron-right" size={24} color={colors.text} />
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.accountItem}>
             <View style={[styles.accountIcon, { backgroundColor: "#4682B4" }]}>
-              <TrendingUp color={colors.text} size={24} />
+              <Feather name="trending-up" size={24} color={colors.text} />
             </View>
             <View style={styles.accountInfo}>
               <Text style={styles.accountTitle}>Invest</Text>
@@ -236,7 +237,7 @@ export default function HomePage() {
                 Invest for as little as $1
               </Text>
             </View>
-            <ChevronRight color={colors.textSecondary} size={20} />
+            <Entypo name="chevron-right" size={24} color={colors.text} />
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.accountItem}>
@@ -249,18 +250,18 @@ export default function HomePage() {
                 Invest for as little as $1
               </Text>
             </View>
-            <ChevronRight color={colors.textSecondary} size={20} />
+            <Entypo name="chevron-right" size={24} color={colors.text} />
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.accountItem}>
             <View style={[styles.accountIcon, { backgroundColor: "#40E0D0" }]}>
-              <LinkIcon color={colors.text} size={24} />
+              <Entypo name="link" size={24} color={colors.text} />
             </View>
             <View style={styles.accountInfo}>
               <Text style={styles.accountTitle}>Linked</Text>
               <Text style={styles.accountSubtitle}>Link external account</Text>
             </View>
-            <ChevronRight color={colors.textSecondary} size={20} />
+            <Entypo name="chevron-right" size={24} color={colors.text} />
           </TouchableOpacity>
         </View>
 
@@ -268,11 +269,11 @@ export default function HomePage() {
         <View style={styles.card}>
           <TouchableOpacity style={styles.sectionHeaderButton}>
             <Text style={styles.sectionHeaderText}>Statistics</Text>
-            <ChevronRight color={colors.textSecondary} size={20} />
+            <Entypo name="chevron-right" size={24} color={colors.text} />
           </TouchableOpacity>
 
           <View style={styles.statGraphPlaceholder}>
-            <PieChart color={colors.textSecondary} size={40} />
+            <Feather name="pie-chart" size={24} color={colors.text} />
             <Text style={styles.statPlaceholderText}>
               Track your spending patterns
             </Text>
@@ -283,11 +284,11 @@ export default function HomePage() {
         <View style={styles.card}>
           <TouchableOpacity style={styles.sectionHeaderButton}>
             <Text style={styles.sectionHeaderText}>Financial Goals</Text>
-            <ChevronRight color={colors.textSecondary} size={20} />
+            <Entypo name="chevron-right" size={24} color={colors.text} />
           </TouchableOpacity>
 
           <View style={styles.goalPlaceholder}>
-            <Target color={colors.textSecondary} size={40} />
+            <Feather name="target" size={40} color={colors.textSecondary} />
             <Text style={styles.statPlaceholderText}>
               Set your first savings goal
             </Text>
@@ -301,11 +302,15 @@ export default function HomePage() {
         <View style={styles.card}>
           <TouchableOpacity style={styles.sectionHeaderButton}>
             <Text style={styles.sectionHeaderText}>Budgets</Text>
-            <ChevronRight color={colors.textSecondary} size={20} />
+            <Entypo name="chevron-right" size={24} color={colors.text} />
           </TouchableOpacity>
 
           <View style={styles.goalPlaceholder}>
-            <CreditCard color={colors.textSecondary} size={40} />
+            <AntDesign
+              name="creditcard"
+              size={24}
+              color={colors.textSecondary}
+            />
             <Text style={styles.statPlaceholderText}>
               Create a budget to manage expenses
             </Text>

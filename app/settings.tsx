@@ -12,4 +12,3 @@ export default function DefaultPage() {
     </SafeAreaView>
   );
 }
-/*******  979001af-c72d-48e7-a5de-60c1559dec7f  *******/

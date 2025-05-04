@@ -1,7 +1,7 @@
 import { colors } from "@/constants/colors";
+import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { Search, SettingsIcon, User } from "lucide-react-native";
 import { useState } from "react";
 import {
   Animated,
@@ -68,7 +68,7 @@ export default function MainSection({
               onPress={() => router.push("/settings")}
               activeOpacity={0.7}
             >
-              <SettingsIcon color={colors.text} size={24} />
+             <Feather name="settings" size={24} color={colors.text} />
             </TouchableOpacity>
 
             <Animated.View
@@ -80,7 +80,8 @@ export default function MainSection({
                 },
               ]}
             >
-              <Search
+              <Feather
+                name="search"
                 color={isFocused ? colors.primary[400] : colors.textSecondary}
                 size={20}
                 style={styles.searchIcon}
@@ -116,7 +117,7 @@ export default function MainSection({
               onPress={() => router.push("/profile")}
               activeOpacity={0.7}
             >
-              <User color={colors.text} size={24} />
+              <Feather name="user" size={24} color={colors.text} />
             </TouchableOpacity>
           </View>
         </View>

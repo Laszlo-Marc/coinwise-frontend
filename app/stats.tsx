@@ -1,14 +1,7 @@
 import BottomBar from "@/components/mainComponents/BottomBar";
+import { AntDesign, Entypo, Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import {
-  ArrowLeft,
-  Calendar,
-  ChevronDown,
-  Download,
-  PieChart,
-  TrendingUp,
-} from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
   Dimensions,
@@ -197,14 +190,14 @@ export default function StatisticsScreen() {
             style={styles.backButton}
             onPress={() => router.back()}
           >
-            <ArrowLeft color={colors.text} size={24} />
+            <Feather name="arrow-left" size={16} color="black" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Statistics</Text>
           <TouchableOpacity
             style={styles.exportButton}
             onPress={() => console.log("Export statistics")}
           >
-            <Download color={colors.text} size={20} />
+            <Feather name="download" size={16} color={colors.text} />
           </TouchableOpacity>
         </View>
 
@@ -272,9 +265,9 @@ export default function StatisticsScreen() {
             style={styles.timeRangeButton}
             onPress={() => setTimeRangeModalVisible(true)}
           >
-            <Calendar color={colors.primary[400]} size={16} />
+            <Feather name="calendar" size={24} color={colors.primary[400]} />
             <Text style={styles.timeRangeText}>{selectedRange}</Text>
-            <ChevronDown color={colors.primary[400]} size={16} />
+            <Entypo name="chevron-down" size={24} color={colors.primary[400]} />
           </TouchableOpacity>
         </View>
 
@@ -290,14 +283,7 @@ export default function StatisticsScreen() {
                 ]}
                 onPress={() => setChartType("line")}
               >
-                <TrendingUp
-                  color={
-                    chartType === "line"
-                      ? colors.primary[500]
-                      : colors.textSecondary
-                  }
-                  size={18}
-                />
+                <Feather name="trending-up" size={24} color={colors.text} />
               </TouchableOpacity>
               <TouchableOpacity
                 style={[
@@ -440,7 +426,7 @@ export default function StatisticsScreen() {
 
           <View style={styles.insightItem}>
             <View style={styles.insightIconContainer}>
-              <TrendingUp color={colors.error} size={20} />
+              <Feather name="trending-up" size={24} color={colors.text} />
             </View>
             <View style={styles.insightTextContainer}>
               <Text style={styles.insightText}>
@@ -452,7 +438,7 @@ export default function StatisticsScreen() {
 
           <View style={styles.insightItem}>
             <View style={styles.insightIconContainer}>
-              <PieChart color={colors.success} size={20} />
+              <AntDesign name="piechart" size={24} color={colors.text} />
             </View>
             <View style={styles.insightTextContainer}>
               <Text style={styles.insightText}>

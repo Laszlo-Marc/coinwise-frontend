@@ -5,7 +5,7 @@ import DateTimePicker, {
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Goal } from "lucide-react-native";
+
 import React, { useEffect, useState } from "react";
 import {
   Animated,

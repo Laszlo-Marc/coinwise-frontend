@@ -1,30 +1,23 @@
+import Transaction from "@/data/transaction";
 import { StyleSheet, Text, View } from "react-native";
 
-interface TransactionItemProps {
-  title: string;
-  amount: number;
-  date: string;
-  category: string;
-  type: "income" | "expense";
-  onEdit?: () => void;
-  onDelete?: () => void;
-  onPress?: () => void;
-}
-
 export default function TransactionItem({
-  title,
+  id,
+  description,
   amount,
   date,
   category,
   type,
+  user_id,
+  merchant,
   onEdit,
   onDelete,
   onPress,
-}: TransactionItemProps) {
+}: Transaction) {
   return (
     <View style={styles.container}>
       <View>
-        <Text style={styles.title}>{title}</Text>
+        <Text style={styles.title}>{merchant}</Text>
         <Text style={styles.subtitle}>
           {category} • {date}
         </Text>

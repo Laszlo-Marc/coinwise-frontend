@@ -1,27 +1,16 @@
 import DocumentPickerComponent from "@/components/financesComponents/DocumentPicker";
 import BottomBar from "@/components/mainComponents/BottomBar";
 import MainSection from "@/components/mainComponents/MainSection";
+import Transaction from "@/data/transaction";
+import { AntDesign, Feather, FontAwesome5 } from "@expo/vector-icons";
 import Ionicons from "@expo/vector-icons/build/Ionicons";
 import { useRouter } from "expo-router";
-import { Pen, Plus, Trash } from "lucide-react-native";
 import React, { useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Animated, { FadeInLeft, FadeInRight } from "react-native-reanimated";
 import { SwipeListView } from "react-native-swipe-list-view";
 import TransactionItem from "../components/financesComponents/TransactionItem";
 import { colors } from "../constants/colors";
-
-interface Transaction {
-  id: string;
-  title: string;
-  amount: number;
-  date: string;
-  category: string;
-  type: "income" | "expense";
-  onEdit: () => void;
-  onDelete: () => void;
-  onPress: () => void;
-}
 
 export default function TransactionsListScreen() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -75,7 +64,10 @@ export default function TransactionsListScreen() {
 
   const renderItem = ({ item }: { item: Transaction }) => (
     <TransactionItem
-      title={item.title}
+      id={item.id}
+      merchant={item.merchant}
+      user_id={item.user_id}
+      description={item.description}
       amount={item.amount}
       date={item.date}
       category={item.category}
@@ -102,21 +94,21 @@ export default function TransactionsListScreen() {
               onPress={() => router.push("/add-transactions")}
             >
               <View style={styles.actionIconContainer}>
-                <Plus color={colors.text} size={24} />
+                <AntDesign name="plus" size={24} color={colors.text} />
               </View>
               <Text style={styles.actionText}>Add transactions</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.actionButton}>
               <View style={styles.actionIconContainer}>
-                <Pen color={colors.text} size={24} />
+                <FontAwesome5 name="pen" size={24} color={colors.text} />
               </View>
               <Text style={styles.actionText}>Edit multiple</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.actionButton}>
               <View style={styles.actionIconContainer}>
-                <Trash color={colors.text} size={24} />
+              <Feather name="trash" size={24} color={colors.text} />
               </View>
               <Text style={styles.actionText}>Delete multiple</Text>
             </TouchableOpacity>

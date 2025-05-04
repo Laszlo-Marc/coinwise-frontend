@@ -1,11 +1,13 @@
 import DocumentPickerComponent from "@/components/financesComponents/DocumentPicker";
 import BottomBar from "@/components/mainComponents/BottomBar";
 import MainSection from "@/components/mainComponents/MainSection";
+
+import { AntDesign } from "@expo/vector-icons";
 import Ionicons from "@expo/vector-icons/build/Ionicons";
+import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useRouter } from "expo-router";
-import { Pen, Plus, Trash } from "lucide-react-native";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   Modal,
   Platform,
@@ -19,18 +21,7 @@ import Animated, { FadeInLeft, FadeInRight } from "react-native-reanimated";
 import { SwipeListView } from "react-native-swipe-list-view";
 import TransactionItem from "../components/financesComponents/TransactionItem";
 import { colors } from "../constants/colors";
-
-interface Transaction {
-  id: string;
-  title: string;
-  amount: number;
-  date: string;
-  category: string;
-  type: "income" | "expense";
-  onEdit?: () => void;
-  onDelete?: () => void;
-  onPress?: () => void;
-}
+import Transaction from "../data/transaction";
 
 export default function TransactionsListScreen() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -42,36 +33,6 @@ export default function TransactionsListScreen() {
     "start"
   );
   const router = useRouter();
-
-  const fetchTransactions = async () => {
-    setRefreshing(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate network
-    setTransactions([
-      {
-        id: "1",
-        title: "Grocery Store",
-        amount: -45.99,
-        date: "2025-04-24",
-        category: "Food",
-        type: "expense",
-        onDelete: () => handleDeleteTransaction("1"),
-        onEdit: () => handleEditTransaction("1"),
-        onPress: () => handleViewTransaction("1"),
-      },
-      {
-        id: "2",
-        title: "Salary",
-        amount: 1500,
-        date: "2025-04-20",
-        category: "Income",
-        type: "income",
-        onDelete: () => handleDeleteTransaction("2"),
-        onEdit: () => handleEditTransaction("2"),
-        onPress: () => handleViewTransaction("2"),
-      },
-    ]);
-    setRefreshing(false);
-  };
 
   const renderHiddenItem = ({ item }: { item: Transaction }, rowMap: any) => (
     <View style={styles.hiddenContainer}>
@@ -108,8 +69,6 @@ export default function TransactionsListScreen() {
   );
   const handleDeleteTransaction = (id: string) => {
     console.log("Delete transaction:", id);
-    // You would implement actual delete functionality here
-    setTransactions((prev) => prev.filter((item) => item.id !== id));
   };
 
   const handleEditTransaction = (id: string) => {
@@ -121,14 +80,6 @@ export default function TransactionsListScreen() {
     console.log("View transaction:", id);
     // You would navigate to transaction details screen here
   };
-
-  useEffect(() => {
-    fetchTransactions();
-  }, [startDate, endDate]);
-
-  const onRefresh = useCallback(() => {
-    fetchTransactions();
-  }, []);
 
   const openDatePicker = (mode: "start" | "end") => {
     setDatePickerMode(mode);
@@ -163,10 +114,13 @@ export default function TransactionsListScreen() {
 
   const renderItem = ({ item }: { item: Transaction }) => (
     <TransactionItem
-      title={item.title}
+      merchant={item.merchant}
       amount={item.amount}
       date={item.date}
       category={item.category}
+      id={item.id}
+      user_id={item.user_id}
+      description={item.description}
       type={item.type}
       onPress={item.onPress}
       onEdit={item.onEdit}
@@ -189,21 +143,21 @@ export default function TransactionsListScreen() {
               onPress={() => router.push("/add-transactions")}
             >
               <View style={styles.actionIconContainer}>
-                <Plus color={colors.text} size={24} />
+                <AntDesign name="plus" size={24} color={colors.text} />
               </View>
               <Text style={styles.actionText}>Add transactions</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.actionButton}>
               <View style={styles.actionIconContainer}>
-                <Pen color={colors.text} size={24} />
+                <FontAwesome5 name="pen" color={colors.text} size={24} />
               </View>
               <Text style={styles.actionText}>Edit multiple</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.actionButton}>
               <View style={styles.actionIconContainer}>
-                <Trash color={colors.text} size={24} />
+                <Ionicons name="trash-outline" size={24} color={colors.text} />
               </View>
               <Text style={styles.actionText}>Delete multiple</Text>
             </TouchableOpacity>
@@ -299,7 +253,6 @@ export default function TransactionsListScreen() {
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
-            onRefresh={onRefresh}
             tintColor={colors.primary[500]}
           />
         }

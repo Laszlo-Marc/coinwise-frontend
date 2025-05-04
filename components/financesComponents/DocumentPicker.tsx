@@ -1,5 +1,4 @@
 import { colors } from "@/constants/colors";
-import axios from "axios";
 import * as DocumentPicker from "expo-document-picker";
 import React, { useState } from "react";
 import {
@@ -51,20 +50,8 @@ const DocumentPickerComponent = () => {
       formData.append("file", blob, file.name);
 
       setUploadStatus("Uploading document to server...");
-      const uploadResponse = await axios.post(
-        "http://localhost:8000/api/upload",
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
 
-      // Step 4: Handle success
-      setExtractedText(uploadResponse.data.text);
       setUploadStatus("Document processed successfully!");
-      console.log("Upload successful:", uploadResponse.data);
 
       // Reset loading state after a brief delay to show success message
       setTimeout(() => {
@@ -89,10 +76,7 @@ const DocumentPickerComponent = () => {
         <Text style={styles.cardTitle}>Document Upload</Text>
 
         {!isLoading ? (
-          <TouchableOpacity
-            style={styles.uploadButton}
-            onPress={handleDocumentUpload}
-          >
+          <TouchableOpacity style={styles.uploadButton}>
             <Text style={styles.uploadButtonText}>
               Select & Upload Document
             </Text>

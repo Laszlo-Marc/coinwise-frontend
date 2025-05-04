@@ -2,14 +2,12 @@ import { Link, router } from "expo-router";
 import React, { useState } from "react";
 import { Alert, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { colors } from "../constants/colors";
-import { useAuth } from "../contexts/AuthContext";
 
 export default function SignUp() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const { signUp } = useAuth();
 
   const handleSignUp = async () => {
     if (!email || !password || !confirmPassword) {
@@ -24,7 +22,7 @@ export default function SignUp() {
 
     try {
       setLoading(true);
-      await signUp(email, password);
+      //await signUp(email, password);
       Alert.alert(
         "Success",
         "Please check your email to confirm your account",

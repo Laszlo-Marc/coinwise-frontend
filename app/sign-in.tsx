@@ -10,14 +10,11 @@ import {
   View,
 } from "react-native";
 import { colors } from "../constants/colors";
-import { useAuth } from "../contexts/AuthContext";
-import { supabase } from "../lib/supabase";
 
 export default function SignIn() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const { signIn } = useAuth();
 
   const handleSignIn = async () => {
     if (!email || !password) {
@@ -27,7 +24,7 @@ export default function SignIn() {
 
     try {
       setLoading(true);
-      await signIn(email, password);
+      //await signIn(email, password);
       router.replace("/");
     } catch (error: any) {
       Alert.alert(
@@ -39,22 +36,7 @@ export default function SignIn() {
     }
   };
 
-  const handleGoogleSignIn = async () => {
-    try {
-      setLoading(true);
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-      });
-      if (error) throw error;
-    } catch (error: any) {
-      Alert.alert(
-        "Error",
-        error?.message || "An error occurred during Google sign in"
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+  const handleGoogleSignIn = async () => {};
 
   return (
     <View style={styles.container}>

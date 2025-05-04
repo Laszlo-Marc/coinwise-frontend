@@ -1,15 +1,9 @@
 import BottomBar from "@/components/mainComponents/BottomBar";
 import { colors } from "@/constants/colors";
+import { Feather, Ionicons, MaterialIcons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import {
-  ArrowDownRight,
-  ArrowUpRight,
-  Search,
-  SettingsIcon,
-  User,
-} from "lucide-react-native";
 import React, { useState } from "react";
 import {
   Animated,
@@ -100,7 +94,11 @@ export default function Finances() {
                   onPress={() => router.push("/settings")}
                   activeOpacity={0.7}
                 >
-                  <SettingsIcon color={colors.text} size={24} />
+                  <Ionicons
+                    name="settings-outline"
+                    size={24}
+                    color={colors.text}
+                  />
                 </TouchableOpacity>
 
                 <Animated.View
@@ -112,7 +110,8 @@ export default function Finances() {
                     },
                   ]}
                 >
-                  <Search
+                  <MaterialIcons
+                    name="search"
                     color={
                       isFocused ? colors.primary[400] : colors.textSecondary
                     }
@@ -150,7 +149,7 @@ export default function Finances() {
                   onPress={() => router.push("/profile")}
                   activeOpacity={0.7}
                 >
-                  <User color={colors.text} size={24} />
+                  <Feather name="user" size={24} color={colors.text} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -185,7 +184,7 @@ export default function Finances() {
         <View style={styles.card}>
           <TouchableOpacity style={styles.sectionHeaderButton}>
             <Text style={styles.incomeText}>Income</Text>
-            <ArrowUpRight size={24} color="#10B981" />
+            <Feather name="arrow-up-right" size={24} color={colors.success} />
           </TouchableOpacity>
           <View style={styles.cardContent}>
             <Text style={styles.cardText}>$0</Text>
@@ -196,7 +195,7 @@ export default function Finances() {
         <View style={styles.card}>
           <TouchableOpacity style={styles.sectionHeaderButton}>
             <Text style={styles.expensesText}>Expenses</Text>
-            <ArrowDownRight size={24} color="#DC2626" />
+            <Feather name="arrow-down-right" size={24} color={colors.error} />
           </TouchableOpacity>
           <View style={styles.cardContent}>
             <Text style={styles.cardText}>$0</Text>
