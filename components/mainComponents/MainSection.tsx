@@ -68,7 +68,7 @@ export default function MainSection({
               onPress={() => router.push("/settings")}
               activeOpacity={0.7}
             >
-             <Feather name="settings" size={24} color={colors.text} />
+              <Feather name="settings" size={24} color={colors.text} />
             </TouchableOpacity>
 
             <Animated.View
@@ -114,7 +114,7 @@ export default function MainSection({
 
             <TouchableOpacity
               style={styles.iconButton}
-              onPress={() => router.push("/profile")}
+              onPress={() => router.push("./auth/profile")}
               activeOpacity={0.7}
             >
               <Feather name="user" size={24} color={colors.text} />

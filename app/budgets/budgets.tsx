@@ -17,10 +17,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import BudgetItem, {
   Budget,
   SubBudget,
-} from "../components/budgetsComponents/BudgetItem";
-import BudgetModal from "../components/budgetsComponents/BudgetModal";
-import EmptyState from "../components/budgetsComponents/EmptyState";
-import BottomBar from "../components/mainComponents/BottomBar";
+} from "../../components/budgetsComponents/BudgetItem";
+import BudgetModal from "../../components/budgetsComponents/BudgetModal";
+import EmptyState from "../../components/budgetsComponents/EmptyState";
+import BottomBar from "../../components/mainComponents/BottomBar";
 
 const initialBudgets: Budget[] = [];
 

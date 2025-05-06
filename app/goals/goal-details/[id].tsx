@@ -12,8 +12,8 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors } from "../../constants/colors";
-import { calculatePercentage, formatCurrency } from "../../utils/formatting";
+import { colors } from "../../../constants/colors";
+import { calculatePercentage, formatCurrency } from "../../../utils/formatting";
 
 // Types
 type ProgressHistoryItem = {
@@ -89,12 +89,12 @@ const GoalDetailsScreen = () => {
 
   const handleAddContribution = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    router.push(`/goal-details/add-contribution/${goal?.id}`);
+    router.push(`./goal-details/add-contribution/${goal?.id}`);
   };
 
   const handleEditGoal = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push(`/edit-goal/${goal?.id}`);
+    router.push(`./edit-goal/${goal?.id}`);
   };
 
   if (!goal) return null;

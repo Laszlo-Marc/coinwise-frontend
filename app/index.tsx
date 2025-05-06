@@ -21,7 +21,9 @@ import {
   TouchableWithoutFeedback,
   View,
 } from "react-native";
+import "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
 import BottomBar from "../components/mainComponents/BottomBar";
 import { colors } from "../constants/colors";
 
@@ -141,7 +143,7 @@ export default function HomePage() {
 
                 <TouchableOpacity
                   style={styles.iconButton}
-                  onPress={() => router.push("/profile")}
+                  onPress={() => router.push("./auth/profile")}
                   activeOpacity={0.7}
                 >
                   <Feather name="user" size={24} color={colors.text} />
@@ -161,7 +163,7 @@ export default function HomePage() {
           <View style={styles.quickActions}>
             <TouchableOpacity
               style={styles.actionButton}
-              onPress={() => router.push("/transactions")}
+              onPress={() => router.push("./finances/transactions")}
             >
               <View style={styles.actionIconContainer}>
                 <Ionicons name="wallet-outline" size={24} color={colors.text} />

@@ -20,7 +20,7 @@ import {
   PieChart as RNPieChart,
 } from "react-native-chart-kit";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors } from "../constants/colors";
+import { colors } from "../../constants/colors";
 
 // Get screen width for responsive charts
 const screenWidth = Dimensions.get("window").width * 0.9;
@@ -190,7 +190,7 @@ export default function StatisticsScreen() {
             style={styles.backButton}
             onPress={() => router.back()}
           >
-            <Feather name="arrow-left" size={16} color="black" />
+            <Feather name="arrow-left" size={16} color={colors.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Statistics</Text>
           <TouchableOpacity

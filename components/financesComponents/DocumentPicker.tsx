@@ -1,4 +1,5 @@
 import { colors } from "@/constants/colors";
+import { useTransactions } from "@/contexts/TransactionsContext";
 import * as DocumentPicker from "expo-document-picker";
 import React, { useState } from "react";
 import {
@@ -14,13 +15,13 @@ const DocumentPickerComponent = () => {
   const [extractedText, setExtractedText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState("");
+  const { uploadBankStatement } = useTransactions();
 
   const handleDocumentUpload = async () => {
     try {
-      // Step 1: Pick a document
       const result = await DocumentPicker.getDocumentAsync({
-        type: "*/*", // Allows all file types
-        copyToCacheDirectory: true, // Ensures the file is accessible
+        type: "application/pdf",
+        copyToCacheDirectory: true,
       });
 
       if (result.canceled) {
@@ -31,41 +32,36 @@ const DocumentPickerComponent = () => {
       const document = result.assets[0];
       console.log("Picked document:", document);
 
-      // Step 2: Show loading state
       setIsLoading(true);
       setUploadStatus("Preparing document for upload...");
 
-      // Step 3: Prepare and upload the document
       const formData = new FormData();
-      const file = {
+
+      formData.append("file", {
         uri: document.uri,
         name: document.name || "upload.pdf",
         type: document.mimeType || "application/pdf",
-      };
-
-      setUploadStatus("Reading document contents...");
-      const response = await fetch(file.uri);
-      const blob = await response.blob();
-
-      formData.append("file", blob, file.name);
+      } as any);
 
       setUploadStatus("Uploading document to server...");
 
+      // 👇 Use fetch or axios to send the formData
+      const response = await uploadBankStatement(formData);
+
+      console.log("Upload response:", response);
       setUploadStatus("Document processed successfully!");
 
-      // Reset loading state after a brief delay to show success message
       setTimeout(() => {
         setIsLoading(false);
         setUploadStatus("");
       }, 1500);
     } catch (error) {
-      // Step 5: Handle errors
       console.error("Upload failed:", error);
       setIsLoading(false);
       setUploadStatus("");
       Alert.alert(
         "Upload Failed",
-        "There was a problem uploading your document. Please try again."
+        "There was a problem uploading your document."
       );
     }
   };
@@ -76,7 +72,10 @@ const DocumentPickerComponent = () => {
         <Text style={styles.cardTitle}>Document Upload</Text>
 
         {!isLoading ? (
-          <TouchableOpacity style={styles.uploadButton}>
+          <TouchableOpacity
+            style={styles.uploadButton}
+            onPress={handleDocumentUpload}
+          >
             <Text style={styles.uploadButtonText}>
               Select & Upload Document
             </Text>

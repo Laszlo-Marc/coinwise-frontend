@@ -1,13 +1,7 @@
 import TransactionModel from "@/models/transaction";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
-import {
-  createContext,
-  ReactNode,
-  useContext,
-  useEffect,
-  useState,
-} from "react";
+import { createContext, ReactNode, useContext, useState } from "react";
 interface TransactionContextType {
   transactions: any[];
   isLoading: boolean;
@@ -22,27 +16,31 @@ interface TransactionContextType {
     { totalAmount: number; count: number; transactions: any[] }
   >;
 }
+interface UploadResponse {
+  message: string;
+  transactions: TransactionModel[];
+  entity_map_id: string;
+  processing_time: string;
+  money_in: number;
+  money_out: number;
+}
 
-// Create the context with a default value
 const TransactionContext = createContext<TransactionContextType | undefined>(
   undefined
 );
 
-// Provider props
 interface TransactionProviderProps {
   children: ReactNode;
 }
 
-/// API base URL - replace with your actual API endpoint
-const API_URL = "https://192.168.1.156:5000";
+const TRANSACTIONS_API_URL = "http://192.168.1.156:5000/api/transactions";
+const UPLOADS_API_URL = "http://192.168.1.156:5000/api/upload/";
 
-// Create axios instance with base configuration
-const api = axios.create({
-  baseURL: API_URL,
+const transaction_api = axios.create({
+  baseURL: TRANSACTIONS_API_URL,
   headers: {
     "Content-Type": "application/json",
   },
-  timeout: 10000, // 10 seconds timeout
 });
 
 export const TransactionProvider: React.FC<TransactionProviderProps> = ({
@@ -51,11 +49,12 @@ export const TransactionProvider: React.FC<TransactionProviderProps> = ({
   const [transactions, setTransactions] = useState<TransactionModel[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Initialize transactions from local storage on first load
-  useEffect(() => {
-    fetchTransactions();
-  }, []);
+  const [uploadStats, setUploadStats] = useState<{
+    entityMapId: string;
+    processingTime: string;
+    moneyIn: number;
+    moneyOut: number;
+  } | null>(null);
 
   // Helper function to handle API errors
   const handleApiError = (error: any) => {
@@ -90,7 +89,7 @@ export const TransactionProvider: React.FC<TransactionProviderProps> = ({
     try {
       // Try to fetch from API first
       try {
-        const response = await api.get("/transactions");
+        const response = await transaction_api.get("/");
         setTransactions(response.data);
         await saveTransactionsToStorage(response.data);
         setIsLoading(false);
@@ -119,15 +118,13 @@ export const TransactionProvider: React.FC<TransactionProviderProps> = ({
     setError(null);
 
     try {
-      // Ensure transaction has an ID
       const newTransaction = {
         ...transaction,
-        id: transaction.id || Date.now().toString(),
       };
 
       // Try to add to API
       try {
-        const response = await api.post("/transactions", newTransaction);
+        const response = await transaction_api.post("/add", newTransaction);
         const addedTransaction = response.data;
         const updatedTransactions = [...transactions, addedTransaction];
         setTransactions(updatedTransactions);
@@ -171,8 +168,8 @@ export const TransactionProvider: React.FC<TransactionProviderProps> = ({
 
       // Try to update in API
       try {
-        const response = await api.put(
-          `/transactions/${id}`,
+        const response = await transaction_api.put(
+          `/edit/${id}`,
           updatedTransaction
         );
         const apiUpdatedTransaction = response.data;
@@ -208,7 +205,7 @@ export const TransactionProvider: React.FC<TransactionProviderProps> = ({
     try {
       // Try to delete from API
       try {
-        await api.delete(`/transactions/${id}`);
+        await transaction_api.delete(`/delete/${id}`);
       } catch (apiError) {
         console.log("API delete failed, deleting locally only");
       }
@@ -225,19 +222,36 @@ export const TransactionProvider: React.FC<TransactionProviderProps> = ({
   };
 
   // Upload bank statement
-  const uploadBankStatement = async (file: FormData): Promise<any> => {
+  const uploadBankStatement = async (
+    file: FormData
+  ): Promise<UploadResponse | { error: string }> => {
     setIsLoading(true);
     setError(null);
+    setUploadStats(null);
 
     try {
-      // Create a separate axios instance for file upload with different headers
-      const uploadResponse = await axios.post(`${API_URL}/upload`, file, {
+      const token = await AsyncStorage.getItem("auth_token");
+
+      if (!token) {
+        throw new Error("User is not authenticated.");
+      }
+
+      // Send request with Authorization header
+      const response = await axios.post(`${UPLOADS_API_URL}`, file, {
         headers: {
+          Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data",
         },
       });
+      const result = response.data;
 
-      const result = uploadResponse.data;
+      // Store statistics from the upload
+      setUploadStats({
+        entityMapId: result.entity_map_id,
+        processingTime: result.processing_time,
+        moneyIn: result.money_in,
+        moneyOut: result.money_out,
+      });
 
       // Refresh transactions after upload
       await fetchTransactions();
@@ -245,12 +259,12 @@ export const TransactionProvider: React.FC<TransactionProviderProps> = ({
       return result;
     } catch (e) {
       const errorMsg = handleApiError(e);
+      setError(errorMsg);
       return { error: errorMsg };
     } finally {
       setIsLoading(false);
     }
   };
-
   const getTransactionsByCategory = () => {
     const categoryMap: Record<
       string,

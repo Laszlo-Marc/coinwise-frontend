@@ -1,3 +1,4 @@
+import { useAuth } from "@/contexts/AuthContext";
 import { FontAwesome } from "@expo/vector-icons";
 import { Link, router } from "expo-router";
 import React, { useState } from "react";
@@ -9,13 +10,14 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { colors } from "../constants/colors";
+import { colors } from "../../constants/colors";
 
 export default function SignIn() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const { signIn } = useAuth();
   const handleSignIn = async () => {
     if (!email || !password) {
       Alert.alert("Error", "Please fill in all fields");
@@ -24,7 +26,7 @@ export default function SignIn() {
 
     try {
       setLoading(true);
-      //await signIn(email, password);
+      await signIn(email, password);
       router.replace("/");
     } catch (error: any) {
       Alert.alert(
@@ -67,12 +69,12 @@ export default function SignIn() {
         />
 
         <View style={styles.linkContainer}>
-          <Link href="/forgot-password" style={styles.link}>
+          <Link href="./forgot-password" style={styles.link}>
             Forgot password?
           </Link>
           <View style={styles.newHereContainer}>
             <Text style={styles.newHereText}>New here? </Text>
-            <Link href="/sign-up" style={styles.link}>
+            <Link href="./sign-up" style={styles.link}>
               Sign up now
             </Link>
           </View>

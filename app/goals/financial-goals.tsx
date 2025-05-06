@@ -13,8 +13,8 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors } from "../constants/colors";
-import { calculatePercentage, formatCurrency } from "../utils/formatting";
+import { colors } from "../../constants/colors";
+import { calculatePercentage, formatCurrency } from "../../utils/formatting";
 
 // Mock data for initial development
 const initialGoals = [
@@ -192,7 +192,7 @@ const FinancialGoalsScreen = () => {
 
   const handleAddGoal = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push("/add-goal");
+    router.push("./add-goal");
   };
 
   const handleSelectGoal = (goal: {
@@ -209,7 +209,7 @@ const FinancialGoalsScreen = () => {
     progressHistory?: { date: string; amountAdded: number }[];
   }) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push(`/goal-details/${goal.id}`);
+    router.push(`./goal-details/${goal.id}`);
   };
 
   const getProgressColor = (percentage: number) => {

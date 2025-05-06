@@ -14,14 +14,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 const tabs = [
   {
     name: "Finances",
-    href: "/finances" as const,
+    href: "./finances" as const,
     icon: (color: string, size: number) => (
       <Feather name="credit-card" color={color} size={size} />
     ),
   },
   {
     name: "Stats",
-    href: "/stats" as const,
+    href: "./stats" as const,
     icon: (color: string, size: number) => (
       <Feather name="bar-chart" color={color} size={size} />
     ),
@@ -35,14 +35,14 @@ const tabs = [
   },
   {
     name: "Goals",
-    href: "/financial-goals" as const,
+    href: "./goals/financial-goals" as const,
     icon: (color: string, size: number) => (
       <Feather name="award" color={color} size={size} />
     ),
   },
   {
     name: "Budgets",
-    href: "/budgets" as const,
+    href: "./budgets/budgets" as const,
     icon: (color: string, size: number) => (
       <MaterialCommunityIcons
         name="piggy-bank-outline"

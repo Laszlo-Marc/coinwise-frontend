@@ -1,14 +1,15 @@
+import { useAuth } from "@/contexts/AuthContext";
 import { Link, router } from "expo-router";
 import React, { useState } from "react";
 import { Alert, Text, TextInput, TouchableOpacity, View } from "react-native";
-import { colors } from "../constants/colors";
+import { colors } from "../../constants/colors";
 
 export default function SignUp() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
-
+  const { signUp } = useAuth();
   const handleSignUp = async () => {
     if (!email || !password || !confirmPassword) {
       Alert.alert("Error", "Please fill in all fields");
@@ -22,11 +23,11 @@ export default function SignUp() {
 
     try {
       setLoading(true);
-      //await signUp(email, password);
+      await signUp(email, password);
       Alert.alert(
         "Success",
         "Please check your email to confirm your account",
-        [{ text: "OK", onPress: () => router.replace("/sign-in") }]
+        [{ text: "OK", onPress: () => router.replace("./sign-in") }]
       );
     } catch (error: any) {
       Alert.alert(
@@ -131,7 +132,7 @@ export default function SignUp() {
             {loading ? "Creating account..." : "Sign Up"}
           </Text>
         </TouchableOpacity>
-        <Link href="/sign-in" asChild>
+        <Link href="./sign-in" asChild>
           <TouchableOpacity>
             <Text style={{ color: colors.primary[400], textAlign: "center" }}>
               Already have an account? Sign in
