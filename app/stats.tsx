@@ -20,7 +20,7 @@ import {
   PieChart as RNPieChart,
 } from "react-native-chart-kit";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors } from "../../constants/colors";
+import { colors } from "../constants/colors";
 
 // Get screen width for responsive charts
 const screenWidth = Dimensions.get("window").width * 0.9;

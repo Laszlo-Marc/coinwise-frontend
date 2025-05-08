@@ -1,5 +1,5 @@
-import { AuthProvider } from "@/contexts/AuthContext";
-import { TransactionProvider } from "@/contexts/TransactionsContext";
+import { AppProvider } from "@/contexts/AppContext";
+import { TransactionProvider } from "@/contexts/ExpensesContext";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import React from "react";
@@ -10,16 +10,23 @@ export default function RootLayout() {
     Montserrat: require("../assets/fonts/Montserat.ttf"),
   });
 
-  // Prevent rendering until fonts are loaded
   if (!fontsLoaded) return null;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <AuthProvider>
-        <TransactionProvider>
-          <Stack screenOptions={{ headerShown: false }} />
-        </TransactionProvider>
-      </AuthProvider>
+      <TransactionProvider>
+        <AppProvider>
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              freezeOnBlur: true,
+              animation: "fade",
+              gestureEnabled: true,
+              animationDuration: 300,
+            }}
+          />
+        </AppProvider>
+      </TransactionProvider>
     </GestureHandlerRootView>
   );
 }

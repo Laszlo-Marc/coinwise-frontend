@@ -55,7 +55,7 @@ export default function MainSection({
   });
   return (
     <LinearGradient
-      colors={["rgba(28, 181, 224, 1)", "rgba(0, 8, 81, 1)"]}
+      colors={["rgba(252, 255, 158, 1)", "rgba(198, 119, 0, 1)"]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={styles.mainSection}
@@ -65,7 +65,7 @@ export default function MainSection({
           <View style={styles.headerContainer}>
             <TouchableOpacity
               style={styles.iconButton}
-              onPress={() => router.push("/settings")}
+              onPress={() => router.replace("/settings")}
               activeOpacity={0.7}
             >
               <Feather name="settings" size={24} color={colors.text} />
@@ -114,7 +114,7 @@ export default function MainSection({
 
             <TouchableOpacity
               style={styles.iconButton}
-              onPress={() => router.push("./auth/profile")}
+              onPress={() => router.replace("./profile")}
               activeOpacity={0.7}
             >
               <Feather name="user" size={24} color={colors.text} />

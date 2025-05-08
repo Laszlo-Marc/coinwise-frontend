@@ -1,6 +1,5 @@
-import { colors } from "@/constants/colors";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Modal,
   Platform,
@@ -9,30 +8,50 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { colors } from "../../constants/colors";
 
-const DateRangeComponent = () => {
-  const [startDate, setStartDate] = useState(new Date());
-  const [endDate, setEndDate] = useState(new Date());
+type DateRangeSelectorProps = {
+  startDate: Date;
+  endDate: Date;
+  onDateChange: (startDate: Date, endDate: Date) => void;
+};
+
+const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
+  startDate,
+  endDate,
+  onDateChange,
+}) => {
+  const [localStartDate, setLocalStartDate] = useState(startDate);
+  const [localEndDate, setLocalEndDate] = useState(endDate);
   const [datePickerVisible, setDatePickerVisible] = useState(false);
-  const [datePickerMode, setDatePickerMode] = useState<"start" | "end">(
-    "start"
-  );
+  const [datePickerMode, setDatePickerMode] = useState<"start" | "end">("start");
+
+  useEffect(() => {
+    setLocalStartDate(startDate);
+    setLocalEndDate(endDate);
+  }, [startDate, endDate]);
 
   const openDatePicker = (mode: "start" | "end") => {
     setDatePickerMode(mode);
     setDatePickerVisible(true);
   };
 
-  const onDateChange = (event: any, selectedDate?: Date) => {
+  const onDateTimeChange = (event: any, selectedDate?: Date) => {
     if (Platform.OS === "android") {
       setDatePickerVisible(false);
     }
 
     if (selectedDate) {
       if (datePickerMode === "start") {
-        setStartDate(selectedDate);
+        setLocalStartDate(selectedDate);
+        // Ensure end date is not before start date
+        if (selectedDate > localEndDate) {
+          setLocalEndDate(selectedDate);
+        }
+        onDateChange(selectedDate, selectedDate > localEndDate ? selectedDate : localEndDate);
       } else {
-        setEndDate(selectedDate);
+        setLocalEndDate(selectedDate);
+        onDateChange(localStartDate, selectedDate);
       }
     }
   };
@@ -51,27 +70,22 @@ const DateRangeComponent = () => {
 
   return (
     <>
-      <View style={styles.contentContainer}>
-        <View style={styles.dateFilterSection}>
-          <Text style={styles.filterTitle}>Date Range</Text>
-          <View style={styles.datePickerContainer}>
-            <TouchableOpacity
-              style={styles.dateButton}
-              onPress={() => openDatePicker("start")}
-            >
-              <Text style={styles.dateButtonLabel}>From</Text>
-              <Text style={styles.dateButtonText}>{formatDate(startDate)}</Text>
-            </TouchableOpacity>
+      <View style={styles.datePickerContainer}>
+        <TouchableOpacity
+          style={styles.dateButton}
+          onPress={() => openDatePicker("start")}
+        >
+          <Text style={styles.dateButtonLabel}>From</Text>
+          <Text style={styles.dateButtonText}>{formatDate(localStartDate)}</Text>
+        </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.dateButton}
-              onPress={() => openDatePicker("end")}
-            >
-              <Text style={styles.dateButtonLabel}>To</Text>
-              <Text style={styles.dateButtonText}>{formatDate(endDate)}</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+        <TouchableOpacity
+          style={styles.dateButton}
+          onPress={() => openDatePicker("end")}
+        >
+          <Text style={styles.dateButtonLabel}>To</Text>
+          <Text style={styles.dateButtonText}>{formatDate(localEndDate)}</Text>
+        </TouchableOpacity>
       </View>
 
       {Platform.OS === "ios" && datePickerVisible && (
@@ -96,11 +110,12 @@ const DateRangeComponent = () => {
               </View>
 
               <DateTimePicker
-                value={datePickerMode === "start" ? startDate : endDate}
+                value={datePickerMode === "start" ? localStartDate : localEndDate}
                 mode="date"
                 display="spinner"
-                onChange={onDateChange}
+                onChange={onDateTimeChange}
                 maximumDate={new Date()}
+                minimumDate={datePickerMode === "end" ? localStartDate : undefined}
                 style={styles.datePicker}
               />
             </View>
@@ -110,11 +125,12 @@ const DateRangeComponent = () => {
 
       {Platform.OS === "android" && datePickerVisible && (
         <DateTimePicker
-          value={datePickerMode === "start" ? startDate : endDate}
+          value={datePickerMode === "start" ? localStartDate : localEndDate}
           mode="date"
           display="default"
-          onChange={onDateChange}
+          onChange={onDateTimeChange}
           maximumDate={new Date()}
+          minimumDate={datePickerMode === "end" ? localStartDate : undefined}
         />
       )}
     </>
@@ -130,29 +146,6 @@ const styles = StyleSheet.create({
   datePicker: {
     height: 200,
   },
-  contentContainer: {
-    flex: 1,
-    padding: 16,
-  },
-  dateFilterSection: {
-    marginBottom: 16,
-    backgroundColor: colors.backgroundLight,
-    padding: 12,
-    borderRadius: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  filterTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 10,
-    color: colors.text,
-    fontFamily: "Montserrat",
-  },
-
   dateButton: {
     flex: 1,
     backgroundColor: colors.background,
@@ -190,6 +183,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    width: "100%",
     padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: colors.primary[300],
@@ -212,4 +206,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default DateRangeComponent;
+export default DateRangeSelector;

@@ -1,7 +1,7 @@
 import { colors } from "@/constants/colors";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
-import { Link, usePathname } from "expo-router";
+import { usePathname, useRouter } from "expo-router";
 import React, { useMemo } from "react";
 import {
   Platform,
@@ -11,38 +11,39 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
 const tabs = [
   {
     name: "Finances",
-    href: "./finances" as const,
+    href: "/finances",
     icon: (color: string, size: number) => (
       <Feather name="credit-card" color={color} size={size} />
     ),
   },
   {
     name: "Stats",
-    href: "./stats" as const,
+    href: "/stats",
     icon: (color: string, size: number) => (
       <Feather name="bar-chart" color={color} size={size} />
     ),
   },
   {
     name: "Home",
-    href: "/" as const,
+    href: "/",
     icon: (color: string, size: number) => (
       <Feather name="home" color={color} size={size} />
     ),
   },
   {
     name: "Goals",
-    href: "./goals/financial-goals" as const,
+    href: "/financial-goals",
     icon: (color: string, size: number) => (
       <Feather name="award" color={color} size={size} />
     ),
   },
   {
     name: "Budgets",
-    href: "./budgets/budgets" as const,
+    href: "/budgets",
     icon: (color: string, size: number) => (
       <MaterialCommunityIcons
         name="piggy-bank-outline"
@@ -55,6 +56,7 @@ const tabs = [
 
 export default function BottomBar() {
   const pathname = usePathname();
+  const router = useRouter();
   const insets = useSafeAreaInsets();
 
   const bottomPadding = useMemo(() => {
@@ -74,7 +76,6 @@ export default function BottomBar() {
         </>
       );
     } else {
-      // For Android, use a semi-transparent background with a blue-green tint
       return (
         <View style={[StyleSheet.absoluteFill, styles.androidBackground]} />
       );
@@ -89,24 +90,31 @@ export default function BottomBar() {
           const isActive = pathname === tab.href;
 
           return (
-            <Link key={tab.href} href={tab.href} asChild>
-              <TouchableOpacity style={styles.tab} activeOpacity={0.7}>
-                <View style={styles.iconContainer}>
-                  {tab.icon(isActive ? colors.primary[500] : colors.text, 24)}
-                </View>
-                <Text
-                  style={[
-                    styles.label,
-                    {
-                      color: isActive ? colors.primary[500] : colors.text,
-                      opacity: isActive ? 1 : 0.8,
-                    },
-                  ]}
-                >
-                  {tab.name}
-                </Text>
-              </TouchableOpacity>
-            </Link>
+            <TouchableOpacity
+              key={tab.href}
+              style={styles.tab}
+              activeOpacity={0.7}
+              onPress={() => {
+                if (pathname !== tab.href) {
+                  router.replace(tab.href);
+                }
+              }}
+            >
+              <View style={styles.iconContainer}>
+                {tab.icon(isActive ? colors.primary[500] : colors.text, 24)}
+              </View>
+              <Text
+                style={[
+                  styles.label,
+                  {
+                    color: isActive ? colors.primary[500] : colors.text,
+                    opacity: isActive ? 1 : 0.8,
+                  },
+                ]}
+              >
+                {tab.name}
+              </Text>
+            </TouchableOpacity>
           );
         })}
       </View>
@@ -122,15 +130,15 @@ const styles = StyleSheet.create({
     right: 0,
     overflow: "hidden",
     borderTopWidth: 1,
-    borderTopColor: `${colors.secondaryLight}`, // Adding some transparency to the border
+    borderTopColor: `${colors.secondaryLight}`,
   },
   androidBackground: {
-    backgroundColor: `${colors.secondary}99`, // Adding transparency to the secondary color
+    backgroundColor: `${colors.secondary}99`,
     borderTopWidth: 1,
     borderTopColor: `${colors.secondaryLight}30`,
   },
   iosOverlay: {
-    backgroundColor: `${colors.secondary}40`, // Light blue-green tint overlay
+    backgroundColor: `${colors.secondary}40`,
   },
   container: {
     flexDirection: "row",
@@ -150,14 +158,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     height: 40,
     position: "relative",
-  },
-  indicator: {
-    position: "absolute",
-    bottom: -8,
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: colors.primary[300],
   },
   label: {
     fontSize: 11,

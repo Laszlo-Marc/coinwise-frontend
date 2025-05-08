@@ -1,20 +1,19 @@
-import TransactionModel from "@/models/transaction";
+import { TransactionModel } from "@/models/transaction";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
-import { createContext, ReactNode, useContext, useState } from "react";
+import { createContext, ReactNode, useContext, useMemo, useState } from "react";
 interface TransactionContextType {
   transactions: any[];
   isLoading: boolean;
   error: string | null;
-  addTransaction: (transaction: TransactionModel) => Promise<void>;
+  addTransaction: (
+    transaction: TransactionModel,
+    transactionClass: string
+  ) => Promise<void>;
   fetchTransactions: () => Promise<void>;
   uploadBankStatement: (file: FormData) => Promise<any>;
   deleteTransaction: (id: string) => Promise<void>;
   updateTransaction: (id: string, updates: object) => Promise<any>;
-  getTransactionsByCategory: () => Record<
-    string,
-    { totalAmount: number; count: number; transactions: any[] }
-  >;
 }
 interface UploadResponse {
   message: string;
@@ -56,7 +55,6 @@ export const TransactionProvider: React.FC<TransactionProviderProps> = ({
     moneyOut: number;
   } | null>(null);
 
-  // Helper function to handle API errors
   const handleApiError = (error: any) => {
     console.error("API Error:", error);
     const errorMessage =
@@ -67,7 +65,6 @@ export const TransactionProvider: React.FC<TransactionProviderProps> = ({
     return errorMessage;
   };
 
-  // Save transactions to AsyncStorage
   const saveTransactionsToStorage = async (
     updatedTransactions: TransactionModel[]
   ) => {
@@ -81,13 +78,11 @@ export const TransactionProvider: React.FC<TransactionProviderProps> = ({
     }
   };
 
-  // Fetch transactions from API or AsyncStorage
   const fetchTransactions = async (): Promise<void> => {
     setIsLoading(true);
     setError(null);
 
     try {
-      // Try to fetch from API first
       try {
         const response = await transaction_api.get("/");
         setTransactions(response.data);
@@ -97,8 +92,6 @@ export const TransactionProvider: React.FC<TransactionProviderProps> = ({
       } catch (apiError) {
         console.log("API fetch failed, falling back to local storage");
       }
-
-      // Fall back to AsyncStorage if API fails
       const storedTransactions = await AsyncStorage.getItem("transactions");
       if (storedTransactions) {
         setTransactions(JSON.parse(storedTransactions));
@@ -110,21 +103,38 @@ export const TransactionProvider: React.FC<TransactionProviderProps> = ({
     }
   };
 
-  // Add a new transaction
   const addTransaction = async (
-    transaction: TransactionModel
+    transaction: TransactionModel,
+    transactionClass: string
   ): Promise<void> => {
     setIsLoading(true);
     setError(null);
 
     try {
-      const newTransaction = {
-        ...transaction,
-      };
+      const token = await AsyncStorage.getItem("auth_token");
+      if (!token) {
+        throw new Error("User is not authenticated.");
+      }
 
-      // Try to add to API
+      const { id, ...transactionData } = transaction;
+
       try {
-        const response = await transaction_api.post("/add", newTransaction);
+        const response = await axios.post(
+          `${TRANSACTIONS_API_URL}/add`,
+          {
+            ...transactionData,
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            params: {
+              transaction_type: transactionClass,
+            },
+          }
+        );
+
         const addedTransaction = response.data;
         const updatedTransactions = [...transactions, addedTransaction];
         setTransactions(updatedTransactions);
@@ -132,13 +142,18 @@ export const TransactionProvider: React.FC<TransactionProviderProps> = ({
         setIsLoading(false);
         return;
       } catch (apiError) {
-        console.log("API add failed, saving locally only");
-      }
+        console.error("API add failed:", apiError);
+        console.log("Saving locally only");
 
-      // Fall back to local only if API fails
-      const updatedTransactions = [...transactions, newTransaction];
-      setTransactions(updatedTransactions);
-      await saveTransactionsToStorage(updatedTransactions);
+        const localTransaction = {
+          ...transaction,
+          id: id || Date.now().toString(),
+        };
+
+        const updatedTransactions = [...transactions, localTransaction];
+        setTransactions(updatedTransactions);
+        await saveTransactionsToStorage(updatedTransactions);
+      }
     } catch (e) {
       handleApiError(e);
     } finally {
@@ -146,7 +161,6 @@ export const TransactionProvider: React.FC<TransactionProviderProps> = ({
     }
   };
 
-  // Update an existing transaction
   const updateTransaction = async (
     id: string,
     updates: Partial<TransactionModel>
@@ -155,7 +169,6 @@ export const TransactionProvider: React.FC<TransactionProviderProps> = ({
     setError(null);
 
     try {
-      // Find the transaction to update
       const transactionIndex = transactions.findIndex((t) => t.id === id);
       if (transactionIndex === -1) {
         throw new Error("Transaction not found");
@@ -166,7 +179,6 @@ export const TransactionProvider: React.FC<TransactionProviderProps> = ({
         ...updates,
       };
 
-      // Try to update in API
       try {
         const response = await transaction_api.put(
           `/edit/${id}`,
@@ -183,9 +195,9 @@ export const TransactionProvider: React.FC<TransactionProviderProps> = ({
         console.log("API update failed, updating locally only");
       }
 
-      // Fall back to local only if API fails
       const updatedTransactions = [...transactions];
-      updatedTransactions[transactionIndex] = updatedTransaction;
+      updatedTransactions[transactionIndex] =
+        updatedTransaction as TransactionModel;
       setTransactions(updatedTransactions);
       await saveTransactionsToStorage(updatedTransactions);
       return updatedTransaction;
@@ -197,20 +209,17 @@ export const TransactionProvider: React.FC<TransactionProviderProps> = ({
     }
   };
 
-  // Delete a transaction
   const deleteTransaction = async (id: string): Promise<void> => {
     setIsLoading(true);
     setError(null);
 
     try {
-      // Try to delete from API
       try {
         await transaction_api.delete(`/delete/${id}`);
       } catch (apiError) {
         console.log("API delete failed, deleting locally only");
       }
 
-      // Always delete locally
       const updatedTransactions = transactions.filter((t) => t.id !== id);
       setTransactions(updatedTransactions);
       await saveTransactionsToStorage(updatedTransactions);
@@ -221,7 +230,6 @@ export const TransactionProvider: React.FC<TransactionProviderProps> = ({
     }
   };
 
-  // Upload bank statement
   const uploadBankStatement = async (
     file: FormData
   ): Promise<UploadResponse | { error: string }> => {
@@ -236,7 +244,6 @@ export const TransactionProvider: React.FC<TransactionProviderProps> = ({
         throw new Error("User is not authenticated.");
       }
 
-      // Send request with Authorization header
       const response = await axios.post(`${UPLOADS_API_URL}`, file, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -245,7 +252,6 @@ export const TransactionProvider: React.FC<TransactionProviderProps> = ({
       });
       const result = response.data;
 
-      // Store statistics from the upload
       setUploadStats({
         entityMapId: result.entity_map_id,
         processingTime: result.processing_time,
@@ -265,42 +271,29 @@ export const TransactionProvider: React.FC<TransactionProviderProps> = ({
       setIsLoading(false);
     }
   };
-  const getTransactionsByCategory = () => {
-    const categoryMap: Record<
-      string,
-      { totalAmount: number; count: number; transactions: any[] }
-    > = {};
 
-    transactions.forEach((transaction) => {
-      const category = transaction.category || "Uncategorized";
-
-      if (!categoryMap[category]) {
-        categoryMap[category] = {
-          totalAmount: 0,
-          count: 0,
-          transactions: [],
-        };
-      }
-
-      categoryMap[category].totalAmount += Number(transaction.amount);
-      categoryMap[category].count += 1;
-      categoryMap[category].transactions.push(transaction);
-    });
-
-    return categoryMap;
-  };
-
-  const contextValue: TransactionContextType = {
-    transactions,
-    isLoading,
-    error,
-    addTransaction,
-    fetchTransactions,
-    uploadBankStatement,
-    deleteTransaction,
-    updateTransaction,
-    getTransactionsByCategory,
-  };
+  const contextValue = useMemo(
+    () => ({
+      transactions,
+      isLoading,
+      error,
+      addTransaction,
+      fetchTransactions,
+      uploadBankStatement,
+      deleteTransaction,
+      updateTransaction,
+    }),
+    [
+      transactions,
+      isLoading,
+      error,
+      addTransaction,
+      fetchTransactions,
+      uploadBankStatement,
+      deleteTransaction,
+      updateTransaction,
+    ]
+  );
 
   return (
     <TransactionContext.Provider value={contextValue}>

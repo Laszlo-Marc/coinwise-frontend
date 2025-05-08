@@ -88,7 +88,7 @@ export default function HomePage() {
               <View style={styles.headerContainer}>
                 <TouchableOpacity
                   style={styles.iconButton}
-                  onPress={() => router.push("/settings")}
+                  onPress={() => router.replace("/settings")}
                   activeOpacity={0.7}
                 >
                   <Ionicons
@@ -143,7 +143,7 @@ export default function HomePage() {
 
                 <TouchableOpacity
                   style={styles.iconButton}
-                  onPress={() => router.push("./auth/profile")}
+                  onPress={() => router.replace("./auth/profile")}
                   activeOpacity={0.7}
                 >
                   <Feather name="user" size={24} color={colors.text} />
@@ -163,7 +163,7 @@ export default function HomePage() {
           <View style={styles.quickActions}>
             <TouchableOpacity
               style={styles.actionButton}
-              onPress={() => router.push("./finances/transactions")}
+              onPress={() => router.replace("./transactions")}
             >
               <View style={styles.actionIconContainer}>
                 <Ionicons name="wallet-outline" size={24} color={colors.text} />

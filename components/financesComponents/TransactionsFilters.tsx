@@ -1,24 +1,24 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Picker } from "@react-native-picker/picker";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
+  Modal,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import { colors } from "../../constants/colors";
+import DateRangeSelector from "./DateRangeComponent";
 
 type TransactionFiltersProps = {
   onFilterChange: (filters: {
     transactionClass: string;
-    startDate: Date;
-    endDate: Date;
-    selectedCategory: string;
-    searchTerm: string;
-    searchField: string;
+    category?: string;
+    sortBy?: string;
+    sortOrder?: "asc" | "desc";
+    startDate?: Date;
+    endDate?: Date;
   }) => void;
   categories?: string[];
 };
@@ -29,13 +29,19 @@ const TransactionFilters: React.FC<TransactionFiltersProps> = ({
 }) => {
   // Filter states
   const [transactionClass, setTransactionClass] = useState("expenses");
-  const [startDate, setStartDate] = useState(new Date());
-  const [endDate, setEndDate] = useState(new Date());
   const [selectedCategory, setSelectedCategory] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [searchField, setSearchField] = useState("merchant"); // 'merchant' or 'description'
-
-  const [showFilters, setShowFilters] = useState(false);
+  const [sortBy, setSortBy] = useState("date");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [startDate, setStartDate] = useState(
+    new Date(new Date().setMonth(new Date().getMonth() - 1))
+  );
+  const [endDate, setEndDate] = useState(new Date());
+  
+  // Dropdown states
+  const [sortByDropdownVisible, setSortByDropdownVisible] = useState(false);
+  const [categoryDropdownVisible, setCategoryDropdownVisible] = useState(false);
+  const [dateRangeDropdownVisible, setDateRangeDropdownVisible] = useState(false);
+  const [customDateRangeVisible, setCustomDateRangeVisible] = useState(false);
 
   const transactionClasses: {
     id: string;
@@ -52,57 +58,115 @@ const TransactionFilters: React.FC<TransactionFiltersProps> = ({
     { id: "incomes", label: "Incomes", icon: "trending-up-outline" },
   ];
 
-  const applyFilters = () => {
-    onFilterChange({
-      transactionClass,
-      startDate,
-      endDate,
-      selectedCategory,
-      searchTerm,
-      searchField,
-    });
-  };
+  // Date range preset options
+  const dateRangePresets = [
+    { id: "today", label: "Today" },
+    { id: "week", label: "Last Week" },
+    { id: "month", label: "Last Month" },
+    { id: "3months", label: "Last 3 Months" },
+    { id: "custom", label: "Custom Range" },
+  ];
 
-  const resetFilters = () => {
-    setStartDate(new Date());
-    setEndDate(new Date());
-    setSelectedCategory("");
-    setSearchTerm("");
-    setSearchField("merchant");
-
-    onFilterChange({
-      transactionClass,
-      startDate: new Date(),
-      endDate: new Date(),
-      selectedCategory: "",
-      searchTerm: "",
-      searchField: "merchant",
-    });
-  };
+  // Apply filters when any filter changes
+  useEffect(() => {
+    applyFilters();
+  }, [
+    transactionClass,
+    selectedCategory,
+    sortBy,
+    sortOrder,
+    startDate,
+    endDate,
+  ]);
 
   const handleTransactionClassChange = (newClass: string) => {
     setTransactionClass(newClass);
-    // Apply filters with the new class
+    // Reset category when changing transaction class
+    if (newClass !== "expenses") {
+      setSelectedCategory("");
+    }
+  };
+
+  const handleCategoryChange = (category: string) => {
+    setSelectedCategory(category);
+    setCategoryDropdownVisible(false);
+  };
+
+  const handleSortByChange = (newSortBy: string) => {
+    setSortBy(newSortBy);
+    setSortByDropdownVisible(false);
+  };
+
+  const handleSortOrderChange = () => {
+    setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+  };
+
+  const handleDateRangeChange = (start: Date, end: Date) => {
+    setStartDate(start);
+    setEndDate(end);
+    setCustomDateRangeVisible(false);
+  };
+
+  // Apply all filters and notify parent
+  const applyFilters = () => {
     onFilterChange({
-      transactionClass: newClass,
+      transactionClass,
+      ...(transactionClass === "expenses" && selectedCategory
+        ? { category: selectedCategory }
+        : {}),
+      sortBy,
+      sortOrder,
       startDate,
       endDate,
-      selectedCategory,
-      searchTerm,
-      searchField,
     });
   };
 
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
+  // Preset date ranges
+  const applyDatePreset = (preset: string) => {
+    const now = new Date();
+    let start = new Date();
+
+    if (preset === "custom") {
+      setCustomDateRangeVisible(true);
+      setDateRangeDropdownVisible(false);
+      return;
+    }
+
+    switch (preset) {
+      case "today":
+        start = new Date(now.setHours(0, 0, 0, 0));
+        break;
+      case "week":
+        start = new Date(now);
+        start.setDate(now.getDate() - 7);
+        break;
+      case "month":
+        start = new Date(now);
+        start.setMonth(now.getMonth() - 1);
+        break;
+      case "3months":
+        start = new Date(now);
+        start.setMonth(now.getMonth() - 3);
+        break;
+      default:
+        break;
+    }
+
+    setStartDate(start);
+    setEndDate(new Date());
+    setDateRangeDropdownVisible(false);
   };
 
-  const toggleFilters = () => {
-    setShowFilters(!showFilters);
+  // Format date range for display
+  const formatDateRange = () => {
+    const formatDate = (date: Date) => {
+      return date.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      });
+    };
+    
+    return `${formatDate(startDate)} - ${formatDate(endDate)}`;
   };
 
   return (
@@ -141,131 +205,173 @@ const TransactionFilters: React.FC<TransactionFiltersProps> = ({
         ))}
       </ScrollView>
 
-      {/* Toggle Filter Button */}
-      <TouchableOpacity
-        style={styles.toggleFiltersButton}
-        onPress={toggleFilters}
-      >
-        <Text style={styles.toggleFiltersText}>
-          {showFilters ? "Hide Filters" : "Show Filters"}
-        </Text>
-        <Ionicons
-          name={showFilters ? "chevron-up-outline" : "chevron-down-outline"}
-          size={20}
-          color={colors.primary[500]}
-        />
-      </TouchableOpacity>
+      {/* Horizontal Filters Bar */}
+      <View style={styles.filtersBar}>
+        {/* Sort By Dropdown */}
+        <View style={[styles.filterGroup, { zIndex: 4 }]}>
+          <TouchableOpacity
+            style={styles.dropdownButton}
+            onPress={() => {
+              setSortByDropdownVisible(!sortByDropdownVisible);
+              setCategoryDropdownVisible(false);
+              setDateRangeDropdownVisible(false);
+            }}
+          >
+            <Text style={styles.dropdownButtonLabel}>Sort: {sortBy === "date" ? "Date" : "Amount"}</Text>
+            <Ionicons
+              name={sortByDropdownVisible ? "chevron-up" : "chevron-down"}
+              size={16}
+              color={colors.text}
+            />
+          </TouchableOpacity>
+          
+          {sortByDropdownVisible && (
+            <View style={styles.dropdownMenu}>
+              <TouchableOpacity
+                style={[styles.dropdownItem, sortBy === "date" && styles.activeDropdownItem]}
+                onPress={() => handleSortByChange("date")}
+              >
+                <Text style={[styles.dropdownItemText, sortBy === "date" && styles.activeDropdownItemText]}>Date</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.dropdownItem, sortBy === "amount" && styles.activeDropdownItem]}
+                onPress={() => handleSortByChange("amount")}
+              >
+                <Text style={[styles.dropdownItemText, sortBy === "amount" && styles.activeDropdownItemText]}>Amount</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+          
+          {/* Sort Order Button */}
+          <TouchableOpacity
+            style={styles.sortOrderButton}
+            onPress={handleSortOrderChange}
+          >
+            <Ionicons
+              name={
+                sortOrder === "asc"
+                  ? "arrow-up-outline"
+                  : "arrow-down-outline"
+              }
+              size={20}
+              color={colors.text}
+            />
+          </TouchableOpacity>
+        </View>
 
-      {/* Filters Section */}
-      {showFilters && (
-        <View style={styles.filtersContainer}>
-          {/* Search Bar */}
-          <View style={styles.searchContainer}>
-            <View style={styles.searchBar}>
-              <Ionicons name="search" size={20} color={colors.textSecondary} />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search transactions..."
-                value={searchTerm}
-                onChangeText={setSearchTerm}
-                placeholderTextColor={colors.textSecondary}
+        {/* Category Dropdown - Only for Expenses */}
+        {transactionClass === "expenses" && categories.length > 0 && (
+          <View style={[styles.filterGroup, { zIndex: 3 }]}>
+            <TouchableOpacity
+              style={styles.dropdownButton}
+              onPress={() => {
+                setCategoryDropdownVisible(!categoryDropdownVisible);
+                setSortByDropdownVisible(false);
+                setDateRangeDropdownVisible(false);
+              }}
+            >
+              <Text style={styles.dropdownButtonLabel}>
+                Category: {selectedCategory || "All"}
+              </Text>
+              <Ionicons
+                name={categoryDropdownVisible ? "chevron-up" : "chevron-down"}
+                size={16}
+                color={colors.text}
               />
-              {searchTerm.length > 0 && (
-                <TouchableOpacity onPress={() => setSearchTerm("")}>
-                  <Ionicons
-                    name="close-circle"
-                    size={20}
-                    color={colors.textSecondary}
-                  />
-                </TouchableOpacity>
-              )}
-            </View>
-
-            {/* Search Field Selector */}
-            <View style={styles.searchFieldContainer}>
-              <Text style={styles.searchFieldLabel}>Search in:</Text>
-              <View style={styles.searchFieldButtons}>
-                <TouchableOpacity
-                  style={[
-                    styles.searchFieldButton,
-                    searchField === "merchant" &&
-                      styles.activeSearchFieldButton,
-                  ]}
-                  onPress={() => setSearchField("merchant")}
-                >
-                  <Text
-                    style={[
-                      styles.searchFieldButtonText,
-                      searchField === "merchant" &&
-                        styles.activeSearchFieldButtonText,
-                    ]}
+            </TouchableOpacity>
+            
+            {categoryDropdownVisible && (
+              <View style={[styles.dropdownMenu, styles.categoryDropdownMenu]}>
+                <ScrollView style={{ maxHeight: 200 }}>
+                  <TouchableOpacity
+                    style={[styles.dropdownItem, !selectedCategory && styles.activeDropdownItem]}
+                    onPress={() => handleCategoryChange("")}
                   >
-                    Merchant
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.searchFieldButton,
-                    searchField === "description" &&
-                      styles.activeSearchFieldButton,
-                  ]}
-                  onPress={() => setSearchField("description")}
-                >
-                  <Text
-                    style={[
-                      styles.searchFieldButtonText,
-                      searchField === "description" &&
-                        styles.activeSearchFieldButtonText,
-                    ]}
-                  >
-                    Description
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Category Filter - Only for Expenses */}
-            {transactionClass === "expenses" && (
-              <View style={styles.pickerContainer}>
-                <Text style={styles.pickerLabel}>Category</Text>
-                <View style={styles.pickerWrapper}>
-                  <Picker
-                    selectedValue={selectedCategory}
-                    onValueChange={(itemValue) =>
-                      setSelectedCategory(itemValue)
-                    }
-                    style={styles.picker}
-                  >
-                    <Picker.Item label="All Categories" value="" />
-                    {categories.map((category) => (
-                      <Picker.Item
-                        key={category}
-                        label={category}
-                        value={category}
-                      />
-                    ))}
-                  </Picker>
-                </View>
+                    <Text style={[styles.dropdownItemText, !selectedCategory && styles.activeDropdownItemText]}>All Categories</Text>
+                  </TouchableOpacity>
+                  {categories.map((category) => (
+                    <TouchableOpacity
+                      key={category}
+                      style={[styles.dropdownItem, selectedCategory === category && styles.activeDropdownItem]}
+                      onPress={() => handleCategoryChange(category)}
+                    >
+                      <Text style={[styles.dropdownItemText, selectedCategory === category && styles.activeDropdownItemText]}>
+                        {category}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
               </View>
             )}
+          </View>
+        )}
 
-            {/* Action Buttons */}
-            <View style={styles.filterActions}>
-              <TouchableOpacity
-                style={styles.resetButton}
-                onPress={resetFilters}
-              >
-                <Text style={styles.resetButtonText}>Reset</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.applyButton}
-                onPress={applyFilters}
-              >
-                <Text style={styles.applyButtonText}>Apply Filters</Text>
-              </TouchableOpacity>
+        {/* Date Range Dropdown */}
+        <View style={[styles.filterGroup, { zIndex: 2 }]}>
+          <TouchableOpacity
+            style={[styles.dropdownButton, { minWidth: 140 }]}
+            onPress={() => {
+              setDateRangeDropdownVisible(!dateRangeDropdownVisible);
+              setSortByDropdownVisible(false);
+              setCategoryDropdownVisible(false);
+            }}
+          >
+            <Text style={styles.dropdownButtonLabel} numberOfLines={1}>
+              Date: {formatDateRange()}
+            </Text>
+            <Ionicons
+              name={dateRangeDropdownVisible ? "chevron-up" : "chevron-down"}
+              size={16}
+              color={colors.text}
+            />
+          </TouchableOpacity>
+          
+          {dateRangeDropdownVisible && (
+            <View style={[styles.dropdownMenu, styles.dateRangeDropdownMenu]}>
+              {dateRangePresets.map((preset) => (
+                <TouchableOpacity
+                  key={preset.id}
+                  style={styles.dropdownItem}
+                  onPress={() => applyDatePreset(preset.id)}
+                >
+                  <Text style={styles.dropdownItemText}>{preset.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </View>
+      </View>
+
+      {/* Custom Date Range Modal */}
+      {customDateRangeVisible && (
+        <Modal
+          transparent={true}
+          animationType="slide"
+          visible={customDateRangeVisible}
+          onRequestClose={() => setCustomDateRangeVisible(false)}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Select Date Range</Text>
+                <TouchableOpacity
+                  onPress={() => setCustomDateRangeVisible(false)}
+                  style={styles.closeButton}
+                >
+                  <Ionicons name="close" size={24} color={colors.text} />
+                </TouchableOpacity>
+              </View>
+              
+              <View style={styles.modalBody}>
+                <DateRangeSelector
+                  startDate={startDate}
+                  endDate={endDate}
+                  onDateChange={handleDateRangeChange}
+                />
+              </View>
             </View>
           </View>
-        </View>
+        </Modal>
       )}
     </View>
   );
@@ -273,15 +379,15 @@ const TransactionFilters: React.FC<TransactionFiltersProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
-    backgroundColor: colors.backgroundLight,
     borderRadius: 12,
-    overflow: "hidden",
     marginBottom: 16,
+    backgroundColor: colors.backgroundLight,
+    // Remove overflow: "hidden" to allow dropdowns to appear outside container
   },
   classButtonsContainer: {
     flexDirection: "row",
-    padding: 12,
+    padding: 16,
+    paddingBottom: 12,
   },
   classButton: {
     flexDirection: "row",
@@ -289,9 +395,9 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 20,
-    marginRight: 10,
+    marginRight: 12,
     backgroundColor: colors.background,
-    borderWidth: 1,
+    borderWidth:  1,
     borderColor: colors.primary[300],
   },
   activeClassButton: {
@@ -307,143 +413,127 @@ const styles = StyleSheet.create({
   activeClassButtonText: {
     color: colors.background,
   },
-  toggleFiltersButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderTopWidth: 1,
-    borderTopColor: colors.primary[300],
-  },
-  toggleFiltersText: {
-    color: colors.primary[500],
-    marginRight: 5,
-    fontFamily: "Montserrat",
-    fontWeight: "500",
-  },
-  filtersContainer: {
-    padding: 12,
-    borderTopWidth: 1,
-    borderTopColor: colors.primary[300],
-  },
-  searchContainer: {
-    gap: 12,
-  },
-  searchBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: colors.background,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    height: 45,
-    borderWidth: 1,
-    borderColor: colors.primary[300],
-  },
-  searchInput: {
-    flex: 1,
-    height: "100%",
-    paddingHorizontal: 10,
-    color: colors.text,
-    fontFamily: "Montserrat",
-  },
-  searchFieldContainer: {
-    marginBottom: 5,
-  },
-  searchFieldLabel: {
-    fontSize: 14,
-    color: colors.text,
-    marginBottom: 6,
-    fontWeight: "500",
-    fontFamily: "Montserrat",
-  },
-  searchFieldButtons: {
-    flexDirection: "row",
-  },
-  searchFieldButton: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    backgroundColor: colors.background,
-    borderRadius: 6,
-    marginRight: 8,
-    borderWidth: 1,
-    borderColor: colors.primary[300],
-  },
-  activeSearchFieldButton: {
-    backgroundColor: colors.primary[500],
-    borderColor: colors.primary[500],
-  },
-  searchFieldButtonText: {
-    color: colors.text,
-    fontFamily: "Montserrat",
-  },
-  activeSearchFieldButtonText: {
-    color: colors.background,
-    fontWeight: "600",
-  },
-  pickerContainer: {
-    marginBottom: 5,
-  },
-  pickerLabel: {
-    fontSize: 14,
-    color: colors.text,
-    marginBottom: 6,
-    fontWeight: "500",
-    fontFamily: "Montserrat",
-  },
-  pickerWrapper: {
-    borderWidth: 1,
-    borderColor: colors.primary[300],
-    borderRadius: 8,
-    backgroundColor: colors.background,
-    overflow: "hidden",
-  },
-  picker: {
-    height: 45,
-    color: colors.text,
-  },
-  dateFilterSection: {
-    marginBottom: 5,
-  },
-  filterTitle: {
-    fontSize: 14,
-    color: colors.text,
-    marginBottom: 6,
-    fontWeight: "500",
-    fontFamily: "Montserrat",
-  },
-
-  filterActions: {
+  filtersBar: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 12,
-  },
-  resetButton: {
-    flex: 1,
+    alignItems: "center",
     padding: 12,
+    borderTopWidth: 1,
+    borderTopColor: colors.primary[200],
+    zIndex: 1,
+  },
+  filterGroup: {
+    position: "relative",
+    flexDirection: "row",
+    alignItems: "center",
+    zIndex: 2,
+  },
+  dropdownButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 6,
+    paddingHorizontal: 10,
     borderRadius: 8,
     backgroundColor: colors.background,
-    alignItems: "center",
-    marginRight: 8,
     borderWidth: 1,
     borderColor: colors.primary[300],
+    minWidth: 110,
   },
-  resetButtonText: {
+  dropdownButtonLabel: {
     color: colors.text,
-    fontWeight: "600",
     fontFamily: "Montserrat",
+    fontWeight: "500",
+    fontSize: 12,
+    marginRight: 4,
   },
-  applyButton: {
-    flex: 2,
-    padding: 12,
+  sortOrderButton: {
+    padding: 6,
     borderRadius: 8,
-    backgroundColor: colors.primary[500],
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.primary[300],
+    marginLeft: 6,
     alignItems: "center",
+    justifyContent: "center",
+    width: 32,
+    height: 32,
   },
-  applyButtonText: {
-    color: colors.background,
-    fontWeight: "600",
+  dropdownMenu: {
+    position: "absolute",
+    top: 38,
+    left: 0,
+    backgroundColor: colors.background,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.primary[300],
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    zIndex: 1000,
+    minWidth: "100%",
+    width: 160, // Fixed width
+    overflow: "visible",
+  },
+  categoryDropdownMenu: {
+    width: 200,
+  },
+  dateRangeDropdownMenu: {
+    right: 0,
+    left: undefined,
+    width: 160,
+  },
+  dropdownItem: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.primary[200],
+  },
+  activeDropdownItem: {
+    backgroundColor: colors.primary[100],
+  },
+  dropdownItemText: {
+    color: colors.text,
     fontFamily: "Montserrat",
+    fontWeight: "400",
+    fontSize: 14,
+  },
+  activeDropdownItemText: {
+    fontWeight: "600",
+    color: colors.primary[700],
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.5)",
+    paddingHorizontal: 20,
+  },
+  modalContent: {
+    backgroundColor: colors.background,
+    borderRadius: 16,
+    overflow: "hidden",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.primary[200],
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: colors.text,
+    fontFamily: "Montserrat",
+  },
+  closeButton: {
+    padding: 4,
+  },
+  modalBody: {
+    padding: 16,
   },
 });
 

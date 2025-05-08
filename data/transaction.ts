@@ -5,7 +5,7 @@ interface Transaction {
   date: Date;
   category: string;
   type: "income" | "expense" | "transfer" | "deposit";
-  user_id: string;
+ 
   merchant: string;
   onEdit?: () => void;
   onDelete?: () => void;

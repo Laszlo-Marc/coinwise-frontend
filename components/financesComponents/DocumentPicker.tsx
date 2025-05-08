@@ -1,5 +1,5 @@
 import { colors } from "@/constants/colors";
-import { useTransactions } from "@/contexts/TransactionsContext";
+import { useTransactions } from "@/contexts/ExpensesContext";
 import * as DocumentPicker from "expo-document-picker";
 import React, { useState } from "react";
 import {
@@ -12,7 +12,6 @@ import {
 } from "react-native";
 
 const DocumentPickerComponent = () => {
-  const [extractedText, setExtractedText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState("");
   const { uploadBankStatement } = useTransactions();
@@ -45,7 +44,6 @@ const DocumentPickerComponent = () => {
 
       setUploadStatus("Uploading document to server...");
 
-      // 👇 Use fetch or axios to send the formData
       const response = await uploadBankStatement(formData);
 
       console.log("Upload response:", response);
@@ -86,15 +84,6 @@ const DocumentPickerComponent = () => {
             <Text style={styles.loadingText}>{uploadStatus}</Text>
           </View>
         )}
-
-        {extractedText ? (
-          <View style={styles.resultContainer}>
-            <Text style={styles.resultTitle}>Extracted Text</Text>
-            <View style={styles.textContainer}>
-              <Text style={styles.extractedText}>{extractedText}</Text>
-            </View>
-          </View>
-        ) : null}
       </View>
     </View>
   );

@@ -91,7 +91,7 @@ export default function Finances() {
               <View style={styles.headerContainer}>
                 <TouchableOpacity
                   style={styles.iconButton}
-                  onPress={() => router.push("/settings")}
+                  onPress={() => router.replace("/settings")}
                   activeOpacity={0.7}
                 >
                   <Ionicons
@@ -146,7 +146,7 @@ export default function Finances() {
 
                 <TouchableOpacity
                   style={styles.iconButton}
-                  onPress={() => router.push("../auth/profile")}
+                  onPress={() => router.replace("../auth/profile")}
                   activeOpacity={0.7}
                 >
                   <Feather name="user" size={24} color={colors.text} />
@@ -225,7 +225,7 @@ export default function Finances() {
           <TouchableOpacity
             style={styles.seeMoreButton}
             onPress={() => {
-              router.push("./transactions");
+              router.replace("./transactions");
             }}
           >
             <Text style={styles.seeMoreButtonText}>See More</Text>

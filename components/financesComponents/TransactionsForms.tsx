@@ -15,6 +15,27 @@ import {
 } from "react-native";
 import { colors } from "../../constants/colors";
 
+// Define proper type interfaces for form data
+interface BaseFormData {
+  date: Date;
+  amount: string;
+  description: string;
+}
+
+interface ExpenseFormData extends BaseFormData {
+  merchant: string;
+  currency: string;
+  category: string;
+}
+
+interface TransferFormData extends BaseFormData {
+  sender: string;
+  receiver: string;
+}
+
+// Union type for all form data types
+type FormDataType = BaseFormData | ExpenseFormData | TransferFormData;
+
 // Base Transaction Form Component
 interface TransactionFormProps {
   visible: boolean;
@@ -31,9 +52,9 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   transactionType,
   categories = [],
 }) => {
-  const getInitialFormData = () => {
+  const getInitialFormData = (): FormDataType => {
     // Default fields for all transaction types
-    const baseData = {
+    const baseData: BaseFormData = {
       date: new Date(),
       amount: "",
       description: "",
@@ -47,13 +68,13 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           currency: "RON",
           merchant: "",
           category: categories.length > 0 ? categories[0] : "",
-        };
+        } as ExpenseFormData;
       case "transfer":
         return {
           ...baseData,
           sender: "",
           receiver: "",
-        };
+        } as TransferFormData;
       case "income":
       case "deposit":
       default:
@@ -61,22 +82,25 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     }
   };
 
-  const [formData, setFormData] = useState(getInitialFormData());
+  const [formData, setFormData] = useState<FormDataType>(getInitialFormData());
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+  const handleDateChange = (value: Date) => {
+    setFormData((prev) => ({ ...prev, date: value }));
+  };
+
   const handleSubmit = () => {
-    // Format date to string before submitting
     const formattedData = {
       ...formData,
-      date: formData.date.toISOString().split("T")[0], // Format as YYYY-MM-DD
-      amount: parseFloat(formData.amount), // Convert amount to number
+      amount: parseFloat(formData.amount) || 0, // Add fallback if parsing fails
     };
 
     onSubmit(formattedData);
+    onClose();
   };
 
   const onDateChange = (event: any, selectedDate?: Date) => {
@@ -85,19 +109,10 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     }
 
     if (selectedDate) {
-      handleChange("date", selectedDate.toISOString().split("T")[0]); // Format as YYYY-MM-DD
+      handleDateChange(selectedDate);
     }
   };
 
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
-
-  // Get title based on transaction type
   const getTitle = () => {
     switch (transactionType) {
       case "expense":
@@ -113,106 +128,133 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     }
   };
 
+  // Type guards to safely access form data properties
+  const isExpenseForm = (data: FormDataType): data is ExpenseFormData => {
+    return transactionType === "expense";
+  };
+
+  const isTransferForm = (data: FormDataType): data is TransferFormData => {
+    return transactionType === "transfer";
+  };
+
   // Render specific fields based on transaction type
   const renderSpecificFields = () => {
-    switch (transactionType) {
-      case "expense":
-        return (
-          <>
-            {/* Merchant Field */}
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Merchant</Text>
-              <TextInput
-                style={styles.input}
-                value={
-                  transactionType === "expense" && "merchant" in formData
-                    ? formData.merchant
-                    : ""
-                }
-                onChangeText={(value) => handleChange("merchant", value)}
-                placeholder="Enter merchant name"
-                placeholderTextColor={colors.textSecondary}
-              />
-            </View>
+    if (isExpenseForm(formData)) {
+      return (
+        <>
+          {/* Merchant Field */}
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Merchant</Text>
+            <TextInput
+              style={styles.input}
+              value={formData.merchant}
+              onChangeText={(value) => handleChange("merchant", value)}
+              placeholder="Enter merchant name"
+              placeholderTextColor={colors.textSecondary}
+            />
+          </View>
 
-            {/* Currency Field */}
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Currency</Text>
-              <View style={styles.pickerWrapper}>
-                <Picker
-                  selectedValue={
-                    "currency" in formData ? formData.currency : ""
-                  }
-                  onValueChange={(value) => handleChange("currency", value)}
-                  style={styles.picker}
+          {/* Currency Field */}
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Currency</Text>
+            <View style={styles.pickerContainer}>
+              {Platform.OS === "ios" ? (
+                <TouchableOpacity
+                  style={styles.pickerTrigger}
+                  onPress={() => setShowDatePicker(false)} // Just to ensure picker has focus
                 >
-                  <Picker.Item label="RON" value="RON" />
-                  <Picker.Item label="EUR" value="EUR" />
-                  <Picker.Item label="USD" value="USD" />
-                </Picker>
-              </View>
-            </View>
-
-            {/* Category Field */}
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Category</Text>
-              <View style={styles.pickerWrapper}>
-                <Picker
-                  selectedValue={
-                    "category" in formData ? formData.category : ""
-                  }
-                  onValueChange={(value) => handleChange("category", value)}
-                  style={styles.picker}
-                >
-                  {categories.map((category) => (
-                    <Picker.Item
-                      key={category}
-                      label={category}
-                      value={category}
-                    />
-                  ))}
-                </Picker>
-              </View>
-            </View>
-          </>
-        );
-      case "transfer":
-        return (
-          <>
-            {/* Sender Field */}
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Sender</Text>
-              <TextInput
-                style={styles.input}
-                value={"sender" in formData ? formData.sender : ""}
-                onChangeText={(value) => handleChange("sender", value)}
-                placeholder="Enter sender name"
-                placeholderTextColor={colors.textSecondary}
-              />
-            </View>
-
-            {/* Receiver Field */}
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Receiver</Text>
-              <TextInput
-                style={styles.input}
-                value={
-                  transactionType === "transfer" && "receiver" in formData
-                    ? formData.receiver
-                    : ""
+                  <Text style={styles.pickerTriggerText}>
+                    {formData.currency}
+                  </Text>
+                  <Ionicons name="chevron-down" size={20} color={colors.text} />
+                </TouchableOpacity>
+              ) : null}
+              <Picker
+                selectedValue={formData.currency}
+                onValueChange={(value) => handleChange("currency", value)}
+                style={[
+                  styles.picker,
+                  Platform.OS === "ios" && styles.iosPicker,
+                ]}
+                itemStyle={
+                  Platform.OS === "ios" ? styles.iosPickerItem : undefined
                 }
-                onChangeText={(value) => handleChange("receiver", value)}
-                placeholder="Enter receiver name"
-                placeholderTextColor={colors.textSecondary}
-              />
+              >
+                <Picker.Item label="RON" value="RON" />
+                <Picker.Item label="EUR" value="EUR" />
+                <Picker.Item label="USD" value="USD" />
+              </Picker>
             </View>
-          </>
-        );
-      case "income":
-      case "deposit":
-      default:
-        return null;
+          </View>
+
+          {/* Category Field */}
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Category</Text>
+            <View style={styles.pickerContainer}>
+              {Platform.OS === "ios" ? (
+                <TouchableOpacity
+                  style={styles.pickerTrigger}
+                  onPress={() => setShowDatePicker(false)} // Just to ensure picker has focus
+                >
+                  <Text style={styles.pickerTriggerText}>
+                    {formData.category}
+                  </Text>
+                  <Ionicons name="chevron-down" size={20} color={colors.text} />
+                </TouchableOpacity>
+              ) : null}
+              <Picker
+                selectedValue={formData.category}
+                onValueChange={(value) => handleChange("category", value)}
+                style={[
+                  styles.picker,
+                  Platform.OS === "ios" && styles.iosPicker,
+                ]}
+                itemStyle={
+                  Platform.OS === "ios" ? styles.iosPickerItem : undefined
+                }
+              >
+                {categories.map((category) => (
+                  <Picker.Item
+                    key={category}
+                    label={category}
+                    value={category}
+                  />
+                ))}
+              </Picker>
+            </View>
+          </View>
+        </>
+      );
+    } else if (isTransferForm(formData)) {
+      return (
+        <>
+          {/* Sender Field */}
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Sender</Text>
+            <TextInput
+              style={styles.input}
+              value={formData.sender}
+              onChangeText={(value) => handleChange("sender", value)}
+              placeholder="Enter sender name"
+              placeholderTextColor={colors.textSecondary}
+            />
+          </View>
+
+          {/* Receiver Field */}
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Receiver</Text>
+            <TextInput
+              style={styles.input}
+              value={formData.receiver}
+              onChangeText={(value) => handleChange("receiver", value)}
+              placeholder="Enter receiver name"
+              placeholderTextColor={colors.textSecondary}
+            />
+          </View>
+        </>
+      );
     }
+    return null;
   };
 
   return (
@@ -243,8 +285,9 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                 onPress={() => setShowDatePicker(true)}
               >
                 <Text style={styles.dateButtonText}>
-                  {formatDate(formData.date)}
+                  {formData.date.toISOString().split("T")[0]}
                 </Text>
+
                 <Ionicons
                   name="calendar-outline"
                   size={20}
@@ -489,16 +532,46 @@ const styles = StyleSheet.create({
     height: 80,
     textAlignVertical: "top",
   },
-  pickerWrapper: {
+  pickerContainer: {
+    position: "relative",
     borderWidth: 1,
     borderColor: colors.primary[300],
     borderRadius: 8,
     backgroundColor: colors.backgroundLight,
     overflow: "hidden",
   },
+  pickerTrigger: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    zIndex: 1,
+    pointerEvents: "none",
+  },
+  pickerTriggerText: {
+    color: colors.text,
+    fontFamily: "Montserrat",
+    fontSize: 14,
+  },
   picker: {
     height: 45,
     color: colors.text,
+  },
+  iosPicker: {
+    height: 180,
+    marginTop: -70,
+    marginBottom: -70,
+  },
+  iosPickerItem: {
+    fontSize: 16,
+    height: 120,
+    color: colors.text,
+    fontFamily: "Montserrat",
   },
   dateButton: {
     flexDirection: "row",
@@ -543,6 +616,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: colors.primary[300],
+    width: "100%",
   },
   datePickerTitle: {
     fontSize: 16,
@@ -562,5 +636,6 @@ const styles = StyleSheet.create({
   },
   datePicker: {
     height: 200,
+    width: "100%",
   },
 });
