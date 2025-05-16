@@ -9,8 +9,8 @@ import {
 } from "@/components/financesComponents/TransactionsForms";
 import BottomBar from "@/components/mainComponents/BottomBar";
 import MainSection from "@/components/mainComponents/MainSection";
-import { useTransactions } from "@/contexts/ExpensesContext";
-import Transaction from "@/data/transaction";
+
+import { useTransactionContext } from "@/contexts/AppContext";
 import { TransactionModel } from "@/models/transaction";
 import { AntDesign, Feather } from "@expo/vector-icons";
 import Ionicons from "@expo/vector-icons/build/Ionicons";
@@ -32,20 +32,26 @@ import { colors } from "../constants/colors";
 export default function TransactionsListScreen() {
   const {
     transactions,
-
+    addTransaction,
     uploadBankStatement,
-  } = useTransactions();
-
+    deleteTransaction,
+    loadMore,
+    refreshTransactions,
+  } = useTransactionContext();
+  const [displayedTransactions, setDisplayedTransactions] = useState<
+    TransactionModel[]
+  >([]);
   const [refreshing, setRefreshing] = useState(false);
   const [classModalVisible, setClassModalVisible] = useState(false);
   const router = useRouter();
-  const [formType, setFormType] = useState<
-    "expense" | "income" | "transfer" | "deposit" | null
-  >(null);
+  type TransactionType = "expense" | "income" | "transfer" | "deposit";
+
+  const [formType, setFormType] = useState<TransactionType | null>(null);
   const [selectedClass, setSelectedClass] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState("");
   const [formOpen, setFormOpen] = useState(false);
+  const [isFormVisible, setIsFormVisible] = useState(false);
   const handleDocumentUpload = useCallback(async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
@@ -94,47 +100,89 @@ export default function TransactionsListScreen() {
     }
   }, [uploadBankStatement]);
 
-  // Stable handler functions with useCallback
   const handleFilterChange = useCallback(
     (filters: { transactionClass: string }) => {
-      if (filters.transactionClass !== selectedClass) {
-        setSelectedClass(filters.transactionClass);
+      setSelectedClass(filters.transactionClass); // update selected class
+
+      switch (filters.transactionClass) {
+        case "expenses":
+          setDisplayedTransactions(
+            transactions.filter((t) => t.type === "expense")
+          );
+          break;
+        case "incomes":
+          setDisplayedTransactions(
+            transactions.filter((t) => t.type === "income")
+          );
+          break;
+        case "deposits":
+          setDisplayedTransactions(
+            transactions.filter((t) => t.type === "deposit")
+          );
+          break;
+        case "transfers":
+          setDisplayedTransactions(
+            transactions.filter((t) => t.type === "transfer")
+          );
+          break;
+        default:
+          setDisplayedTransactions(
+            transactions.filter((t) => t.type === "expense")
+          );
       }
     },
-    [selectedClass]
+    [transactions]
   );
 
   const handleOpenModal = useCallback(() => {
-    setFormType(null);
     setClassModalVisible(true);
   }, []);
 
-  const handleEditTransaction = useCallback((id: string, type: string) => {
-    console.log("Edit transaction", id, type);
-    // Implement your edit logic here
-  }, []);
+  const handleEditTransaction = useCallback((id: string, type: string) => {},
+  []);
 
-  const handleDeleteTransaction = useCallback((id: string, type: string) => {
-    console.log("Delete transaction", id, type);
-    // Implement your delete logic here
-  }, []);
+  const handleDeleteTransaction = useCallback(
+    (id: string, type: TransactionType) => {
+      Alert.alert(
+        "Delete Transaction",
+        "Are you sure you want to delete this transaction?",
+        [
+          {
+            text: "Cancel",
+            style: "cancel",
+          },
+          {
+            text: "Delete",
+            onPress: () => {
+              deleteTransaction(id);
+            },
+          },
+        ]
+      );
+    },
+    []
+  );
 
   const handleCloseForm = useCallback(() => {
-    setFormType(null);
+    setIsFormVisible(false);
   }, []);
 
-  const handleSubmitForm = useCallback((formData: any) => {
-    console.log("Submit form", formData);
-    // Implement your form submission logic
-    setFormType(null);
-  }, []);
+  const handleSubmitForm = useCallback(
+    (formData: any) => {
+      if (formType) {
+        addTransaction(formData);
+      }
+      setIsFormVisible(false);
+    },
+    [formType, addTransaction]
+  );
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    // Fetch your data here
+    refreshTransactions();
     setTimeout(() => {
       setRefreshing(false);
-    }, 1000);
+    }, 3000);
   }, []);
   const renderForm = () => {
     switch (formType) {
@@ -176,48 +224,56 @@ export default function TransactionsListScreen() {
   };
 
   const renderHiddenItem = useCallback(
-    ({ item }: { item: Transaction }, rowMap: any) => (
-      <View style={styles.hiddenContainer}>
-        <Animated.View
-          entering={FadeInLeft}
-          style={[
-            styles.hiddenButton,
-            { backgroundColor: colors.primary[500] },
-          ]}
-        >
-          <TouchableOpacity
-            style={styles.hiddenTouchable}
-            onPress={() => {
-              handleEditTransaction(item.id, item.type);
-              rowMap[item.id]?.closeRow();
-            }}
+    ({ item }: { item: TransactionModel | undefined }, rowMap: any) => {
+      if (!item || !item.id || !item.type) return null;
+      const itemId = item.id;
+      return (
+        <View style={styles.hiddenContainer}>
+          <Animated.View
+            entering={FadeInLeft}
+            style={[
+              styles.hiddenButton,
+              { backgroundColor: colors.primary[500] },
+            ]}
           >
-            <Ionicons name="pencil" size={24} color="#FFF" />
-          </TouchableOpacity>
-        </Animated.View>
+            <TouchableOpacity
+              style={styles.hiddenTouchable}
+              onPress={() => {
+                handleEditTransaction(itemId, item.type);
+                if (rowMap[itemId]) rowMap[itemId].closeRow();
+              }}
+            >
+              <Ionicons name="pencil" size={24} color="#FFF" />
+            </TouchableOpacity>
+          </Animated.View>
 
-        <Animated.View
-          entering={FadeInRight}
-          style={[styles.hiddenButton, { backgroundColor: "#D32F2F" }]}
-        >
-          <TouchableOpacity
-            style={styles.hiddenTouchable}
-            onPress={() => {
-              handleDeleteTransaction(item.id, item.type);
-              rowMap[item.id]?.closeRow();
-            }}
+          <Animated.View
+            entering={FadeInRight}
+            style={[styles.hiddenButton, { backgroundColor: "#D32F2F" }]}
           >
-            <Ionicons name="trash" size={24} color="#FFF" />
-          </TouchableOpacity>
-        </Animated.View>
-      </View>
-    ),
+            <TouchableOpacity
+              style={styles.hiddenTouchable}
+              onPress={() => {
+                handleDeleteTransaction(itemId, item.type);
+                if (rowMap[itemId]) rowMap[itemId].closeRow();
+              }}
+            >
+              <Ionicons name="trash" size={24} color="#FFF" />
+            </TouchableOpacity>
+          </Animated.View>
+        </View>
+      );
+    },
     [handleEditTransaction, handleDeleteTransaction]
   );
 
-  const renderItem = useCallback(({ item }: { item: TransactionModel }) => {
-    return <TransactionItem transaction={item} />;
-  }, []);
+  const renderItem = useCallback(
+    ({ item }: { item: TransactionModel | undefined }) => {
+      if (!item) return null;
+      return <TransactionItem transaction={item} />;
+    },
+    []
+  );
 
   const renderEmpty = useCallback(() => {
     return (
@@ -274,7 +330,7 @@ export default function TransactionsListScreen() {
       {/* Transactions List */}
       <SwipeListView
         data={transactions}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item?.id || ""}
         renderItem={renderItem}
         renderHiddenItem={renderHiddenItem}
         rightOpenValue={-150}
@@ -300,10 +356,11 @@ export default function TransactionsListScreen() {
         onClose={() => setClassModalVisible(false)}
         onSelect={(type) => {
           setFormType(type);
+          setIsFormVisible(true);
           setClassModalVisible(false);
         }}
       />
-      {formType && (
+      {formType && isFormVisible && (
         <View
           style={{
             position: "absolute",

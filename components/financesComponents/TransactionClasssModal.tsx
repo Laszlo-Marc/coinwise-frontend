@@ -25,11 +25,8 @@ const TransactionClassModal = ({ visible, onClose, onSelect }: Props) => {
               key={type}
               style={modalStyles.optionButton}
               onPress={() => {
-                onSelect(
-                  type as Props["onSelect"] extends (t: infer T) => void
-                    ? T
-                    : never
-                );
+                onSelect(type as "expense" | "income" | "transfer" | "deposit");
+              
                 onClose();
               }}
             >

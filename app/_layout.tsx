@@ -1,5 +1,6 @@
-import { AppProvider } from "@/contexts/AppContext";
-import { TransactionProvider } from "@/contexts/ExpensesContext";
+import { TransactionProvider } from "@/contexts/AppContext";
+import { AuthProvider } from "@/contexts/AuthContext";
+
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import React from "react";
@@ -14,8 +15,8 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <TransactionProvider>
-        <AppProvider>
+      <AuthProvider>
+        <TransactionProvider>
           <Stack
             screenOptions={{
               headerShown: false,
@@ -25,8 +26,8 @@ export default function RootLayout() {
               animationDuration: 300,
             }}
           />
-        </AppProvider>
-      </TransactionProvider>
+        </TransactionProvider>
+      </AuthProvider>
     </GestureHandlerRootView>
   );
 }

@@ -7,7 +7,7 @@ import {
 } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Animated,
   Keyboard,
@@ -24,18 +24,26 @@ import {
 import "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { useAuth } from "@/contexts/AuthContext";
 import BottomBar from "../components/mainComponents/BottomBar";
 import { colors } from "../constants/colors";
 
 export default function HomePage() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { state } = useAuth();
   const [isFocused, setIsFocused] = useState(false);
   const [searchText, setSearchText] = useState("");
-
-  const [appIsReady, setAppIsReady] = useState(false);
   const [focusAnim] = useState(new Animated.Value(0));
 
+  useEffect(() => {
+    const checkUser = async () => {
+      if (!state.userToken || !state.user) {
+        router.replace("/auth/sign-in");
+      }
+    };
+    checkUser();
+  }, [state.userToken, state.user]);
   const handleFocus = () => {
     setIsFocused(true);
     Animated.timing(focusAnim, {
@@ -54,7 +62,6 @@ export default function HomePage() {
     }).start();
   };
 
-  // Interpolate animation values
   const searchBarBorderColor = focusAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [`${colors.backgroundLight}80`, colors.primary[400]],
@@ -64,8 +71,6 @@ export default function HomePage() {
     inputRange: [0, 1],
     outputRange: [`${colors.backgroundLight}40`, `${colors.backgroundLight}60`],
   });
-
-  // Render the appropriate background based on platform
 
   return (
     <View style={styles.container}>
@@ -143,7 +148,7 @@ export default function HomePage() {
 
                 <TouchableOpacity
                   style={styles.iconButton}
-                  onPress={() => router.replace("./auth/profile")}
+                  onPress={() => router.replace("/profile")}
                   activeOpacity={0.7}
                 >
                   <Feather name="user" size={24} color={colors.text} />

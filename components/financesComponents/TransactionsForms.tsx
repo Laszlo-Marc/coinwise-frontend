@@ -1,6 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { Picker } from "@react-native-picker/picker";
 import React, { useState } from "react";
 import {
   KeyboardAvoidingView,
@@ -84,6 +83,10 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 
   const [formData, setFormData] = useState<FormDataType>(getInitialFormData());
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
+  const [showCategoryPicker, setShowCategoryPicker] = useState(false);
+
+  const currencies = ["RON", "EUR", "USD"];
 
   const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -96,7 +99,8 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   const handleSubmit = () => {
     const formattedData = {
       ...formData,
-      amount: parseFloat(formData.amount) || 0, // Add fallback if parsing fails
+      amount: parseFloat(formData.amount) || 0,
+      type: transactionType,
     };
 
     onSubmit(formattedData);
@@ -104,10 +108,12 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   };
 
   const onDateChange = (event: any, selectedDate?: Date) => {
+    // Close the date picker on Android
     if (Platform.OS === "android") {
       setShowDatePicker(false);
     }
 
+    // Update the date if a date was selected
     if (selectedDate) {
       handleDateChange(selectedDate);
     }
@@ -137,6 +143,12 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     return transactionType === "transfer";
   };
 
+  // Format date for display
+  const formatDate = (date: Date): string => {
+    // Format as YYYY-MM-DD
+    return date.toISOString().split("T")[0];
+  };
+
   // Render specific fields based on transaction type
   const renderSpecificFields = () => {
     if (isExpenseForm(formData)) {
@@ -154,74 +166,78 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             />
           </View>
 
-          {/* Currency Field */}
+          {/* Currency Field - Replaced with Dropdown */}
           <View style={styles.formGroup}>
             <Text style={styles.label}>Currency</Text>
-            <View style={styles.pickerContainer}>
-              {Platform.OS === "ios" ? (
-                <TouchableOpacity
-                  style={styles.pickerTrigger}
-                  onPress={() => setShowDatePicker(false)} // Just to ensure picker has focus
-                >
-                  <Text style={styles.pickerTriggerText}>
-                    {formData.currency}
-                  </Text>
-                  <Ionicons name="chevron-down" size={20} color={colors.text} />
-                </TouchableOpacity>
-              ) : null}
-              <Picker
-                selectedValue={formData.currency}
-                onValueChange={(value) => handleChange("currency", value)}
-                style={[
-                  styles.picker,
-                  Platform.OS === "ios" && styles.iosPicker,
-                ]}
-                itemStyle={
-                  Platform.OS === "ios" ? styles.iosPickerItem : undefined
-                }
-              >
-                <Picker.Item label="RON" value="RON" />
-                <Picker.Item label="EUR" value="EUR" />
-                <Picker.Item label="USD" value="USD" />
-              </Picker>
-            </View>
+            <TouchableOpacity
+              style={styles.dropdownButton}
+              onPress={() => setShowCurrencyPicker(!showCurrencyPicker)}
+            >
+              <Text style={styles.dropdownButtonText}>{formData.currency}</Text>
+              <Ionicons name="chevron-down" size={20} color={colors.text} />
+            </TouchableOpacity>
+
+            {showCurrencyPicker && (
+              <View style={styles.dropdownMenu}>
+                {currencies.map((currency) => (
+                  <TouchableOpacity
+                    key={currency}
+                    style={styles.dropdownItem}
+                    onPress={() => {
+                      handleChange("currency", currency);
+                      setShowCurrencyPicker(false);
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.dropdownItemText,
+                        formData.currency === currency &&
+                          styles.dropdownItemSelected,
+                      ]}
+                    >
+                      {currency}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
           </View>
 
-          {/* Category Field */}
+          {/* Category Field - Replaced with Dropdown */}
           <View style={styles.formGroup}>
             <Text style={styles.label}>Category</Text>
-            <View style={styles.pickerContainer}>
-              {Platform.OS === "ios" ? (
-                <TouchableOpacity
-                  style={styles.pickerTrigger}
-                  onPress={() => setShowDatePicker(false)} // Just to ensure picker has focus
-                >
-                  <Text style={styles.pickerTriggerText}>
-                    {formData.category}
-                  </Text>
-                  <Ionicons name="chevron-down" size={20} color={colors.text} />
-                </TouchableOpacity>
-              ) : null}
-              <Picker
-                selectedValue={formData.category}
-                onValueChange={(value) => handleChange("category", value)}
-                style={[
-                  styles.picker,
-                  Platform.OS === "ios" && styles.iosPicker,
-                ]}
-                itemStyle={
-                  Platform.OS === "ios" ? styles.iosPickerItem : undefined
-                }
-              >
+            <TouchableOpacity
+              style={styles.dropdownButton}
+              onPress={() => setShowCategoryPicker(!showCategoryPicker)}
+            >
+              <Text style={styles.dropdownButtonText}>{formData.category}</Text>
+              <Ionicons name="chevron-down" size={20} color={colors.text} />
+            </TouchableOpacity>
+
+            {showCategoryPicker && categories.length > 0 && (
+              <View style={styles.dropdownMenu}>
                 {categories.map((category) => (
-                  <Picker.Item
+                  <TouchableOpacity
                     key={category}
-                    label={category}
-                    value={category}
-                  />
+                    style={styles.dropdownItem}
+                    onPress={() => {
+                      handleChange("category", category);
+                      setShowCategoryPicker(false);
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.dropdownItemText,
+                        formData.category === category &&
+                          styles.dropdownItemSelected,
+                      ]}
+                    >
+                      {category}
+                    </Text>
+                  </TouchableOpacity>
                 ))}
-              </Picker>
-            </View>
+              </View>
+            )}
           </View>
         </>
       );
@@ -285,9 +301,8 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                 onPress={() => setShowDatePicker(true)}
               >
                 <Text style={styles.dateButtonText}>
-                  {formData.date.toISOString().split("T")[0]}
+                  {formatDate(formData.date)}
                 </Text>
-
                 <Ionicons
                   name="calendar-outline"
                   size={20}
@@ -511,6 +526,7 @@ const styles = StyleSheet.create({
   },
   formGroup: {
     marginBottom: 16,
+    position: "relative",
   },
   label: {
     fontSize: 14,
@@ -531,47 +547,6 @@ const styles = StyleSheet.create({
   textArea: {
     height: 80,
     textAlignVertical: "top",
-  },
-  pickerContainer: {
-    position: "relative",
-    borderWidth: 1,
-    borderColor: colors.primary[300],
-    borderRadius: 8,
-    backgroundColor: colors.backgroundLight,
-    overflow: "hidden",
-  },
-  pickerTrigger: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    zIndex: 1,
-    pointerEvents: "none",
-  },
-  pickerTriggerText: {
-    color: colors.text,
-    fontFamily: "Montserrat",
-    fontSize: 14,
-  },
-  picker: {
-    height: 45,
-    color: colors.text,
-  },
-  iosPicker: {
-    height: 180,
-    marginTop: -70,
-    marginBottom: -70,
-  },
-  iosPickerItem: {
-    fontSize: 16,
-    height: 120,
-    color: colors.text,
-    fontFamily: "Montserrat",
   },
   dateButton: {
     flexDirection: "row",
@@ -601,6 +576,48 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: "Montserrat",
   },
+  // New dropdown styles
+  dropdownButton: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: colors.backgroundLight,
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: colors.primary[300],
+  },
+  dropdownButtonText: {
+    color: colors.text,
+    fontFamily: "Montserrat",
+  },
+  dropdownMenu: {
+    position: "absolute",
+    top: 73, // adjust based on your label and button heights
+    left: 0,
+    right: 0,
+    backgroundColor: colors.backgroundLight,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.primary[300],
+    zIndex: 1000,
+    maxHeight: 200,
+    overflow: "scroll",
+  },
+  dropdownItem: {
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.primary[200],
+  },
+  dropdownItemText: {
+    color: colors.text,
+    fontFamily: "Montserrat",
+  },
+  dropdownItemSelected: {
+    color: colors.primary[500],
+    fontWeight: "600",
+  },
+  // Date picker styles
   datePickerContainer: {
     backgroundColor: colors.background,
     borderTopLeftRadius: 16,

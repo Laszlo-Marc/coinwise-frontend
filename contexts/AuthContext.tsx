@@ -1,11 +1,22 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
-import React, { createContext, useContext, useEffect, useState } from "react";
+import * as SecureStore from "expo-secure-store";
+import { jwtDecode } from "jwt-decode";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
-// Define your API base URL
-const API_URL = "http://192.168.1.156:5000/api/auth"; // Change this to your actual API URL
+// Constants for storage keys
+const TOKEN_KEY = "auth_token";
+const REFRESH_TOKEN_KEY = "refresh_token";
+const USER_KEY = "user_data";
 
-// Define types for authentication data
+const API_URL = "http://192.168.1.156:5000/api/auth";
+
 type User = {
   id: string;
   email: string;
@@ -32,7 +43,7 @@ type AuthContextType = {
   ) => Promise<void>;
   signOut: () => Promise<void>;
   checkUserExists: (email: string) => Promise<boolean>;
-  refreshToken: () => Promise<boolean>;
+  refreshTokenFunction: () => Promise<boolean>;
   updateProfile: (profileData: Partial<User>) => Promise<User>;
   resetPassword: (email: string) => Promise<void>;
   updatePassword: (
@@ -42,15 +53,19 @@ type AuthContextType = {
   clearError: () => void;
 };
 
-// Create the authentication context
+type JwtPayload = {
+  exp: number;
+};
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Storage keys
-const TOKEN_KEY = "auth_token";
-const REFRESH_TOKEN_KEY = "refresh_token";
-const USER_KEY = "user_data";
+const api = axios.create({
+  baseURL: API_URL,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
 
-// Create the AuthProvider component
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
@@ -61,92 +76,245 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     user: null,
     error: null,
   });
-
-  // Create an axios instance with authorization header
-  const authAxios = axios.create({
-    baseURL: API_URL,
-  });
-
-  // Add interceptor to automatically add the token to requests
-  authAxios.interceptors.request.use(
-    (config) => {
-      if (state.userToken) {
-        config.headers.Authorization = `Bearer ${state.userToken}`;
-      }
-      return config;
-    },
-    (error) => {
-      return Promise.reject(error);
-    }
+  const [tokenRefreshInProgress, setTokenRefreshInProgress] = useState(false);
+  const [refreshTimeout, setRefreshTimeout] = useState<NodeJS.Timeout | null>(
+    null
   );
+  const userTokenRef = useRef<string | null>(null);
 
-  // Add interceptor to handle token expiration
-  authAxios.interceptors.response.use(
-    (response) => response,
-    async (error) => {
-      const originalRequest = error.config;
-      // If the error is due to an expired token and we haven't tried to refresh it yet
-      if (error.response?.status === 401 && !originalRequest._retry) {
-        originalRequest._retry = true;
+  const storeTokens = async (accessToken: string, refreshToken: string) => {
+    try {
+      userTokenRef.current = accessToken;
 
-        try {
-          // Try to refresh the token
-          const refreshed = await refreshToken();
-          if (refreshed) {
-            // Retry the original request with the new token
-            originalRequest.headers.Authorization = `Bearer ${state.userToken}`;
-            return authAxios(originalRequest);
-          }
-        } catch (refreshError) {
-          // If refresh fails, sign out
-          await signOut();
-        }
-      }
-      return Promise.reject(error);
+      await Promise.all([
+        SecureStore.setItemAsync(TOKEN_KEY, accessToken),
+        SecureStore.setItemAsync(REFRESH_TOKEN_KEY, refreshToken),
+      ]);
+
+      setState((prev) => ({
+        ...prev,
+        userToken: accessToken,
+      }));
+      console.log("Stored token:", accessToken);
+      console.log("Token used in request:", userTokenRef.current);
+    } catch (error) {
+      console.error("Error storing tokens:", error);
     }
-  );
+  };
 
-  // Initialize - check if the user is already logged in
+  // Helper to store user data
+  const storeUserData = async (user: User) => {
+    try {
+      await AsyncStorage.setItem(USER_KEY, JSON.stringify(user));
+      setState((prev) => ({
+        ...prev,
+        user,
+      }));
+    } catch (error) {
+      console.error("Error storing user data:", error);
+    }
+  };
+
+  // Helper to clear tokens and data
+  const clearAuthData = async () => {
+    try {
+      await Promise.all([
+        SecureStore.deleteItemAsync(TOKEN_KEY),
+        SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY),
+        AsyncStorage.removeItem(USER_KEY),
+      ]);
+    } catch (error) {
+      console.error("Error clearing auth data:", error);
+    }
+  };
+
+  const getTokenExpiry = (token: string): number => {
+    try {
+      const decoded = jwtDecode<JwtPayload>(token);
+
+      return decoded.exp * 1000;
+    } catch (error) {
+      console.error("Failed to decode token:", error);
+      return 0;
+    }
+  };
+
+  const isTokenValid = (token: string): boolean => {
+    try {
+      const expiry = getTokenExpiry(token);
+      const now = Date.now();
+      return expiry > now;
+    } catch (e) {
+      return false;
+    }
+  };
+
+  const scheduleTokenRefresh = (token: string) => {
+    if (refreshTimeout) {
+      clearTimeout(refreshTimeout);
+    }
+
+    const expiry = getTokenExpiry(token);
+    console.log("Token expiry time:", expiry / 1000);
+    const currentTime = Date.now();
+    const timeUntilRefresh = expiry - currentTime - 5 * 60 * 1000;
+    if (timeUntilRefresh > 0) {
+      const timeout = setTimeout(
+        () => refreshTokenFunction(),
+        timeUntilRefresh
+      );
+      setRefreshTimeout(timeout as unknown as NodeJS.Timeout);
+      console.log(
+        `Token refresh scheduled in ${timeUntilRefresh / 1000} seconds`
+      );
+    } else {
+      refreshTokenFunction();
+    }
+  };
+
   useEffect(() => {
+    const requestInterceptor = api.interceptors.request.use(
+      (config) => {
+        if (userTokenRef.current) {
+          config.headers.Authorization = `Bearer ${userTokenRef.current}`;
+        }
+        return config;
+      },
+      (error) => Promise.reject(error)
+    );
+
+    const responseInterceptor = api.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        const originalRequest = error.config;
+
+        if (error.response?.status === 401 && !originalRequest._retry) {
+          originalRequest._retry = true;
+
+          try {
+            const refreshed = await refreshTokenFunction();
+
+            if (refreshed && state.userToken) {
+              originalRequest.headers.Authorization = `Bearer ${state.userToken}`;
+              return api(originalRequest);
+            }
+          } catch (refreshError) {
+            await signOut();
+            return Promise.reject(refreshError);
+          }
+        }
+
+        return Promise.reject(error);
+      }
+    );
+
     const loadStoredData = async () => {
       try {
         const [userToken, userData, refreshToken] = await Promise.all([
-          AsyncStorage.getItem(TOKEN_KEY),
+          SecureStore.getItemAsync(TOKEN_KEY),
           AsyncStorage.getItem(USER_KEY),
-          AsyncStorage.getItem(REFRESH_TOKEN_KEY),
+          SecureStore.getItemAsync(REFRESH_TOKEN_KEY),
         ]);
 
-        if (userToken && userData) {
-          // Set up axios headers for future requests
-          axios.defaults.headers.common[
-            "Authorization"
-          ] = `Bearer ${userToken}`;
-
+        if (userToken && userData && isTokenValid(userToken)) {
           setState({
             ...state,
             userToken,
             user: JSON.parse(userData),
             isLoading: false,
           });
-        } else {
-          setState({
-            ...state,
+
+          scheduleTokenRefresh(userToken);
+        } else if (refreshToken) {
+          const refreshed = await refreshTokenFunction();
+          setState((prev) => ({
+            ...prev,
             isLoading: false,
-          });
+            userToken: refreshed ? prev.userToken : null,
+            user: refreshed ? prev.user : null,
+          }));
+        } else {
+          setState((prev) => ({
+            ...prev,
+            isLoading: false,
+            userToken: null,
+            user: null,
+          }));
         }
       } catch (error) {
         console.error("Failed to load authentication data", error);
         setState({
           ...state,
           isLoading: false,
+          userToken: null,
+          user: null,
         });
       }
     };
 
     loadStoredData();
-  }, []);
 
-  // Authentication methods
+    return () => {
+      api.interceptors.request.eject(requestInterceptor);
+      api.interceptors.response.eject(responseInterceptor);
+      if (refreshTimeout) {
+        clearTimeout(refreshTimeout);
+      }
+    };
+  }, [state.userToken]);
+
+  const refreshTokenFunction = async (): Promise<boolean> => {
+    if (tokenRefreshInProgress) {
+      return false;
+    }
+
+    setTokenRefreshInProgress(true);
+
+    try {
+      const storedRefreshToken = await SecureStore.getItemAsync(
+        REFRESH_TOKEN_KEY
+      );
+
+      if (!storedRefreshToken) {
+        return false;
+      }
+
+      const response = await axios.post(
+        `${API_URL}/refresh-token`,
+        {
+          refresh_token: storedRefreshToken,
+        },
+        {
+          timeout: 4000,
+        }
+      );
+
+      const { access_token, refresh_token, user } = response.data;
+
+      await storeTokens(access_token, refresh_token);
+      await storeUserData(user);
+
+      api.defaults.headers.common["Authorization"] = `Bearer ${access_token}`;
+
+      scheduleTokenRefresh(access_token);
+
+      setState((prev) => ({
+        ...prev,
+        userToken: access_token,
+        user,
+        error: null,
+      }));
+
+      console.log("Token refreshed successfully");
+      return true;
+    } catch (error) {
+      console.error("Token refresh error", error);
+      return false;
+    } finally {
+      setTokenRefreshInProgress(false);
+    }
+  };
+
   const signIn = async (email: string, password: string) => {
     try {
       const response = await axios.post(`${API_URL}/signin`, {
@@ -156,23 +324,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
       const { access_token, refresh_token, user } = response.data;
 
-      // Store authentication data
-      await Promise.all([
-        AsyncStorage.setItem(TOKEN_KEY, access_token),
-        AsyncStorage.setItem(REFRESH_TOKEN_KEY, refresh_token),
-        AsyncStorage.setItem(USER_KEY, JSON.stringify(user)),
-      ]);
+      await storeTokens(access_token, refresh_token);
+      await storeUserData(user);
 
-      // Set up axios headers for future requests
-      axios.defaults.headers.common["Authorization"] = `Bearer ${access_token}`;
+      console.log("Sign in response", response.data);
+      api.defaults.headers.common["Authorization"] = `Bearer ${access_token}`;
 
-      setState({
-        ...state,
+      scheduleTokenRefresh(access_token);
+
+      setState((prev) => ({
+        ...prev,
         userToken: access_token,
         user,
         error: null,
         isSignout: false,
-      });
+      }));
     } catch (error: any) {
       console.error("Sign in error", error);
 
@@ -180,10 +346,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         error.response?.data?.detail ||
         "Failed to sign in. Please check your credentials and try again.";
 
-      setState({
-        ...state,
+      setState((prev) => ({
+        ...prev,
         error: errorMessage,
-      });
+      }));
 
       throw new Error(errorMessage);
     }
@@ -202,24 +368,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       });
 
       const { access_token, refresh_token, user } = response.data;
+      console.log("Sign up response", response.data);
 
-      // Store authentication data
-      await Promise.all([
-        AsyncStorage.setItem(TOKEN_KEY, access_token),
-        AsyncStorage.setItem(REFRESH_TOKEN_KEY, refresh_token),
-        AsyncStorage.setItem(USER_KEY, JSON.stringify(user)),
-      ]);
+      api.defaults.headers.common["Authorization"] = `Bearer ${access_token}`;
 
-      // Set up axios headers for future requests
-      axios.defaults.headers.common["Authorization"] = `Bearer ${access_token}`;
-
-      setState({
-        ...state,
+      setState((prev) => ({
+        ...prev,
         userToken: access_token,
         user,
         error: null,
         isSignout: false,
-      });
+      }));
     } catch (error: any) {
       console.error("Sign up error", error);
 
@@ -227,10 +386,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         error.response?.data?.detail ||
         "Failed to create account. Please try again.";
 
-      setState({
-        ...state,
+      setState((prev) => ({
+        ...prev,
         error: errorMessage,
-      });
+      }));
 
       throw new Error(errorMessage);
     }
@@ -238,79 +397,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const signOut = async () => {
     try {
-      // Call the signout API if user is authenticated
       if (state.userToken) {
         try {
-          await authAxios.post(`${API_URL}/signout`);
+          await api.post(`${API_URL}/signout`);
           console.log("User signed out from API");
         } catch (error) {
           console.warn("Error during API signout:", error);
-          // Continue with local signout even if API call fails
         }
       }
-      await authAxios.post(`${API_URL}/signout`);
-      console.log("User signed out from API");
-      // Clear stored data
-      await Promise.all([
-        AsyncStorage.removeItem(TOKEN_KEY),
-        AsyncStorage.removeItem(REFRESH_TOKEN_KEY),
-        AsyncStorage.removeItem(USER_KEY),
-      ]);
 
-      // Remove authorization header
-      delete axios.defaults.headers.common["Authorization"];
+      if (refreshTimeout) {
+        clearTimeout(refreshTimeout);
+        setRefreshTimeout(null);
+      }
 
-      setState({
-        ...state,
+      await clearAuthData();
+
+      delete api.defaults.headers.common["Authorization"];
+
+      setState((prev) => ({
+        ...prev,
         userToken: null,
         user: null,
         isSignout: true,
         error: null,
-      });
+      }));
     } catch (error) {
       console.error("Sign out error", error);
-      setState({
-        ...state,
+      setState((prev) => ({
+        ...prev,
         error: "Failed to sign out properly",
-      });
-    }
-  };
-
-  const refreshToken = async (): Promise<boolean> => {
-    try {
-      const storedRefreshToken = await AsyncStorage.getItem(REFRESH_TOKEN_KEY);
-
-      if (!storedRefreshToken) {
-        return false;
-      }
-
-      const response = await axios.post(`${API_URL}/refresh-token`, {
-        refresh_token: storedRefreshToken,
-      });
-
-      const { access_token, refresh_token, user } = response.data;
-
-      // Update stored tokens
-      await Promise.all([
-        AsyncStorage.setItem(TOKEN_KEY, access_token),
-        AsyncStorage.setItem(REFRESH_TOKEN_KEY, refresh_token),
-        AsyncStorage.setItem(USER_KEY, JSON.stringify(user)),
-      ]);
-
-      // Update axios headers
-      axios.defaults.headers.common["Authorization"] = `Bearer ${access_token}`;
-
-      setState({
-        ...state,
-        userToken: access_token,
-        user,
-        error: null,
-      });
-
-      return true;
-    } catch (error) {
-      console.error("Token refresh error", error);
-      return false;
+      }));
     }
   };
 
@@ -329,17 +446,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const updateProfile = async (profileData: Partial<User>): Promise<User> => {
     try {
-      const response = await authAxios.put(`${API_URL}/profile`, profileData);
+      const response = await api.put(`${API_URL}/profile`, profileData);
 
       const updatedUser = response.data;
 
-      // Update stored user data
-      await AsyncStorage.setItem(USER_KEY, JSON.stringify(updatedUser));
-
-      setState({
-        ...state,
-        user: updatedUser,
-      });
+      await storeUserData(updatedUser);
 
       return updatedUser;
     } catch (error) {
@@ -364,7 +475,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     newPassword: string
   ): Promise<void> => {
     try {
-      await authAxios.post(`${API_URL}/password-update`, {
+      await api.post(`${API_URL}/password-update`, {
         current_password: currentPassword,
         new_password: newPassword,
       });
@@ -375,10 +486,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const clearError = () => {
-    setState({
-      ...state,
+    setState((prev) => ({
+      ...prev,
       error: null,
-    });
+    }));
   };
 
   const authContext: AuthContextType = {
@@ -387,7 +498,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     signUp,
     signOut,
     checkUserExists,
-    refreshToken,
+    refreshTokenFunction,
     updateProfile,
     resetPassword,
     updatePassword,
@@ -399,11 +510,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   );
 };
 
-// Custom hook to use the auth context
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (context === undefined) {
     throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
+};
+
+export const useAuthenticatedApi = () => {
+  const { state } = useAuth();
+
+  const authApi = axios.create({
+    baseURL: API_URL,
+    headers: {
+      "Content-Type": "application/json",
+      ...(state.userToken
+        ? { Authorization: `Bearer ${state.userToken}` }
+        : {}),
+    },
+  });
+
+  return authApi;
 };
