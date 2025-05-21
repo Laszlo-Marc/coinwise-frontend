@@ -1,4 +1,5 @@
-import { Ionicons } from "@expo/vector-icons";
+import { colors } from "@/constants/colors";
+import { Feather } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
 import {
   Modal,
@@ -6,12 +7,12 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
-import { colors } from "../../constants/colors";
+import Animated, { FadeIn } from "react-native-reanimated";
 import DateRangeSelector from "./DateRangeComponent";
 
-type TransactionFiltersProps = {
+interface TransactionFiltersProps {
   onFilterChange: (filters: {
     transactionClass: string;
     category?: string;
@@ -20,15 +21,18 @@ type TransactionFiltersProps = {
     startDate?: Date;
     endDate?: Date;
   }) => void;
+  selectedClass: string | null;
   categories?: string[];
-};
+}
 
-const TransactionFilters: React.FC<TransactionFiltersProps> = ({
+export const TransactionFilters: React.FC<TransactionFiltersProps> = ({
   onFilterChange,
+  selectedClass,
   categories = [],
 }) => {
-  // Filter states
-  const [transactionClass, setTransactionClass] = useState("expenses");
+  const [transactionClass, setTransactionClass] = useState(
+    selectedClass || "all"
+  );
   const [selectedCategory, setSelectedCategory] = useState("");
   const [sortBy, setSortBy] = useState("date");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
@@ -36,29 +40,24 @@ const TransactionFilters: React.FC<TransactionFiltersProps> = ({
     new Date(new Date().setMonth(new Date().getMonth() - 1))
   );
   const [endDate, setEndDate] = useState(new Date());
-  
-  // Dropdown states
-  const [sortByDropdownVisible, setSortByDropdownVisible] = useState(false);
+
   const [categoryDropdownVisible, setCategoryDropdownVisible] = useState(false);
-  const [dateRangeDropdownVisible, setDateRangeDropdownVisible] = useState(false);
+  const [dateRangeDropdownVisible, setDateRangeDropdownVisible] =
+    useState(false);
   const [customDateRangeVisible, setCustomDateRangeVisible] = useState(false);
 
-  const transactionClasses: {
-    id: string;
+  const filters: {
+    key: string;
     label: string;
-    icon:
-      | "cart-outline"
-      | "cash-outline"
-      | "swap-horizontal-outline"
-      | "trending-up-outline";
+    icon: "list" | "arrow-down" | "arrow-up" | "refresh-cw" | "dollar-sign";
   }[] = [
-    { id: "expenses", label: "Expenses", icon: "cart-outline" },
-    { id: "deposits", label: "Deposits", icon: "cash-outline" },
-    { id: "transfers", label: "Transfers", icon: "swap-horizontal-outline" },
-    { id: "incomes", label: "Incomes", icon: "trending-up-outline" },
+    { key: "all", label: "All", icon: "list" },
+    { key: "expenses", label: "Expenses", icon: "arrow-down" },
+    { key: "incomes", label: "Income", icon: "arrow-up" },
+    { key: "transfers", label: "Transfers", icon: "refresh-cw" },
+    { key: "deposits", label: "Deposits", icon: "dollar-sign" },
   ];
 
-  // Date range preset options
   const dateRangePresets = [
     { id: "today", label: "Today" },
     { id: "week", label: "Last Week" },
@@ -67,9 +66,10 @@ const TransactionFilters: React.FC<TransactionFiltersProps> = ({
     { id: "custom", label: "Custom Range" },
   ];
 
-  // Apply filters when any filter changes
   useEffect(() => {
-    applyFilters();
+    if (transactionClass) {
+      applyFilters();
+    }
   }, [
     transactionClass,
     selectedCategory,
@@ -79,9 +79,15 @@ const TransactionFilters: React.FC<TransactionFiltersProps> = ({
     endDate,
   ]);
 
+  useEffect(() => {
+    if (selectedClass) {
+      setTransactionClass(selectedClass);
+    }
+  }, [selectedClass]);
+
   const handleTransactionClassChange = (newClass: string) => {
     setTransactionClass(newClass);
-    // Reset category when changing transaction class
+
     if (newClass !== "expenses") {
       setSelectedCategory("");
     }
@@ -92,9 +98,8 @@ const TransactionFilters: React.FC<TransactionFiltersProps> = ({
     setCategoryDropdownVisible(false);
   };
 
-  const handleSortByChange = (newSortBy: string) => {
-    setSortBy(newSortBy);
-    setSortByDropdownVisible(false);
+  const handleSortByChange = () => {
+    setSortBy(sortBy === "date" ? "amount" : "date");
   };
 
   const handleSortOrderChange = () => {
@@ -107,7 +112,6 @@ const TransactionFilters: React.FC<TransactionFiltersProps> = ({
     setCustomDateRangeVisible(false);
   };
 
-  // Apply all filters and notify parent
   const applyFilters = () => {
     onFilterChange({
       transactionClass,
@@ -121,7 +125,6 @@ const TransactionFilters: React.FC<TransactionFiltersProps> = ({
     });
   };
 
-  // Preset date ranges
   const applyDatePreset = (preset: string) => {
     const now = new Date();
     let start = new Date();
@@ -157,7 +160,6 @@ const TransactionFilters: React.FC<TransactionFiltersProps> = ({
     setDateRangeDropdownVisible(false);
   };
 
-  // Format date range for display
   const formatDateRange = () => {
     const formatDate = (date: Date) => {
       return date.toLocaleDateString("en-US", {
@@ -165,137 +167,160 @@ const TransactionFilters: React.FC<TransactionFiltersProps> = ({
         day: "numeric",
       });
     };
-    
+
     return `${formatDate(startDate)} - ${formatDate(endDate)}`;
   };
 
   return (
-    <View style={styles.container}>
-      {/* Transaction Class Buttons */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.classButtonsContainer}
-      >
-        {transactionClasses.map((item) => (
+    <Animated.View entering={FadeIn} style={styles.container}>
+      <Text style={styles.filterTitle}>Filter Transactions</Text>
+
+      {/* Transaction Type Filters */}
+      <View style={styles.filtersRow}>
+        {filters.map((filter) => (
           <TouchableOpacity
-            key={item.id}
+            key={filter.key}
             style={[
-              styles.classButton,
-              transactionClass === item.id && styles.activeClassButton,
+              styles.filterButton,
+              transactionClass === filter.key && styles.selectedFilterButton,
             ]}
-            onPress={() => handleTransactionClassChange(item.id)}
+            onPress={() => handleTransactionClassChange(filter.key)}
           >
-            <Ionicons
-              name={item.icon}
-              size={20}
-              color={
-                transactionClass === item.id ? colors.background : colors.text
-              }
+            <Feather
+              name={filter.icon}
+              size={16}
+              color={transactionClass === filter.key ? "#FFF" : colors.text}
             />
             <Text
               style={[
-                styles.classButtonText,
-                transactionClass === item.id && styles.activeClassButtonText,
+                styles.filterText,
+                transactionClass === filter.key && styles.selectedFilterText,
               ]}
             >
-              {item.label}
+              {filter.label}
             </Text>
           </TouchableOpacity>
         ))}
-      </ScrollView>
+      </View>
 
-      {/* Horizontal Filters Bar */}
-      <View style={styles.filtersBar}>
-        {/* Sort By Dropdown */}
-        <View style={[styles.filterGroup, { zIndex: 4 }]}>
+      {/* Sort and Filter Controls */}
+      <View style={styles.controlsContainer}>
+        {/* Sort Controls */}
+        <View style={styles.sortControlsRow}>
           <TouchableOpacity
-            style={styles.dropdownButton}
-            onPress={() => {
-              setSortByDropdownVisible(!sortByDropdownVisible);
-              setCategoryDropdownVisible(false);
-              setDateRangeDropdownVisible(false);
-            }}
+            style={styles.sortButton}
+            onPress={handleSortByChange}
           >
-            <Text style={styles.dropdownButtonLabel}>Sort: {sortBy === "date" ? "Date" : "Amount"}</Text>
-            <Ionicons
-              name={sortByDropdownVisible ? "chevron-up" : "chevron-down"}
-              size={16}
-              color={colors.text}
-            />
+            <Feather name="bar-chart-2" size={14} color={colors.text} />
+            <Text style={styles.sortButtonText}>
+              Sort: {sortBy === "date" ? "Date" : "Amount"}
+            </Text>
           </TouchableOpacity>
-          
-          {sortByDropdownVisible && (
-            <View style={styles.dropdownMenu}>
-              <TouchableOpacity
-                style={[styles.dropdownItem, sortBy === "date" && styles.activeDropdownItem]}
-                onPress={() => handleSortByChange("date")}
-              >
-                <Text style={[styles.dropdownItemText, sortBy === "date" && styles.activeDropdownItemText]}>Date</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.dropdownItem, sortBy === "amount" && styles.activeDropdownItem]}
-                onPress={() => handleSortByChange("amount")}
-              >
-                <Text style={[styles.dropdownItemText, sortBy === "amount" && styles.activeDropdownItemText]}>Amount</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-          
-          {/* Sort Order Button */}
+
           <TouchableOpacity
             style={styles.sortOrderButton}
             onPress={handleSortOrderChange}
           >
-            <Ionicons
-              name={
-                sortOrder === "asc"
-                  ? "arrow-up-outline"
-                  : "arrow-down-outline"
-              }
-              size={20}
+            <Feather
+              name={sortOrder === "asc" ? "arrow-up" : "arrow-down"}
+              size={14}
               color={colors.text}
             />
           </TouchableOpacity>
-        </View>
 
-        {/* Category Dropdown - Only for Expenses */}
-        {transactionClass === "expenses" && categories.length > 0 && (
-          <View style={[styles.filterGroup, { zIndex: 3 }]}>
+          {/* Date Range Selector */}
+          <View style={styles.dateRangeContainer}>
             <TouchableOpacity
-              style={styles.dropdownButton}
+              style={styles.dateRangeButton}
               onPress={() => {
-                setCategoryDropdownVisible(!categoryDropdownVisible);
-                setSortByDropdownVisible(false);
-                setDateRangeDropdownVisible(false);
+                setDateRangeDropdownVisible(!dateRangeDropdownVisible);
+                setCategoryDropdownVisible(false);
               }}
             >
-              <Text style={styles.dropdownButtonLabel}>
-                Category: {selectedCategory || "All"}
+              <Feather name="calendar" size={14} color={colors.text} />
+              <Text style={styles.dateRangeText} numberOfLines={1}>
+                {formatDateRange()}
               </Text>
-              <Ionicons
-                name={categoryDropdownVisible ? "chevron-up" : "chevron-down"}
-                size={16}
+              <Feather
+                name={dateRangeDropdownVisible ? "chevron-up" : "chevron-down"}
+                size={14}
                 color={colors.text}
               />
             </TouchableOpacity>
-            
+
+            {dateRangeDropdownVisible && (
+              <View style={styles.dropdownMenu}>
+                {dateRangePresets.map((preset) => (
+                  <TouchableOpacity
+                    key={preset.id}
+                    style={styles.dropdownItem}
+                    onPress={() => applyDatePreset(preset.id)}
+                  >
+                    <Text style={styles.dropdownItemText}>{preset.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* Category Filter - Only for Expenses */}
+        {transactionClass === "expenses" && categories.length > 0 && (
+          <View style={styles.categoryContainer}>
+            <TouchableOpacity
+              style={styles.categoryButton}
+              onPress={() => {
+                setCategoryDropdownVisible(!categoryDropdownVisible);
+                setDateRangeDropdownVisible(false);
+              }}
+            >
+              <Feather name="tag" size={14} color={colors.text} />
+              <Text style={styles.categoryButtonText}>
+                Category: {selectedCategory || "All"}
+              </Text>
+              <Feather
+                name={categoryDropdownVisible ? "chevron-up" : "chevron-down"}
+                size={14}
+                color={colors.text}
+              />
+            </TouchableOpacity>
+
             {categoryDropdownVisible && (
-              <View style={[styles.dropdownMenu, styles.categoryDropdownMenu]}>
+              <View style={styles.categoryDropdownMenu}>
                 <ScrollView style={{ maxHeight: 200 }}>
                   <TouchableOpacity
-                    style={[styles.dropdownItem, !selectedCategory && styles.activeDropdownItem]}
+                    style={[
+                      styles.dropdownItem,
+                      !selectedCategory && styles.activeDropdownItem,
+                    ]}
                     onPress={() => handleCategoryChange("")}
                   >
-                    <Text style={[styles.dropdownItemText, !selectedCategory && styles.activeDropdownItemText]}>All Categories</Text>
+                    <Text
+                      style={[
+                        styles.dropdownItemText,
+                        !selectedCategory && styles.activeDropdownItemText,
+                      ]}
+                    >
+                      All Categories
+                    </Text>
                   </TouchableOpacity>
                   {categories.map((category) => (
                     <TouchableOpacity
                       key={category}
-                      style={[styles.dropdownItem, selectedCategory === category && styles.activeDropdownItem]}
+                      style={[
+                        styles.dropdownItem,
+                        selectedCategory === category &&
+                          styles.activeDropdownItem,
+                      ]}
                       onPress={() => handleCategoryChange(category)}
                     >
-                      <Text style={[styles.dropdownItemText, selectedCategory === category && styles.activeDropdownItemText]}>
+                      <Text
+                        style={[
+                          styles.dropdownItemText,
+                          selectedCategory === category &&
+                            styles.activeDropdownItemText,
+                        ]}
+                      >
                         {category}
                       </Text>
                     </TouchableOpacity>
@@ -305,41 +330,6 @@ const TransactionFilters: React.FC<TransactionFiltersProps> = ({
             )}
           </View>
         )}
-
-        {/* Date Range Dropdown */}
-        <View style={[styles.filterGroup, { zIndex: 2 }]}>
-          <TouchableOpacity
-            style={[styles.dropdownButton, { minWidth: 140 }]}
-            onPress={() => {
-              setDateRangeDropdownVisible(!dateRangeDropdownVisible);
-              setSortByDropdownVisible(false);
-              setCategoryDropdownVisible(false);
-            }}
-          >
-            <Text style={styles.dropdownButtonLabel} numberOfLines={1}>
-              Date: {formatDateRange()}
-            </Text>
-            <Ionicons
-              name={dateRangeDropdownVisible ? "chevron-up" : "chevron-down"}
-              size={16}
-              color={colors.text}
-            />
-          </TouchableOpacity>
-          
-          {dateRangeDropdownVisible && (
-            <View style={[styles.dropdownMenu, styles.dateRangeDropdownMenu]}>
-              {dateRangePresets.map((preset) => (
-                <TouchableOpacity
-                  key={preset.id}
-                  style={styles.dropdownItem}
-                  onPress={() => applyDatePreset(preset.id)}
-                >
-                  <Text style={styles.dropdownItemText}>{preset.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-        </View>
       </View>
 
       {/* Custom Date Range Modal */}
@@ -358,10 +348,10 @@ const TransactionFilters: React.FC<TransactionFiltersProps> = ({
                   onPress={() => setCustomDateRangeVisible(false)}
                   style={styles.closeButton}
                 >
-                  <Ionicons name="close" size={24} color={colors.text} />
+                  <Feather name="x" size={24} color={colors.text} />
                 </TouchableOpacity>
               </View>
-              
+
               <View style={styles.modalBody}>
                 <DateRangeSelector
                   startDate={startDate}
@@ -373,145 +363,184 @@ const TransactionFilters: React.FC<TransactionFiltersProps> = ({
           </View>
         </Modal>
       )}
-    </View>
+    </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: 12,
+    width: "100%",
+    backgroundColor: "transparent",
     marginBottom: 16,
-    backgroundColor: colors.backgroundLight,
-    // Remove overflow: "hidden" to allow dropdowns to appear outside container
   },
-  classButtonsContainer: {
+  filterTitle: {
+    fontSize: 14,
+    color: colors.text,
+    marginBottom: 12,
+    fontWeight: "500",
+  },
+  filtersRow: {
     flexDirection: "row",
-    padding: 16,
-    paddingBottom: 12,
+    justifyContent: "space-between",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 12,
   },
-  classButton: {
+  filterButton: {
     flexDirection: "row",
     alignItems: "center",
     paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     borderRadius: 20,
-    marginRight: 12,
-    backgroundColor: colors.background,
-    borderWidth:  1,
-    borderColor: colors.primary[300],
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    minWidth: 90,
+    justifyContent: "center",
   },
-  activeClassButton: {
+  selectedFilterButton: {
     backgroundColor: colors.primary[500],
-    borderColor: colors.primary[500],
   },
-  classButtonText: {
+  filterText: {
     color: colors.text,
     marginLeft: 6,
-    fontFamily: "Montserrat",
+    fontSize: 12,
     fontWeight: "500",
   },
-  activeClassButtonText: {
-    color: colors.background,
+  selectedFilterText: {
+    color: "#FFFFFF",
   },
-  filtersBar: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+  controlsContainer: {
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    borderRadius: 12,
     padding: 12,
-    borderTopWidth: 1,
-    borderTopColor: colors.primary[200],
-    zIndex: 1,
   },
-  filterGroup: {
-    position: "relative",
+  sortControlsRow: {
     flexDirection: "row",
     alignItems: "center",
-    zIndex: 2,
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 8,
   },
-  dropdownButton: {
+  sortButton: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
     paddingVertical: 6,
     paddingHorizontal: 10,
-    borderRadius: 8,
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.primary[300],
-    minWidth: 110,
+    borderRadius: 16,
+    gap: 4,
   },
-  dropdownButtonLabel: {
+  sortButtonText: {
     color: colors.text,
-    fontFamily: "Montserrat",
-    fontWeight: "500",
     fontSize: 12,
-    marginRight: 4,
+    fontWeight: "500",
   },
   sortOrderButton: {
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
     padding: 6,
-    borderRadius: 8,
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.primary[300],
-    marginLeft: 6,
+    borderRadius: 16,
+    width: 28,
+    height: 28,
     alignItems: "center",
     justifyContent: "center",
-    width: 32,
-    height: 32,
+  },
+  dateRangeContainer: {
+    position: "relative",
+    flex: 1,
+    zIndex: 2,
+  },
+  dateRangeButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 16,
+    gap: 4,
+    flex: 1,
+  },
+  dateRangeText: {
+    color: colors.text,
+    fontSize: 12,
+    fontWeight: "500",
+    flex: 1,
+  },
+  categoryContainer: {
+    position: "relative",
+    zIndex: 1,
+  },
+  categoryButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 16,
+    gap: 4,
+  },
+  categoryButtonText: {
+    color: colors.text,
+    fontSize: 12,
+    fontWeight: "500",
+    flex: 1,
   },
   dropdownMenu: {
     position: "absolute",
-    top: 38,
-    left: 0,
-    backgroundColor: colors.background,
+    top: 34,
+    right: 0,
+    backgroundColor: colors.backgroundLight,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: colors.primary[300],
+    borderColor: "rgba(255, 255, 255, 0.1)",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.25,
     shadowRadius: 4,
-    elevation: 3,
+    elevation: 5,
+    width: 160,
     zIndex: 1000,
-    minWidth: "100%",
-    width: 160, // Fixed width
-    overflow: "visible",
   },
   categoryDropdownMenu: {
+    position: "absolute",
+    top: 34,
+    left: 0,
+    backgroundColor: colors.backgroundLight,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.1)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
     width: 200,
-  },
-  dateRangeDropdownMenu: {
-    right: 0,
-    left: undefined,
-    width: 160,
+    zIndex: 1000,
   },
   dropdownItem: {
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderBottomWidth: 1,
-    borderBottomColor: colors.primary[200],
+    borderBottomColor: "rgba(255, 255, 255, 0.05)",
   },
   activeDropdownItem: {
-    backgroundColor: colors.primary[100],
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
   },
   dropdownItemText: {
     color: colors.text,
-    fontFamily: "Montserrat",
+    fontSize: 12,
     fontWeight: "400",
-    fontSize: 14,
   },
   activeDropdownItemText: {
     fontWeight: "600",
-    color: colors.primary[700],
+    color: colors.primary[300],
   },
   modalContainer: {
     flex: 1,
     justifyContent: "center",
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
     paddingHorizontal: 20,
   },
   modalContent: {
-    backgroundColor: colors.background,
+    backgroundColor: colors.backgroundLight,
     borderRadius: 16,
     overflow: "hidden",
   },
@@ -521,13 +550,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: colors.primary[200],
+    borderBottomColor: "rgba(255, 255, 255, 0.1)",
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: "600",
     color: colors.text,
-    fontFamily: "Montserrat",
   },
   closeButton: {
     padding: 4,

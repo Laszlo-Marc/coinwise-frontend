@@ -1,13 +1,17 @@
+// TransactionItem.jsx - Improved component
 import { TransactionModel } from "@/models/transaction";
-import { StyleSheet, Text, View } from "react-native";
+import { Feather } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import Animated, { FadeIn } from "react-native-reanimated";
 
 type Props = {
   transaction: TransactionModel;
 };
 
 export default function TransactionItem({ transaction }: Props) {
-  const { id, description, amount, date, type } = transaction;
-
+  const { id, description, amount, date, type, category } = transaction;
+  const router = useRouter();
   // Format amount with currency
   const getCurrencySymbol = () => {
     if (type === "expense" && "currency" in transaction) {
@@ -22,7 +26,7 @@ export default function TransactionItem({ transaction }: Props) {
           return "RON";
       }
     }
-    return "$"; // Default currency symbol
+    return "$";
   };
 
   const formattedAmount =
@@ -30,79 +34,117 @@ export default function TransactionItem({ transaction }: Props) {
       ? `-${getCurrencySymbol()}${amount.toFixed(2)}`
       : `+${getCurrencySymbol()}${amount.toFixed(2)}`;
 
-  // Format date from ISO string
   const formatDate = (dateString: string | Date | undefined) => {
     if (!dateString) return "";
 
     try {
-      // Handle both Date objects and ISO strings
       const dateObj =
         typeof dateString === "string" ? new Date(dateString) : dateString;
 
-      return dateObj.toLocaleDateString();
+      return dateObj.toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
     } catch (error) {
       console.error("Error formatting date:", error);
       return "";
     }
   };
 
-  const getSubtitle = () => {
-    const formattedDate = formatDate(date);
+  const displayDescription = description || "No description";
 
-    switch (type) {
-      case "expense":
-        // Use optional chaining to safely access expense-specific fields
-        return `Merchant: ${
-          transaction.merchant || "Unknown"
-        } • ${formattedDate}`;
-      case "income":
-        return `Income • ${formattedDate}`;
-      case "transfer":
-        // Use optional chaining to safely access transfer-specific fields
-        const sender = transaction.sender || "Unknown";
-        const receiver = transaction.receiver || "Unknown";
-        return `From: ${sender} → To: ${receiver} • ${formattedDate}`;
-      case "deposit":
-        return `Deposit • ${formattedDate}`;
-      default:
-        return formattedDate;
+  const getIcon = () => {
+    if (type === "expense") {
+      if (category) {
+        switch (category.toLowerCase()) {
+          case "food":
+            return "coffee";
+          case "groceries":
+            return "shopping-cart";
+          case "transportation":
+            return "truck";
+          case "entertainment":
+            return "tv";
+          case "bills":
+            return "file-text";
+          case "health":
+            return "heart";
+          case "travel":
+            return "map";
+          default:
+            return "credit-card";
+        }
+      }
+      return "arrow-down";
+    } else if (type === "income") {
+      return "arrow-up";
+    } else if (type === "transfer") {
+      return "refresh-cw";
+    } else {
+      return "dollar-sign";
     }
   };
 
-  // Handle potentially undefined description
-  const displayDescription = description || "No description";
-
   return (
-    <View style={styles.container}>
-      <View style={styles.textContainer}>
-        <Text style={styles.title}>{displayDescription}</Text>
-        <Text style={styles.subtitle}>{getSubtitle()}</Text>
-      </View>
-      <Text
-        style={[
-          styles.amount,
-          {
-            color:
-              type === "income" || type === "deposit" ? "#4CAF50" : "#F44336",
-          },
-        ]}
-      >
-        {formattedAmount}
-      </Text>
-    </View>
+    <TouchableOpacity onPress={() => router.replace(`./transaction/${id}`)}>
+      <Animated.View entering={FadeIn} style={styles.container}>
+        <View style={styles.iconContainer}>
+          <Feather
+            name={getIcon()}
+            size={22}
+            color={
+              type === "expense" || type === "transfer" ? "#F44336" : "#4CAF50"
+            }
+          />
+        </View>
+
+        <View style={styles.textContainer}>
+          <Text style={styles.title} numberOfLines={1}>
+            {displayDescription}
+          </Text>
+          <Text style={styles.subtitle}>{formatDate(date)}</Text>
+        </View>
+
+        <Text
+          style={[
+            styles.amount,
+            {
+              color:
+                type === "income" || type === "deposit" ? "#4CAF50" : "#F44336",
+            },
+          ]}
+        >
+          {formattedAmount}
+        </Text>
+      </Animated.View>
+    </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     backgroundColor: "#121212",
-    padding: 16,
-    borderRadius: 10,
+    padding: 20,
+    borderRadius: 12,
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
     marginHorizontal: 16,
     marginBottom: 10,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.22,
+    shadowRadius: 2.22,
+  },
+  iconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
   },
   textContainer: {
     flex: 1,
@@ -111,7 +153,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 16,
     color: "#FFFFFF",
-    fontWeight: "bold",
+    fontWeight: "600",
     fontFamily: "Montserrat",
   },
   subtitle: {

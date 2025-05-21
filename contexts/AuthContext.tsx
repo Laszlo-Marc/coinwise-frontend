@@ -95,8 +95,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         ...prev,
         userToken: accessToken,
       }));
-      console.log("Stored token:", accessToken);
-      console.log("Token used in request:", userTokenRef.current);
     } catch (error) {
       console.error("Error storing tokens:", error);
     }
@@ -155,7 +153,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
 
     const expiry = getTokenExpiry(token);
-    console.log("Token expiry time:", expiry / 1000);
+
     const currentTime = Date.now();
     const timeUntilRefresh = expiry - currentTime - 5 * 60 * 1000;
     if (timeUntilRefresh > 0) {

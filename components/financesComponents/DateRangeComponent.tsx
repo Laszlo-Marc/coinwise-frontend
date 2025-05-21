@@ -21,14 +21,17 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
   endDate,
   onDateChange,
 }) => {
-  const [localStartDate, setLocalStartDate] = useState(startDate);
-  const [localEndDate, setLocalEndDate] = useState(endDate);
+  const [tempStartDate, setTempStartDate] = useState(startDate);
+  const [tempEndDate, setTempEndDate] = useState(endDate);
+
   const [datePickerVisible, setDatePickerVisible] = useState(false);
-  const [datePickerMode, setDatePickerMode] = useState<"start" | "end">("start");
+  const [datePickerMode, setDatePickerMode] = useState<"start" | "end">(
+    "start"
+  );
 
   useEffect(() => {
-    setLocalStartDate(startDate);
-    setLocalEndDate(endDate);
+    setTempStartDate(startDate);
+    setTempEndDate(endDate);
   }, [startDate, endDate]);
 
   const openDatePicker = (mode: "start" | "end") => {
@@ -37,22 +40,25 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
   };
 
   const onDateTimeChange = (event: any, selectedDate?: Date) => {
-    if (Platform.OS === "android") {
-      setDatePickerVisible(false);
+    if (!selectedDate) return;
+
+    if (datePickerMode === "start") {
+      setTempStartDate(selectedDate);
+      // Keep end date valid
+      if (selectedDate > tempEndDate) {
+        setTempEndDate(selectedDate);
+      }
+    } else {
+      setTempEndDate(selectedDate);
     }
 
-    if (selectedDate) {
-      if (datePickerMode === "start") {
-        setLocalStartDate(selectedDate);
-        // Ensure end date is not before start date
-        if (selectedDate > localEndDate) {
-          setLocalEndDate(selectedDate);
-        }
-        onDateChange(selectedDate, selectedDate > localEndDate ? selectedDate : localEndDate);
-      } else {
-        setLocalEndDate(selectedDate);
-        onDateChange(localStartDate, selectedDate);
-      }
+    // On Android, commit immediately and close
+    if (Platform.OS === "android") {
+      const newStart =
+        datePickerMode === "start" ? selectedDate : tempStartDate;
+      const newEnd = datePickerMode === "end" ? selectedDate : tempEndDate;
+      onDateChange(newStart, newEnd);
+      setDatePickerVisible(false);
     }
   };
 
@@ -76,7 +82,7 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
           onPress={() => openDatePicker("start")}
         >
           <Text style={styles.dateButtonLabel}>From</Text>
-          <Text style={styles.dateButtonText}>{formatDate(localStartDate)}</Text>
+          <Text style={styles.dateButtonText}>{formatDate(tempStartDate)}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -84,7 +90,7 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
           onPress={() => openDatePicker("end")}
         >
           <Text style={styles.dateButtonLabel}>To</Text>
-          <Text style={styles.dateButtonText}>{formatDate(localEndDate)}</Text>
+          <Text style={styles.dateButtonText}>{formatDate(tempEndDate)}</Text>
         </TouchableOpacity>
       </View>
 
@@ -102,7 +108,10 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
                   Select {datePickerMode === "start" ? "Start" : "End"} Date
                 </Text>
                 <TouchableOpacity
-                  onPress={hideDatePicker}
+                  onPress={() => {
+                    onDateChange(tempStartDate, tempEndDate);
+                    hideDatePicker();
+                  }}
                   style={styles.doneButton}
                 >
                   <Text style={styles.doneButtonText}>Done</Text>
@@ -110,12 +119,14 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
               </View>
 
               <DateTimePicker
-                value={datePickerMode === "start" ? localStartDate : localEndDate}
+                value={datePickerMode === "start" ? tempStartDate : tempEndDate}
                 mode="date"
                 display="spinner"
                 onChange={onDateTimeChange}
                 maximumDate={new Date()}
-                minimumDate={datePickerMode === "end" ? localStartDate : undefined}
+                minimumDate={
+                  datePickerMode === "end" ? tempStartDate : undefined
+                }
                 style={styles.datePicker}
               />
             </View>
@@ -125,12 +136,12 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
 
       {Platform.OS === "android" && datePickerVisible && (
         <DateTimePicker
-          value={datePickerMode === "start" ? localStartDate : localEndDate}
+          value={datePickerMode === "start" ? tempStartDate : tempEndDate}
           mode="date"
           display="default"
           onChange={onDateTimeChange}
           maximumDate={new Date()}
-          minimumDate={datePickerMode === "end" ? localStartDate : undefined}
+          minimumDate={datePickerMode === "end" ? tempStartDate : undefined}
         />
       )}
     </>

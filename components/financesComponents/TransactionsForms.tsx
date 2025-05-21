@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   KeyboardAvoidingView,
   Modal,
@@ -14,11 +14,11 @@ import {
 } from "react-native";
 import { colors } from "../../constants/colors";
 
-// Define proper type interfaces for form data
 interface BaseFormData {
   date: Date;
   amount: string;
   description: string;
+  type?: string;
 }
 
 interface ExpenseFormData extends BaseFormData {
@@ -32,16 +32,16 @@ interface TransferFormData extends BaseFormData {
   receiver: string;
 }
 
-// Union type for all form data types
 type FormDataType = BaseFormData | ExpenseFormData | TransferFormData;
 
-// Base Transaction Form Component
 interface TransactionFormProps {
   visible: boolean;
   onClose: () => void;
   onSubmit: (data: { [key: string]: any }) => void;
   transactionType: "expense" | "transfer" | "income" | "deposit";
   categories?: string[];
+  initialData?: any; // Changed type to any to accommodate TransactionModel
+  isEditing?: boolean; // New prop to distinguish between add and edit modes
 }
 
 export const TransactionForm: React.FC<TransactionFormProps> = ({
@@ -50,16 +50,16 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   onSubmit,
   transactionType,
   categories = [],
+  initialData,
+  isEditing = false, // Default to add mode
 }) => {
   const getInitialFormData = (): FormDataType => {
-    // Default fields for all transaction types
     const baseData: BaseFormData = {
       date: new Date(),
       amount: "",
       description: "",
     };
 
-    // Add type-specific fields
     switch (transactionType) {
       case "expense":
         return {
@@ -81,7 +81,32 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     }
   };
 
-  const [formData, setFormData] = useState<FormDataType>(getInitialFormData());
+  // Initialize form data based on whether we're editing or adding
+  const [formData, setFormData] = useState<FormDataType>(() => {
+    if (initialData) {
+      // Process initial data for editing mode
+      return {
+        ...initialData,
+        date: initialData.date ? new Date(initialData.date) : new Date(),
+        amount: initialData.amount ? initialData.amount.toString() : "",
+      };
+    }
+    return getInitialFormData();
+  });
+
+  // Update form data when initialData changes
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        ...initialData,
+        date: initialData.date ? new Date(initialData.date) : new Date(),
+        amount: initialData.amount ? initialData.amount.toString() : "",
+      });
+    } else {
+      setFormData(getInitialFormData());
+    }
+  }, [initialData, transactionType]);
+
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
@@ -108,33 +133,32 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   };
 
   const onDateChange = (event: any, selectedDate?: Date) => {
-    // Close the date picker on Android
     if (Platform.OS === "android") {
       setShowDatePicker(false);
     }
 
-    // Update the date if a date was selected
     if (selectedDate) {
       handleDateChange(selectedDate);
     }
   };
 
   const getTitle = () => {
+    const action = isEditing ? "Edit" : "Add";
+
     switch (transactionType) {
       case "expense":
-        return "Add Expense";
+        return `${action} Expense`;
       case "transfer":
-        return "Add Transfer";
+        return `${action} Transfer`;
       case "income":
-        return "Add Income";
+        return `${action} Income`;
       case "deposit":
-        return "Add Deposit";
+        return `${action} Deposit`;
       default:
-        return "Add Transaction";
+        return `${action} Transaction`;
     }
   };
 
-  // Type guards to safely access form data properties
   const isExpenseForm = (data: FormDataType): data is ExpenseFormData => {
     return transactionType === "expense";
   };
@@ -143,13 +167,11 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     return transactionType === "transfer";
   };
 
-  // Format date for display
   const formatDate = (date: Date): string => {
     // Format as YYYY-MM-DD
     return date.toISOString().split("T")[0];
   };
 
-  // Render specific fields based on transaction type
   const renderSpecificFields = () => {
     if (isExpenseForm(formData)) {
       return (
@@ -346,7 +368,9 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               style={styles.submitButton}
               onPress={handleSubmit}
             >
-              <Text style={styles.submitButtonText}>Save Transaction</Text>
+              <Text style={styles.submitButtonText}>
+                {isEditing ? "Update" : "Save"} Transaction
+              </Text>
             </TouchableOpacity>
           </ScrollView>
 
@@ -390,11 +414,11 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   );
 };
 
-// Wrapper components for each transaction type
 interface ExpenseFormProps {
   visible: boolean;
   onClose: () => void;
   onSubmit: (data: { [key: string]: any }) => void;
+  initialData?: any;
   categories?: string[];
 }
 
@@ -402,14 +426,19 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
   visible,
   onClose,
   onSubmit,
+  initialData,
   categories,
 }) => {
+  const isEditing = !!initialData;
+
   return (
     <TransactionForm
       visible={visible}
       onClose={onClose}
       onSubmit={onSubmit}
       transactionType="expense"
+      initialData={initialData}
+      isEditing={isEditing}
       categories={
         categories || [
           "Groceries",
@@ -432,19 +461,25 @@ interface TransferFormProps {
   visible: boolean;
   onClose: () => void;
   onSubmit: (data: { [key: string]: any }) => void;
+  initialData?: any;
 }
 
 export const TransferForm: React.FC<TransferFormProps> = ({
   visible,
   onClose,
   onSubmit,
+  initialData,
 }) => {
+  const isEditing = !!initialData;
+
   return (
     <TransactionForm
       visible={visible}
       onClose={onClose}
       onSubmit={onSubmit}
       transactionType="transfer"
+      initialData={initialData}
+      isEditing={isEditing}
     />
   );
 };
@@ -453,19 +488,25 @@ interface IncomeFormProps {
   visible: boolean;
   onClose: () => void;
   onSubmit: (data: { [key: string]: any }) => void;
+  initialData?: any;
 }
 
 export const IncomeForm: React.FC<IncomeFormProps> = ({
   visible,
   onClose,
   onSubmit,
+  initialData,
 }) => {
+  const isEditing = !!initialData;
+
   return (
     <TransactionForm
       visible={visible}
       onClose={onClose}
       onSubmit={onSubmit}
       transactionType="income"
+      initialData={initialData}
+      isEditing={isEditing}
     />
   );
 };
@@ -474,19 +515,25 @@ interface DepositFormProps {
   visible: boolean;
   onClose: () => void;
   onSubmit: (data: { [key: string]: any }) => void;
+  initialData?: any;
 }
 
 export const DepositForm: React.FC<DepositFormProps> = ({
   visible,
   onClose,
   onSubmit,
+  initialData,
 }) => {
+  const isEditing = !!initialData;
+
   return (
     <TransactionForm
       visible={visible}
       onClose={onClose}
       onSubmit={onSubmit}
       transactionType="deposit"
+      initialData={initialData}
+      isEditing={isEditing}
     />
   );
 };
@@ -576,7 +623,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: "Montserrat",
   },
-  // New dropdown styles
+  // Dropdown styles
   dropdownButton: {
     flexDirection: "row",
     justifyContent: "space-between",

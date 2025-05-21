@@ -32,6 +32,7 @@ export default function HomePage() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { state } = useAuth();
+
   const [isFocused, setIsFocused] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [focusAnim] = useState(new Animated.Value(0));

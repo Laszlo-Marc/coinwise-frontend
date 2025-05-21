@@ -1,25 +1,20 @@
 import axios from "axios";
 import * as SecureStore from "expo-secure-store";
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import React, { createContext, useContext, useMemo, useState } from "react";
 import { PaginatedResponse, TransactionModel } from "../models/transaction";
 
 interface TransactionContextType {
   transactions: TransactionModel[];
   isLoading: boolean;
+  isLoadingMore: boolean; // Added for pagination loading state
   error: string | null;
   currentPage: number;
   totalPages: number;
   hasMore: boolean;
-  loadMore: () => Promise<void>;
+  loadMore: (transactionClass?: string) => Promise<void>; // Updated to accept filter type
   refreshTransactions: () => Promise<void>;
   addTransaction: (transaction: TransactionModel) => Promise<void>;
-  fetchTransactions: (page?: number) => Promise<void>;
+  fetchTransactions: (page?: number, filter?: string) => Promise<void>; // Updated to accept filter
   uploadBankStatement: (file: FormData) => Promise<any>;
   deleteTransaction: (id: string) => Promise<void>;
   updateTransaction: (
@@ -40,26 +35,55 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const [transactions, setTransactions] = useState<TransactionModel[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [currentFilter, setCurrentFilter] = useState<string | undefined>();
 
-  const pageSize = 20;
+  const pageSize = 50;
   const hasMore = currentPage < totalPages;
 
   const handleApiError = (error: any) => {
     console.error("API Error:", error);
     setError("Something went wrong. Please try again.");
   };
-  useEffect(() => {
-    fetchTransactions();
-  }, []);
-  const fetchTransactions = async (page: number = 1): Promise<void> => {
-    setIsLoading(true);
+
+  const fetchTransactions = async (
+    page: number = 1,
+    filter?: string
+  ): Promise<void> => {
+    if (page === 1) {
+      setIsLoading(true);
+    } else {
+      setIsLoadingMore(true);
+    }
+
     setError(null);
 
     try {
       const token = await SecureStore.getItem("auth_token");
+
+      // Add filter to API request if provided
+      const params: Record<string, any> = {
+        page,
+        page_size: pageSize,
+      };
+
+      // Apply filter if provided
+      if (filter) {
+        params.type =
+          filter === "expenses"
+            ? "expense"
+            : filter === "incomes"
+            ? "income"
+            : filter === "transfers"
+            ? "transfer"
+            : filter === "deposits"
+            ? "deposit"
+            : undefined;
+      }
+
       const response = await axios.get<PaginatedResponse>(
         `${TRANSACTIONS_API_URL}/`,
         {
@@ -67,7 +91,7 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
-          params: { page, page_size: pageSize },
+          params,
         }
       );
 
@@ -81,10 +105,20 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({
 
       setCurrentPage(returnedPage);
       setTotalPages(total_pages);
+
+      // Save the current filter
+      if (filter) {
+        setCurrentFilter(filter);
+      }
     } catch (e) {
       handleApiError(e);
     } finally {
-      setIsLoading(false);
+      // Reset loading states based on which operation completed
+      if (page === 1) {
+        setIsLoading(false);
+      } else {
+        setIsLoadingMore(false);
+      }
     }
   };
 
@@ -118,7 +152,7 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const updateTransaction = async (
-    id: string,
+    id: string ,
     updates: Partial<TransactionModel>
   ): Promise<void> => {
     try {
@@ -179,16 +213,14 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const refreshTransactions = async () => {
-    console.log("Refreshing transactions...");
-    console.log("Current page before refresh:", currentPage);
-    console.log(hasMore);
     setCurrentPage(1);
-    await fetchTransactions(1);
+    await fetchTransactions(1, currentFilter);
   };
 
-  const loadMore = async () => {
-    if (hasMore) {
-      await fetchTransactions(currentPage + 1);
+  const loadMore = async (transactionClass?: string) => {
+    if (hasMore && !isLoadingMore) {
+      const filterToUse = transactionClass || currentFilter;
+      await fetchTransactions(currentPage + 1, filterToUse);
     }
   };
 
@@ -196,6 +228,7 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({
     () => ({
       transactions,
       isLoading,
+      isLoadingMore, // Include in the context value
       error,
       currentPage,
       totalPages,
@@ -208,7 +241,16 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({
       updateTransaction,
       uploadBankStatement,
     }),
-    [transactions, isLoading, error, currentPage, totalPages]
+    [
+      transactions,
+      isLoading,
+      isLoadingMore, // Include in the dependency array
+      error,
+      currentPage,
+      totalPages,
+      hasMore,
+      currentFilter, // Add as dependency
+    ]
   );
 
   return (

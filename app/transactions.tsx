@@ -1,6 +1,5 @@
 import TransactionClassModal from "@/components/financesComponents/TransactionClasssModal";
-import TransactionItem from "@/components/financesComponents/TransactionItem";
-import TransactionFilters from "@/components/financesComponents/TransactionsFilters";
+import { TransactionFilters } from "@/components/financesComponents/TransactionsFilters";
 import {
   DepositForm,
   ExpenseForm,
@@ -10,23 +9,15 @@ import {
 import BottomBar from "@/components/mainComponents/BottomBar";
 import MainSection from "@/components/mainComponents/MainSection";
 
+import { TransactionList } from "@/components/financesComponents/TransactionList";
 import { useTransactionContext } from "@/contexts/AppContext";
 import { TransactionModel } from "@/models/transaction";
 import { AntDesign, Feather } from "@expo/vector-icons";
 import Ionicons from "@expo/vector-icons/build/Ionicons";
 import * as DocumentPicker from "expo-document-picker";
 import { useRouter } from "expo-router";
-import React, { useCallback, useState } from "react";
-import {
-  Alert,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import Animated, { FadeInLeft, FadeInRight } from "react-native-reanimated";
-import { SwipeListView } from "react-native-swipe-list-view";
+import React, { useCallback, useEffect, useState } from "react";
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { colors } from "../constants/colors";
 
 export default function TransactionsListScreen() {
@@ -37,6 +28,8 @@ export default function TransactionsListScreen() {
     deleteTransaction,
     loadMore,
     refreshTransactions,
+    fetchTransactions,
+    updateTransaction,
   } = useTransactionContext();
   const [displayedTransactions, setDisplayedTransactions] = useState<
     TransactionModel[]
@@ -45,13 +38,23 @@ export default function TransactionsListScreen() {
   const [classModalVisible, setClassModalVisible] = useState(false);
   const router = useRouter();
   type TransactionType = "expense" | "income" | "transfer" | "deposit";
-
+  const [selectedTransaction, setSelectedTransaction] =
+    useState<TransactionModel | null>(null);
   const [formType, setFormType] = useState<TransactionType | null>(null);
   const [selectedClass, setSelectedClass] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [isFormVisible, setIsFormVisible] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+
+  useEffect(() => {
+    if (transactions.length > 0) {
+      handleFilterChange({ transactionClass: "expenses" });
+    } else {
+      fetchTransactions();
+    }
+  }, [transactions]);
   const handleDocumentUpload = useCallback(async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
@@ -99,37 +102,86 @@ export default function TransactionsListScreen() {
       );
     }
   }, [uploadBankStatement]);
-
   const handleFilterChange = useCallback(
-    (filters: { transactionClass: string }) => {
-      setSelectedClass(filters.transactionClass); // update selected class
+    (filters: {
+      transactionClass: string;
+      category?: string;
+      sortBy?: string;
+      sortOrder?: "asc" | "desc";
+      startDate?: Date;
+      endDate?: Date;
+    }) => {
+      setSelectedClass(filters.transactionClass);
 
+      // Filter by transaction type first
+      let filteredTransactions = transactions;
+
+      // Filter by transaction class
       switch (filters.transactionClass) {
         case "expenses":
-          setDisplayedTransactions(
-            transactions.filter((t) => t.type === "expense")
+          filteredTransactions = transactions.filter(
+            (t) => t.type === "expense"
           );
           break;
         case "incomes":
-          setDisplayedTransactions(
-            transactions.filter((t) => t.type === "income")
+          filteredTransactions = transactions.filter(
+            (t) => t.type === "income"
           );
           break;
         case "deposits":
-          setDisplayedTransactions(
-            transactions.filter((t) => t.type === "deposit")
+          filteredTransactions = transactions.filter(
+            (t) => t.type === "deposit"
           );
           break;
         case "transfers":
-          setDisplayedTransactions(
-            transactions.filter((t) => t.type === "transfer")
+          filteredTransactions = transactions.filter(
+            (t) => t.type === "transfer"
           );
           break;
+        case "all":
+          filteredTransactions = transactions;
+          break;
         default:
-          setDisplayedTransactions(
-            transactions.filter((t) => t.type === "expense")
+          filteredTransactions = transactions.filter(
+            (t) => t.type === "expense"
           );
       }
+
+      // Filter by category if provided
+      if (filters.category) {
+        filteredTransactions = filteredTransactions.filter(
+          (t) => t.category === filters.category
+        );
+      }
+
+      // Filter by date range if provided
+      if (filters.startDate && filters.endDate) {
+        const startTime = filters.startDate.getTime();
+        const endTime = filters.endDate.getTime();
+
+        filteredTransactions = filteredTransactions.filter((t) => {
+          const transactionDate = new Date(t.date).getTime();
+          return transactionDate >= startTime && transactionDate <= endTime;
+        });
+      }
+
+      // Sort the transactions
+      if (filters.sortBy) {
+        filteredTransactions = [...filteredTransactions].sort((a, b) => {
+          if (filters.sortBy === "date") {
+            const dateA = new Date(a.date).getTime();
+            const dateB = new Date(b.date).getTime();
+            return filters.sortOrder === "asc" ? dateA - dateB : dateB - dateA;
+          } else if (filters.sortBy === "amount") {
+            return filters.sortOrder === "asc"
+              ? a.amount - b.amount
+              : b.amount - a.amount;
+          }
+          return 0;
+        });
+      }
+
+      setDisplayedTransactions(filteredTransactions);
     },
     [transactions]
   );
@@ -138,9 +190,20 @@ export default function TransactionsListScreen() {
     setClassModalVisible(true);
   }, []);
 
-  const handleEditTransaction = useCallback((id: string, type: string) => {},
-  []);
+  const handleEditTransaction = useCallback(
+    (id: string, type: string) => {
+      const transaction = transactions.find((t) => t.id === id);
+      if (!transaction) return;
+      setSelectedTransaction(transaction);
+      setFormType(type as TransactionType);
 
+      setIsFormVisible(true);
+    },
+    [transactions]
+  );
+  const toggleFilters = () => {
+    setShowFilters(!showFilters);
+  };
   const handleDeleteTransaction = useCallback(
     (id: string, type: TransactionType) => {
       Alert.alert(
@@ -169,12 +232,18 @@ export default function TransactionsListScreen() {
 
   const handleSubmitForm = useCallback(
     (formData: any) => {
-      if (formType) {
+      if (!formType) return;
+
+      if (selectedTransaction && selectedTransaction.id) {
+        updateTransaction(selectedTransaction.id, formData);
+      } else {
         addTransaction(formData);
       }
+
       setIsFormVisible(false);
+      setSelectedTransaction(null);
     },
-    [formType, addTransaction]
+    [formType, addTransaction, updateTransaction, selectedTransaction]
   );
 
   const onRefresh = useCallback(() => {
@@ -185,103 +254,26 @@ export default function TransactionsListScreen() {
     }, 3000);
   }, []);
   const renderForm = () => {
+    const commonProps = {
+      visible: isFormVisible,
+      onClose: handleCloseForm,
+      onSubmit: handleSubmitForm,
+      initialData: selectedTransaction,
+    };
+    console.log(selectedTransaction);
     switch (formType) {
       case "expense":
-        return (
-          <ExpenseForm
-            visible={formType === "expense"}
-            onClose={handleCloseForm}
-            onSubmit={handleSubmitForm}
-          />
-        );
+        return <ExpenseForm {...commonProps} />;
       case "income":
-        return (
-          <IncomeForm
-            visible={formType === "income"}
-            onClose={handleCloseForm}
-            onSubmit={handleSubmitForm}
-          />
-        );
+        return <IncomeForm {...commonProps} />;
       case "transfer":
-        return (
-          <TransferForm
-            visible={formType === "transfer"}
-            onClose={handleCloseForm}
-            onSubmit={handleSubmitForm}
-          />
-        );
+        return <TransferForm {...commonProps} />;
       case "deposit":
-        return (
-          <DepositForm
-            visible={formType === "deposit"}
-            onClose={handleCloseForm}
-            onSubmit={handleSubmitForm}
-          />
-        );
+        return <DepositForm {...commonProps} />;
       default:
         return null;
     }
   };
-
-  const renderHiddenItem = useCallback(
-    ({ item }: { item: TransactionModel | undefined }, rowMap: any) => {
-      if (!item || !item.id || !item.type) return null;
-      const itemId = item.id;
-      return (
-        <View style={styles.hiddenContainer}>
-          <Animated.View
-            entering={FadeInLeft}
-            style={[
-              styles.hiddenButton,
-              { backgroundColor: colors.primary[500] },
-            ]}
-          >
-            <TouchableOpacity
-              style={styles.hiddenTouchable}
-              onPress={() => {
-                handleEditTransaction(itemId, item.type);
-                if (rowMap[itemId]) rowMap[itemId].closeRow();
-              }}
-            >
-              <Ionicons name="pencil" size={24} color="#FFF" />
-            </TouchableOpacity>
-          </Animated.View>
-
-          <Animated.View
-            entering={FadeInRight}
-            style={[styles.hiddenButton, { backgroundColor: "#D32F2F" }]}
-          >
-            <TouchableOpacity
-              style={styles.hiddenTouchable}
-              onPress={() => {
-                handleDeleteTransaction(itemId, item.type);
-                if (rowMap[itemId]) rowMap[itemId].closeRow();
-              }}
-            >
-              <Ionicons name="trash" size={24} color="#FFF" />
-            </TouchableOpacity>
-          </Animated.View>
-        </View>
-      );
-    },
-    [handleEditTransaction, handleDeleteTransaction]
-  );
-
-  const renderItem = useCallback(
-    ({ item }: { item: TransactionModel | undefined }) => {
-      if (!item) return null;
-      return <TransactionItem transaction={item} />;
-    },
-    []
-  );
-
-  const renderEmpty = useCallback(() => {
-    return (
-      <View style={styles.emptyContainer}>
-        <Text style={styles.emptyText}>No transactions found</Text>
-      </View>
-    );
-  }, []);
 
   return (
     <View style={styles.container}>
@@ -296,7 +288,7 @@ export default function TransactionsListScreen() {
                 <View style={styles.actionIconContainer}>
                   <AntDesign name="plus" size={24} color={colors.text} />
                 </View>
-                <Text style={styles.actionText}>Add transaction</Text>
+                <Text style={styles.actionText}>Add</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -306,50 +298,37 @@ export default function TransactionsListScreen() {
                 <View style={styles.actionIconContainer}>
                   <Feather name="upload" size={24} color={colors.text} />
                 </View>
-                <Text style={styles.actionText}>Upload Statement</Text>
+                <Text style={styles.actionText}>Upload</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.actionButton}>
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={toggleFilters}
+              >
                 <View style={styles.actionIconContainer}>
-                  <Ionicons
-                    name="trash-outline"
-                    size={24}
-                    color={colors.text}
-                  />
+                  <Ionicons name="filter" size={24} color={colors.text} />
                 </View>
-                <Text style={styles.actionText}>Delete multiple</Text>
+                <Text style={styles.actionText}>Filter</Text>
               </TouchableOpacity>
             </>
           }
         />
 
-        <View style={{ padding: 10 }}>
-          <TransactionFilters onFilterChange={handleFilterChange} />
-        </View>
+        {showFilters && (
+          <View style={styles.filtersContainer}>
+            <TransactionFilters
+              onFilterChange={handleFilterChange}
+              selectedClass={selectedClass}
+            />
+          </View>
+        )}
       </View>
-      {/* Transactions List */}
-      <SwipeListView
-        data={transactions}
-        keyExtractor={(item) => item?.id || ""}
-        renderItem={renderItem}
-        renderHiddenItem={renderHiddenItem}
-        rightOpenValue={-150}
-        leftOpenValue={150}
-        disableRightSwipe={false}
-        disableLeftSwipe={false}
-        showsVerticalScrollIndicator={false}
-        showsHorizontalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={colors.primary[500]}
-          />
-        }
-        contentContainerStyle={{ paddingBottom: 150 }}
-        ListEmptyComponent={renderEmpty}
-        useNativeDriver={true}
-        removeClippedSubviews={true}
+      <TransactionList
+        transactions={displayedTransactions}
+        onEdit={handleEditTransaction}
+        onDelete={handleDeleteTransaction}
+        onRefresh={onRefresh}
+        refreshing={refreshing}
       />
       <TransactionClassModal
         visible={classModalVisible}
@@ -424,6 +403,7 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     alignItems: "center",
+    width: 100,
   },
   actionIconContainer: {
     width: 50,
@@ -437,5 +417,16 @@ const styles = StyleSheet.create({
   actionText: {
     color: colors.text,
     fontSize: 14,
+    textAlign: "center",
+  },
+  filtersContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: colors.backgroundLight,
+    borderRadius: 12,
+    marginHorizontal: 16,
+    marginBottom: 8,
+    marginTop: 10,
+    zIndex: 1,
   },
 });

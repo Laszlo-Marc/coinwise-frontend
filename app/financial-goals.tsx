@@ -193,7 +193,7 @@ const FinancialGoalsScreen = () => {
 
   const handleAddGoal = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.replace("./add-goal");
+    router.replace("./goals/add-goal");
   };
 
   const handleSelectGoal = (goal: {
@@ -210,7 +210,7 @@ const FinancialGoalsScreen = () => {
     progressHistory?: { date: string; amountAdded: number }[];
   }) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.replace(`./goal-details/${goal.id}`);
+    router.replace(`./goals/goal-details/${goal.id}`);
   };
 
   const getProgressColor = (percentage: number) => {
