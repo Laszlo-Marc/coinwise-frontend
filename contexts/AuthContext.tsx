@@ -1,3 +1,4 @@
+import { AuthState, User } from "@/models/auth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 import * as SecureStore from "expo-secure-store";
@@ -17,22 +18,6 @@ const USER_KEY = "user_data";
 
 const API_URL = "http://192.168.1.156:5000/api/auth";
 
-type User = {
-  id: string;
-  email: string;
-  full_name?: string;
-  created_at: string;
-  updated_at?: string;
-};
-
-type AuthState = {
-  isLoading: boolean;
-  isSignout: boolean;
-  userToken: string | null;
-  user: User | null;
-  error: string | null;
-};
-
 type AuthContextType = {
   state: AuthState;
   signIn: (email: string, password: string) => Promise<void>;
@@ -51,6 +36,7 @@ type AuthContextType = {
     newPassword: string
   ) => Promise<void>;
   clearError: () => void;
+  getStoredUserData: () => Promise<User | null>;
 };
 
 type JwtPayload = {
@@ -103,6 +89,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   // Helper to store user data
   const storeUserData = async (user: User) => {
     try {
+      console.log("Storing user data:", user);
       await AsyncStorage.setItem(USER_KEY, JSON.stringify(user));
       setState((prev) => ({
         ...prev,
@@ -113,7 +100,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  // Helper to clear tokens and data
+  const getStoredUserData = async (): Promise<User | null> => {
+    try {
+      const userData = await AsyncStorage.getItem(USER_KEY);
+      return userData ? JSON.parse(userData) : null;
+    } catch (error) {
+      console.error("Error retrieving user data:", error);
+      return null;
+    }
+  };
+
   const clearAuthData = async () => {
     try {
       await Promise.all([
@@ -321,7 +317,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       });
 
       const { access_token, refresh_token, user } = response.data;
-
+      console.log("Sign in response", response.data);
       await storeTokens(access_token, refresh_token);
       await storeUserData(user);
 
@@ -501,6 +497,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     resetPassword,
     updatePassword,
     clearError,
+    getStoredUserData,
   };
 
   return (

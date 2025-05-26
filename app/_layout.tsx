@@ -1,5 +1,7 @@
 import { TransactionProvider } from "@/contexts/AppContext";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { BudgetsProvider } from "@/contexts/BudgetsContext";
+import { GoalsProvider } from "@/contexts/GoalsContext";
 
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
@@ -17,15 +19,19 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AuthProvider>
         <TransactionProvider>
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              freezeOnBlur: true,
-              animation: "fade",
-              gestureEnabled: true,
-              animationDuration: 300,
-            }}
-          />
+          <GoalsProvider>
+            <BudgetsProvider>
+              <Stack
+                screenOptions={{
+                  headerShown: false,
+                  freezeOnBlur: true,
+                  animation: "fade",
+                  gestureEnabled: true,
+                  animationDuration: 300,
+                }}
+              />
+            </BudgetsProvider>
+          </GoalsProvider>
         </TransactionProvider>
       </AuthProvider>
     </GestureHandlerRootView>

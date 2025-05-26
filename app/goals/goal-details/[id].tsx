@@ -1,3 +1,5 @@
+import { useGoals } from "@/contexts/GoalsContext";
+import { GoalModel } from "@/models/goal";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
@@ -15,63 +17,25 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors } from "../../../constants/colors";
 import { calculatePercentage, formatCurrency } from "../../../utils/formatting";
 
-// Types
-type ProgressHistoryItem = {
-  date: string;
-  amountAdded: number;
-};
-
-type Goal = {
-  id: string;
-  title: string;
-  description: string;
-  targetAmount: number;
-  currentAmount: number;
-  startDate: string;
-  targetDate: string;
-  isRecurring: boolean;
-  category: string;
-  status: string;
-  progressHistory: ProgressHistoryItem[];
-};
-
 const GoalDetailsScreen = () => {
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-
-  const [goal, setGoal] = useState<Goal | null>(null);
+  const { goals, contributions } = useGoals();
+  const [goal, setGoal] = useState<GoalModel | null>(null);
   const [progressAnim] = useState(new Animated.Value(0));
 
+  const correspondingContributions = contributions.filter(
+    (c) => c.goal_id === id
+  );
+
   useEffect(() => {
-    const mockGoals: Goal[] = [
-      {
-        id: "g1",
-        title: "Emergency Fund",
-        description: "Build a 6-month emergency fund",
-        targetAmount: 10000,
-        currentAmount: 4500,
-        startDate: "2025-01-01",
-        targetDate: "2025-12-31",
-        isRecurring: false,
-        category: "Savings",
-        status: "active",
-        progressHistory: [
-          { date: "2025-01-15", amountAdded: 1000 },
-          { date: "2025-02-15", amountAdded: 1500 },
-          { date: "2025-03-15", amountAdded: 2000 },
-        ],
-      },
-      // Other mock goals...
-    ];
-
-    const foundGoal = mockGoals.find((g) => g.id === id);
-    setGoal(foundGoal ?? null); // safe fallback
-
+    const foundGoal = goals.find((g) => g.id === id);
+    setGoal(foundGoal ?? null);
     if (foundGoal) {
       const progressPercentage = calculatePercentage(
-        foundGoal.currentAmount,
-        foundGoal.targetAmount
+        foundGoal.current_amount,
+        foundGoal.target_amount
       );
       Animated.timing(progressAnim, {
         toValue: progressPercentage / 100,
@@ -79,7 +43,7 @@ const GoalDetailsScreen = () => {
         useNativeDriver: false,
       }).start();
     }
-  }, [id]);
+  }, [id, goals]);
 
   const getProgressColor = (percentage: number): string => {
     if (percentage < 30) return colors.error;
@@ -89,34 +53,30 @@ const GoalDetailsScreen = () => {
 
   const handleAddContribution = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    router.push(`./goal-details/add-contribution/${goal?.id}`);
+    router.push(`./add-contribution/${goal?.id}`);
   };
 
   const handleEditGoal = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push(`./edit-goal/${goal?.id}`);
+    router.push(`../edit-goal/${goal?.id}`);
   };
 
   if (!goal) return null;
 
   const progressPercentage = calculatePercentage(
-    goal.currentAmount,
-    goal.targetAmount
+    goal.current_amount,
+    goal.target_amount
   );
   const progressColor = getProgressColor(progressPercentage);
 
-  const startDate = new Date(goal.startDate).toLocaleDateString();
-  const targetDate = new Date(goal.targetDate).toLocaleDateString();
+  const startDate = new Date(goal.start_date).toLocaleDateString();
+  const targetDate = new Date(goal.start_date).toLocaleDateString();
 
-  const targetDateObj = new Date(goal.targetDate);
+  const targetDateObj = new Date(goal.start_date);
   const today = new Date();
   const monthsLeft =
     (targetDateObj.getFullYear() - today.getFullYear()) * 12 +
     (targetDateObj.getMonth() - today.getMonth());
-
-  const sortedHistory = [...goal.progressHistory].sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-  );
 
   return (
     <View style={styles.container}>
@@ -128,7 +88,7 @@ const GoalDetailsScreen = () => {
       >
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => router.back()}
+          onPress={() => router.replace("/financial-goals")}
         >
           <Feather name="arrow-left" size={24} color={colors.text} />
         </TouchableOpacity>
@@ -169,21 +129,21 @@ const GoalDetailsScreen = () => {
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Target Amount:</Text>
             <Text style={styles.detailValue}>
-              {formatCurrency(goal.targetAmount)}
+              {formatCurrency(goal.target_amount)}
             </Text>
           </View>
 
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Current Progress:</Text>
             <Text style={styles.detailValue}>
-              {formatCurrency(goal.currentAmount)}
+              {formatCurrency(goal.current_amount)}
             </Text>
           </View>
 
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Remaining:</Text>
             <Text style={styles.detailValue}>
-              {formatCurrency(goal.targetAmount - goal.currentAmount)}
+              {formatCurrency(goal.target_amount - goal.current_amount)}
             </Text>
           </View>
 
@@ -221,18 +181,24 @@ const GoalDetailsScreen = () => {
         <View style={styles.historySection}>
           <Text style={styles.sectionTitle}>Contribution History</Text>
 
-          {sortedHistory.map((contribution, index) => (
-            <View key={index} style={styles.historyItem}>
-              <View>
-                <Text style={styles.historyDate}>
-                  {new Date(contribution.date).toLocaleDateString()}
+          {correspondingContributions.length === 0 ? (
+            <Text style={{ color: colors.textSecondary }}>
+              No contributions yet.
+            </Text>
+          ) : (
+            correspondingContributions.map((contribution, index) => (
+              <View key={index} style={styles.historyItem}>
+                <View>
+                  <Text style={styles.historyDate}>
+                    {new Date(contribution.date).toLocaleDateString()}
+                  </Text>
+                </View>
+                <Text style={styles.historyAmount}>
+                  +{formatCurrency(contribution.amount)}
                 </Text>
               </View>
-              <Text style={styles.historyAmount}>
-                +{formatCurrency(contribution.amountAdded)}
-              </Text>
-            </View>
-          ))}
+            ))
+          )}
         </View>
       </ScrollView>
     </View>

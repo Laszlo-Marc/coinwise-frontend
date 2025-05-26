@@ -1,5 +1,5 @@
 import { colors } from "@/constants/colors";
-import { useTransactions } from "@/contexts/AppContext";
+import { useTransactionContext } from "@/contexts/AppContext";
 
 import * as DocumentPicker from "expo-document-picker";
 import React, { useState } from "react";
@@ -15,7 +15,7 @@ import {
 const DocumentPickerComponent = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState("");
-  const { uploadBankStatement } = useTransactions();
+  const { uploadBankStatement } = useTransactionContext();
 
   const handleDocumentUpload = async () => {
     try {

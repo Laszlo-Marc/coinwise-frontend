@@ -3,6 +3,7 @@ import { TransactionFilters } from "@/components/financesComponents/Transactions
 import ActionBar from "@/components/mainComponents/ActionBar";
 import { colors } from "@/constants/colors";
 import { useTransactionContext } from "@/contexts/AppContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { TransactionModel } from "@/models/transaction";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -26,6 +27,7 @@ export default function Finances() {
     isLoadingMore,
     fetchTransactions,
   } = useTransactionContext();
+  const { getStoredUserData } = useAuth();
   const [selectedClass, setSelectedClass] = useState<string | null>("expenses");
   const [focusAnim] = useState(new Animated.Value(0));
   const router = useRouter();
@@ -47,25 +49,37 @@ export default function Finances() {
 
   useEffect(() => {
     if (transactions.length > 0) {
-      handleFilterChange({ transactionClass: "expenses" });
-      calculateSummary(transactions);
+      (async () => {
+        const currentUser = await getStoredUserData();
+        handleFilterChange({ transactionClass: "expenses" });
+        calculateSummary(transactions, currentUser?.full_name ?? null);
+      })();
     } else {
       fetchTransactions();
     }
   }, [transactions]);
 
-  const calculateSummary = (transactionList: any[]) => {
+  const calculateSummary = (
+    transactionList: any[],
+    currentUser: string | null
+  ) => {
     let totalExpenses = 0;
     let totalIncome = 0;
 
     transactionList.forEach((transaction) => {
-      if (transaction.type === "expense") {
-        totalExpenses += transaction.amount;
-      } else if (
-        transaction.type === "income" ||
-        transaction.type === "deposit"
+      const { type, amount, sender, receiver } = transaction;
+
+      if (
+        type === "expense" ||
+        (type === "transfer" && sender === currentUser)
       ) {
-        totalIncome += transaction.amount;
+        totalExpenses += amount;
+      } else if (
+        type === "income" ||
+        type === "deposit" ||
+        (type === "transfer" && receiver === currentUser)
+      ) {
+        totalIncome += amount;
       }
     });
 

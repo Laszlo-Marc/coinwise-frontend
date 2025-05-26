@@ -3,11 +3,12 @@ import {
   Entypo,
   Feather,
   Ionicons,
+  MaterialIcons,
   SimpleLineIcons,
 } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Animated,
   Keyboard,
@@ -16,7 +17,6 @@ import {
   StatusBar,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   TouchableWithoutFeedback,
   View,
@@ -25,6 +25,13 @@ import "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuth } from "@/contexts/AuthContext";
+
+import { useTransactionContext } from "@/contexts/AppContext";
+import { useBudgets } from "@/contexts/BudgetsContext";
+import { useGoals } from "@/contexts/GoalsContext";
+import { BudgetModel } from "@/models/budget";
+import { GoalModel } from "@/models/goal";
+import { TransactionModel } from "@/models/transaction";
 import BottomBar from "../components/mainComponents/BottomBar";
 import { colors } from "../constants/colors";
 
@@ -32,9 +39,11 @@ export default function HomePage() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { state } = useAuth();
+  const { goals } = useGoals();
+  const { budgets } = useBudgets();
+  const { transactions } = useTransactionContext();
 
   const [isFocused, setIsFocused] = useState(false);
-  const [searchText, setSearchText] = useState("");
   const [focusAnim] = useState(new Animated.Value(0));
 
   useEffect(() => {
@@ -45,6 +54,116 @@ export default function HomePage() {
     };
     checkUser();
   }, [state.userToken, state.user]);
+
+  // Calculate recent transactions
+  const recentTransactions = useMemo(() => {
+    return transactions
+      .sort(
+        (
+          a: { date: string | number | Date },
+          b: { date: string | number | Date }
+        ) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      )
+      .slice(0, 5);
+  }, [transactions]);
+
+  // Calculate summary data
+  const summaryData = useMemo(() => {
+    const now = new Date();
+    const lastMonth = new Date(
+      now.getFullYear(),
+      now.getMonth() - 1,
+      now.getDate()
+    );
+    const last3Months = new Date(
+      now.getFullYear(),
+      now.getMonth() - 3,
+      now.getDate()
+    );
+
+    const calculateTotals = (startDate: Date | null = null) => {
+      const filteredTransactions = startDate
+        ? transactions.filter(
+            (t: { date: string | number | Date }) =>
+              new Date(t.date) >= startDate
+          )
+        : transactions;
+
+      const income = filteredTransactions
+        .filter((t: { type: string }) => t.type === "income")
+        .reduce((sum: any, t: { amount: any }) => sum + t.amount, 0);
+
+      const expenses = filteredTransactions
+        .filter((t: { type: string }) => t.type === "expense")
+        .reduce((sum: any, t: { amount: any }) => sum + t.amount, 0);
+
+      return { income, expenses };
+    };
+
+    return {
+      allTime: calculateTotals(),
+      lastMonth: calculateTotals(lastMonth),
+      last3Months: calculateTotals(last3Months),
+    };
+  }, [transactions]);
+
+  // Calculate balance
+  const currentBalance = useMemo(() => {
+    return transactions.reduce(
+      (balance: number, transaction: { type: string; amount: number }) => {
+        return transaction.type === "income"
+          ? balance + transaction.amount
+          : balance - transaction.amount;
+      },
+      0
+    );
+  }, [transactions]);
+
+  // Get closest goals to achievement
+  const closestGoals = useMemo(() => {
+    return goals
+      .filter((goal: GoalModel) => goal.current_amount < goal.target_amount)
+      .sort((a: GoalModel, b: GoalModel) => {
+        const progressA = (a.current_amount / a.target_amount) * 100;
+        const progressB = (b.current_amount / b.target_amount) * 100;
+        return progressB - progressA;
+      })
+      .slice(0, 3);
+  }, [goals]);
+
+  // Get budgets closest to being broken
+  const riskiestBudgets = useMemo(() => {
+    const now = new Date();
+    return budgets
+      .filter((budget: BudgetModel) => {
+        // Calculate spent amount for current period
+        const periodStart =
+          budget.period === "monthly"
+            ? new Date(now.getFullYear(), now.getMonth(), 1)
+            : budget.period === "weekly"
+            ? new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+            : new Date(now.getFullYear(), 0, 1);
+
+        const spent = transactions
+          .filter(
+            (t: TransactionModel) =>
+              t.type === "expense" &&
+              t.category === budget.category &&
+              new Date(t.date) >= periodStart
+          )
+          .reduce((sum: any, t: { amount: any }) => sum + t.amount, 0);
+
+        budget.spent = spent;
+        return spent < budget.limit;
+      })
+      .sort((a: BudgetModel, b: BudgetModel) => {
+        const percentageA = (a.spent / a.limit) * 100;
+        const percentageB = (b.spent / b.limit) * 100;
+        return percentageB - percentageA;
+      })
+      .slice(0, 3);
+  }, [budgets, transactions]);
+
   const handleFocus = () => {
     setIsFocused(true);
     Animated.timing(focusAnim, {
@@ -54,24 +173,33 @@ export default function HomePage() {
     }).start();
   };
 
-  const handleBlur = () => {
-    setIsFocused(false);
-    Animated.timing(focusAnim, {
-      toValue: 0,
-      duration: 200,
-      useNativeDriver: false,
-    }).start();
+  const formatCurrency = (amount: string | number | bigint) => {
+    const numericAmount = typeof amount === "string" ? Number(amount) : amount;
+    return new Intl.NumberFormat("ro-RO", {
+      style: "currency",
+      currency: "RON",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    }).format(numericAmount);
   };
 
-  const searchBarBorderColor = focusAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [`${colors.backgroundLight}80`, colors.primary[400]],
-  });
+  const formatDate = (dateString: string | number | Date) => {
+    const date = new Date(dateString);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
 
-  const searchBarBackgroundColor = focusAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [`${colors.backgroundLight}40`, `${colors.backgroundLight}60`],
-  });
+    if (date.toDateString() === today.toDateString()) {
+      return "Today";
+    } else if (date.toDateString() === yesterday.toDateString()) {
+      return "Yesterday";
+    } else {
+      return date.toLocaleDateString("ro-RO", {
+        month: "short",
+        day: "numeric",
+      });
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -104,52 +232,9 @@ export default function HomePage() {
                   />
                 </TouchableOpacity>
 
-                <Animated.View
-                  style={[
-                    styles.searchContainer,
-                    {
-                      borderColor: searchBarBorderColor,
-                      backgroundColor: searchBarBackgroundColor,
-                    },
-                  ]}
-                >
-                  <Ionicons
-                    name="search-sharp"
-                    color={
-                      isFocused ? colors.primary[400] : colors.textSecondary
-                    }
-                    size={20}
-                    style={styles.searchIcon}
-                  />
-                  <TextInput
-                    style={styles.searchInput}
-                    placeholder="Search..."
-                    placeholderTextColor={colors.textMuted}
-                    value={searchText}
-                    onChangeText={setSearchText}
-                    onFocus={handleFocus}
-                    onBlur={handleBlur}
-                    selectionColor={colors.primary[300]}
-                    returnKeyType="search"
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                  />
-                  {searchText !== "" && isFocused && (
-                    <TouchableOpacity
-                      onPress={() => setSearchText("")}
-                      style={styles.clearButton}
-                    >
-                      <View style={styles.clearIcon}>
-                        <View style={styles.clearIconLine1} />
-                        <View style={styles.clearIconLine2} />
-                      </View>
-                    </TouchableOpacity>
-                  )}
-                </Animated.View>
-
                 <TouchableOpacity
                   style={styles.iconButton}
-                  onPress={() => router.replace("/profile")}
+                  onPress={() => router.push("/profile")}
                   activeOpacity={0.7}
                 >
                   <Feather name="user" size={24} color={colors.text} />
@@ -158,11 +243,10 @@ export default function HomePage() {
             </View>
           </TouchableWithoutFeedback>
           <View style={styles.balanceContainer}>
-            <Text style={styles.balanceLabel}>Main · USD</Text>
-            <Text style={styles.balanceAmount}>$0</Text>
-            <TouchableOpacity style={styles.accountsButton}>
-              <Text style={styles.accountsButtonText}>Accounts</Text>
-            </TouchableOpacity>
+            <Text style={styles.balanceLabel}>Main · RON</Text>
+            <Text style={styles.balanceAmount}>
+              {formatCurrency(currentBalance)}
+            </Text>
           </View>
 
           {/* Quick Action Buttons */}
@@ -204,73 +288,145 @@ export default function HomePage() {
           </View>
         </LinearGradient>
 
-        {/* Transactions Preview Card */}
+        {/* Recent Transactions Card */}
         <View style={styles.card}>
-          <View style={styles.transactionsEmptyState}>
-            <View style={styles.emptyStateIcon}>
-              <Text style={styles.emptyStateIconText}>🧩</Text>
+          <TouchableOpacity
+            style={styles.sectionHeaderButton}
+            onPress={() => router.replace("./transactions")}
+          >
+            <Text style={styles.sectionHeaderText}>Recent Transactions</Text>
+            <Entypo name="chevron-right" size={24} color={colors.text} />
+          </TouchableOpacity>
+
+          {recentTransactions.length > 0 ? (
+            <View>
+              {recentTransactions.map(
+                (transaction: TransactionModel, index: any) => (
+                  <View
+                    key={transaction.id || index}
+                    style={styles.transactionItem}
+                  >
+                    <View style={styles.transactionLeft}>
+                      <View
+                        style={[
+                          styles.transactionIcon,
+                          {
+                            backgroundColor:
+                              transaction.type === "income"
+                                ? "#4CAF50"
+                                : "#F44336",
+                          },
+                        ]}
+                      >
+                        <Ionicons
+                          name={
+                            transaction.type === "income"
+                              ? "arrow-down"
+                              : "arrow-up"
+                          }
+                          size={16}
+                          color="white"
+                        />
+                      </View>
+                      <View style={styles.transactionInfo}>
+                        <Text style={styles.transactionTitle}>
+                          {transaction.description || transaction.category}
+                        </Text>
+                        <Text style={styles.transactionDate}>
+                          {formatDate(transaction.date)}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text
+                      style={[
+                        styles.transactionAmount,
+                        {
+                          color:
+                            transaction.type === "income"
+                              ? "#4CAF50"
+                              : "#F44336",
+                        },
+                      ]}
+                    >
+                      {transaction.type === "income" ? "+" : "-"}
+                      {formatCurrency(transaction.amount)}
+                    </Text>
+                  </View>
+                )
+              )}
             </View>
-            <Text style={styles.emptyStateText}>No transactions yet</Text>
-          </View>
+          ) : (
+            <View style={styles.transactionsEmptyState}>
+              <View style={styles.emptyStateIcon}>
+                <Text style={styles.emptyStateIconText}>🧩</Text>
+              </View>
+              <Text style={styles.emptyStateText}>No transactions yet</Text>
+            </View>
+          )}
         </View>
 
-        {/* Total Wealth Section */}
+        {/* Summary Card */}
         <View style={styles.card}>
           <TouchableOpacity style={styles.sectionHeaderButton}>
-            <Text style={styles.sectionHeaderText}>Total wealth</Text>
+            <Text style={styles.sectionHeaderText}>Summary</Text>
             <Entypo name="chevron-right" size={24} color={colors.text} />
           </TouchableOpacity>
 
-          <Text style={styles.totalAmount}>$0</Text>
+          <View style={styles.summaryContainer}>
+            <View style={styles.summaryPeriod}>
+              <Text style={styles.summaryPeriodTitle}>All Time</Text>
+              <View style={styles.summaryAmounts}>
+                <View style={styles.summaryItem}>
+                  <Text style={styles.summaryLabel}>Income</Text>
+                  <Text style={[styles.summaryAmount, { color: "#4CAF50" }]}>
+                    {formatCurrency(summaryData.allTime.income)}
+                  </Text>
+                </View>
+                <View style={styles.summaryItem}>
+                  <Text style={styles.summaryLabel}>Expenses</Text>
+                  <Text style={[styles.summaryAmount, { color: "#F44336" }]}>
+                    {formatCurrency(summaryData.allTime.expenses)}
+                  </Text>
+                </View>
+              </View>
+            </View>
 
-          {/* Account Items */}
-          <TouchableOpacity style={styles.accountItem}>
-            <View style={[styles.accountIcon, { backgroundColor: "#4169E1" }]}>
-              <Ionicons name="wallet-outline" size={24} color={colors.text} />
+            <View style={styles.summaryPeriod}>
+              <Text style={styles.summaryPeriodTitle}>Last Month</Text>
+              <View style={styles.summaryAmounts}>
+                <View style={styles.summaryItem}>
+                  <Text style={styles.summaryLabel}>Income</Text>
+                  <Text style={[styles.summaryAmount, { color: "#4CAF50" }]}>
+                    {formatCurrency(summaryData.lastMonth.income)}
+                  </Text>
+                </View>
+                <View style={styles.summaryItem}>
+                  <Text style={styles.summaryLabel}>Expenses</Text>
+                  <Text style={[styles.summaryAmount, { color: "#F44336" }]}>
+                    {formatCurrency(summaryData.lastMonth.expenses)}
+                  </Text>
+                </View>
+              </View>
             </View>
-            <View style={styles.accountInfo}>
-              <Text style={styles.accountTitle}>Cash</Text>
-              <Text style={styles.accountSubtitle}>0 Accounts</Text>
-            </View>
-            <Entypo name="chevron-right" size={24} color={colors.text} />
-          </TouchableOpacity>
 
-          <TouchableOpacity style={styles.accountItem}>
-            <View style={[styles.accountIcon, { backgroundColor: "#4682B4" }]}>
-              <Feather name="trending-up" size={24} color={colors.text} />
+            <View style={styles.summaryPeriod}>
+              <Text style={styles.summaryPeriodTitle}>Last 3 Months</Text>
+              <View style={styles.summaryAmounts}>
+                <View style={styles.summaryItem}>
+                  <Text style={styles.summaryLabel}>Income</Text>
+                  <Text style={[styles.summaryAmount, { color: "#4CAF50" }]}>
+                    {formatCurrency(summaryData.last3Months.income)}
+                  </Text>
+                </View>
+                <View style={styles.summaryItem}>
+                  <Text style={styles.summaryLabel}>Expenses</Text>
+                  <Text style={[styles.summaryAmount, { color: "#F44336" }]}>
+                    {formatCurrency(summaryData.last3Months.expenses)}
+                  </Text>
+                </View>
+              </View>
             </View>
-            <View style={styles.accountInfo}>
-              <Text style={styles.accountTitle}>Invest</Text>
-              <Text style={styles.accountSubtitle}>
-                Invest for as little as $1
-              </Text>
-            </View>
-            <Entypo name="chevron-right" size={24} color={colors.text} />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.accountItem}>
-            <View style={[styles.accountIcon, { backgroundColor: "#9370DB" }]}>
-              <Bitcoin color={colors.text} size={24} />
-            </View>
-            <View style={styles.accountInfo}>
-              <Text style={styles.accountTitle}>Crypto</Text>
-              <Text style={styles.accountSubtitle}>
-                Invest for as little as $1
-              </Text>
-            </View>
-            <Entypo name="chevron-right" size={24} color={colors.text} />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.accountItem}>
-            <View style={[styles.accountIcon, { backgroundColor: "#40E0D0" }]}>
-              <Entypo name="link" size={24} color={colors.text} />
-            </View>
-            <View style={styles.accountInfo}>
-              <Text style={styles.accountTitle}>Linked</Text>
-              <Text style={styles.accountSubtitle}>Link external account</Text>
-            </View>
-            <Entypo name="chevron-right" size={24} color={colors.text} />
-          </TouchableOpacity>
+          </View>
         </View>
 
         {/* Stats Card */}
@@ -280,11 +436,41 @@ export default function HomePage() {
             <Entypo name="chevron-right" size={24} color={colors.text} />
           </TouchableOpacity>
 
-          <View style={styles.statGraphPlaceholder}>
-            <Feather name="pie-chart" size={24} color={colors.text} />
-            <Text style={styles.statPlaceholderText}>
-              Track your spending patterns
-            </Text>
+          <View style={styles.statsGrid}>
+            <View style={styles.statItem}>
+              <Feather name="trending-up" size={24} color="#4CAF50" />
+              <Text style={styles.statLabel}>Avg Monthly Income</Text>
+              <Text style={styles.statValue}>
+                {formatCurrency(summaryData.last3Months.income / 3)}
+              </Text>
+            </View>
+            <View style={styles.statItem}>
+              <Feather name="trending-down" size={24} color="#F44336" />
+              <Text style={styles.statLabel}>Avg Monthly Expenses</Text>
+              <Text style={styles.statValue}>
+                {formatCurrency(summaryData.last3Months.expenses / 3)}
+              </Text>
+            </View>
+            <View style={styles.statItem}>
+              <MaterialIcons name="savings" size={24} color="#2196F3" />
+              <Text style={styles.statLabel}>Savings Rate</Text>
+              <Text style={styles.statValue}>
+                {summaryData.allTime.income > 0
+                  ? Math.round(
+                      ((summaryData.allTime.income -
+                        summaryData.allTime.expenses) /
+                        summaryData.allTime.income) *
+                        100
+                    )
+                  : 0}
+                %
+              </Text>
+            </View>
+            <View style={styles.statItem}>
+              <Feather name="calendar" size={24} color="#FF9800" />
+              <Text style={styles.statLabel}>Total Transactions</Text>
+              <Text style={styles.statValue}>{transactions.length}</Text>
+            </View>
           </View>
         </View>
 
@@ -295,15 +481,48 @@ export default function HomePage() {
             <Entypo name="chevron-right" size={24} color={colors.text} />
           </TouchableOpacity>
 
-          <View style={styles.goalPlaceholder}>
-            <Feather name="target" size={40} color={colors.textSecondary} />
-            <Text style={styles.statPlaceholderText}>
-              Set your first savings goal
-            </Text>
-            <TouchableOpacity style={styles.createButton}>
-              <Text style={styles.createButtonText}>Create Goal</Text>
-            </TouchableOpacity>
-          </View>
+          {closestGoals.length > 0 ? (
+            <View>
+              {closestGoals.map((goal: GoalModel, index: any) => {
+                const progress =
+                  (goal.current_amount / goal.target_amount) * 100;
+                return (
+                  <View key={goal.id || index} style={styles.goalItem}>
+                    <View style={styles.goalInfo}>
+                      <Text style={styles.goalTitle}>{goal.title}</Text>
+                      <Text style={styles.goalProgress}>
+                        {formatCurrency(goal.current_amount)} of{" "}
+                        {formatCurrency(goal.target_amount)}
+                      </Text>
+                    </View>
+                    <View style={styles.goalProgressContainer}>
+                      <View style={styles.goalProgressBar}>
+                        <View
+                          style={[
+                            styles.goalProgressFill,
+                            { width: `${Math.min(progress, 100)}%` },
+                          ]}
+                        />
+                      </View>
+                      <Text style={styles.goalPercentage}>
+                        {Math.round(progress)}%
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          ) : (
+            <View style={styles.goalPlaceholder}>
+              <Feather name="target" size={40} color={colors.textSecondary} />
+              <Text style={styles.statPlaceholderText}>
+                Set your first savings goal
+              </Text>
+              <TouchableOpacity style={styles.createButton}>
+                <Text style={styles.createButtonText}>Create Goal</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
         {/* Budgets Card */}
@@ -313,19 +532,60 @@ export default function HomePage() {
             <Entypo name="chevron-right" size={24} color={colors.text} />
           </TouchableOpacity>
 
-          <View style={styles.goalPlaceholder}>
-            <AntDesign
-              name="creditcard"
-              size={24}
-              color={colors.textSecondary}
-            />
-            <Text style={styles.statPlaceholderText}>
-              Create a budget to manage expenses
-            </Text>
-            <TouchableOpacity style={styles.createButton}>
-              <Text style={styles.createButtonText}>Create Budget</Text>
-            </TouchableOpacity>
-          </View>
+          {riskiestBudgets.length > 0 ? (
+            <View>
+              {riskiestBudgets.map((budget: BudgetModel, index: any) => {
+                const percentage = (budget.spent / budget.limit) * 100;
+                const isAtRisk = percentage > 80;
+                return (
+                  <View key={budget.id || index} style={styles.budgetItem}>
+                    <View style={styles.budgetInfo}>
+                      <Text style={styles.budgetTitle}>{budget.category}</Text>
+                      <Text style={styles.budgetAmount}>
+                        {formatCurrency(budget.spent)} of{" "}
+                        {formatCurrency(budget.limit)}
+                      </Text>
+                    </View>
+                    <View style={styles.budgetProgressContainer}>
+                      <View style={styles.budgetProgressBar}>
+                        <View
+                          style={[
+                            styles.budgetProgressFill,
+                            {
+                              width: `${Math.min(percentage, 100)}%`,
+                              backgroundColor: isAtRisk ? "#F44336" : "#4CAF50",
+                            },
+                          ]}
+                        />
+                      </View>
+                      <Text
+                        style={[
+                          styles.budgetPercentage,
+                          { color: isAtRisk ? "#F44336" : colors.text },
+                        ]}
+                      >
+                        {Math.round(percentage)}%
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          ) : (
+            <View style={styles.goalPlaceholder}>
+              <AntDesign
+                name="creditcard"
+                size={24}
+                color={colors.textSecondary}
+              />
+              <Text style={styles.statPlaceholderText}>
+                Create a budget to manage expenses
+              </Text>
+              <TouchableOpacity style={styles.createButton}>
+                <Text style={styles.createButtonText}>Create Budget</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
         {/* Bottom spacing for scrolling past the bottom bar */}
@@ -336,25 +596,6 @@ export default function HomePage() {
     </View>
   );
 }
-
-// Define SVG component for the Bitcoin icon
-const Bitcoin: React.FC<{ color: string; size: number }> = ({
-  color,
-  size,
-}) => {
-  return (
-    <View
-      style={{
-        width: size,
-        height: size,
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
-      <Text style={{ color, fontSize: size * 0.7, fontWeight: "bold" }}>₿</Text>
-    </View>
-  );
-};
 
 const styles = StyleSheet.create({
   container: {
@@ -390,17 +631,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     fontFamily: "Montserrat",
   },
-  accountsButton: {
-    backgroundColor: "rgba(255, 255, 255, 0.25)",
-    paddingVertical: 8,
-    paddingHorizontal: 20,
-    borderRadius: 24,
-  },
-  accountsButtonText: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: "500",
-  },
   quickActions: {
     flexDirection: "row",
     paddingHorizontal: 10,
@@ -435,6 +665,56 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
+  sectionHeaderButton: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  sectionHeaderText: {
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: "500",
+  },
+  // Transaction styles
+  transactionItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: `${colors.backgroundDark}20`,
+  },
+  transactionLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  transactionIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  transactionInfo: {
+    flex: 1,
+  },
+  transactionTitle: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  transactionDate: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    marginTop: 2,
+  },
+  transactionAmount: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
   transactionsEmptyState: {
     alignItems: "center",
     justifyContent: "center",
@@ -450,132 +730,116 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontSize: 16,
   },
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    marginTop: 24,
-    marginBottom: 8,
+  // Summary styles
+  summaryContainer: {
+    gap: 16,
   },
-  sectionTitle: {
-    color: colors.text,
-    fontSize: 22,
-    fontWeight: "bold",
-  },
-  addButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.backgroundLight,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  sectionHeaderButton: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  sectionHeaderText: {
-    color: colors.text,
-    fontSize: 18,
-    fontWeight: "500",
-  },
-  cardsContainer: {
-    flexDirection: "row",
-    justifyContent: "flex-start",
-    marginBottom: 10,
-  },
-  cardItem: {
-    marginRight: 24,
-    alignItems: "center",
-  },
-  virtualCard: {
-    width: 80,
-    height: 50,
-    backgroundColor: "#E57373",
-    borderRadius: 8,
-    padding: 8,
-    justifyContent: "space-between",
-    marginBottom: 8,
-  },
-  cardLogo: {
-    color: colors.text,
-    fontWeight: "bold",
-    fontSize: 16,
-  },
-  cardChip: {
-    width: 12,
-    height: 12,
-    backgroundColor: "#FFD700",
-    borderRadius: 2,
-  },
-  cardLabel: {
-    color: colors.text,
-    fontSize: 14,
-  },
-  cardLabelBlue: {
-    color: "#4285F4",
-    fontSize: 14,
-  },
-  addCardButton: {
-    width: 80,
-    height: 50,
-    backgroundColor: "#E9F0FE",
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 8,
-  },
-  totalAmount: {
-    color: colors.text,
-    fontSize: 36,
-    fontWeight: "bold",
-    marginVertical: 16,
-  },
-  accountItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 12,
+  summaryPeriod: {
     borderBottomWidth: 1,
-    borderBottomColor: `${colors.backgroundDark}80`,
+    borderBottomColor: `${colors.backgroundDark}20`,
+    paddingBottom: 16,
   },
-  accountIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 16,
+  summaryPeriodTitle: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 12,
   },
-  accountInfo: {
+  summaryAmounts: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  summaryItem: {
     flex: 1,
   },
-  accountTitle: {
+  summaryLabel: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    marginBottom: 4,
+  },
+  summaryAmount: {
+    fontSize: 18,
+    fontWeight: "600",
+  },
+  // Stats styles
+  statsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 16,
+  },
+  statItem: {
+    flex: 1,
+    minWidth: "45%",
+    alignItems: "center",
+    padding: 16,
+    backgroundColor: `${colors.backgroundDark}10`,
+    borderRadius: 12,
+  },
+  statLabel: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    textAlign: "center",
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  statValue: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  // Goal styles
+  goalItem: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: `${colors.backgroundDark}20`,
+  },
+  goalInfo: {
+    marginBottom: 8,
+  },
+  goalTitle: {
     color: colors.text,
     fontSize: 16,
     fontWeight: "500",
   },
-  accountSubtitle: {
+  goalProgress: {
     color: colors.textSecondary,
     fontSize: 14,
+    marginTop: 2,
   },
-  statGraphPlaceholder: {
+  goalProgressContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  goalProgressBar: {
+    flex: 1,
+    height: 8,
+    backgroundColor: `${colors.backgroundDark}20`,
+    borderRadius: 4,
+    overflow: "hidden",
+  },
+  goalProgressFill: {
+    height: "100%",
+    backgroundColor: "#4CAF50",
+    borderRadius: 4,
+  },
+  goalPercentage: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: "500",
+    minWidth: 40,
+    textAlign: "right",
+  },
+  goalPlaceholder: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 30,
+    paddingVertical: 20,
   },
   statPlaceholderText: {
     color: colors.textSecondary,
     fontSize: 14,
     marginTop: 12,
     textAlign: "center",
-  },
-  goalPlaceholder: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 20,
   },
   createButton: {
     backgroundColor: colors.primary[500],
@@ -588,6 +852,47 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 14,
     fontWeight: "500",
+  },
+  // Budget styles
+  budgetItem: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: `${colors.backgroundDark}20`,
+  },
+  budgetInfo: {
+    marginBottom: 8,
+  },
+  budgetTitle: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  budgetAmount: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    marginTop: 2,
+  },
+  budgetProgressContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  budgetProgressBar: {
+    flex: 1,
+    height: 8,
+    backgroundColor: `${colors.backgroundDark}20`,
+    borderRadius: 4,
+    overflow: "hidden",
+  },
+  budgetProgressFill: {
+    height: "100%",
+    borderRadius: 4,
+  },
+  budgetPercentage: {
+    fontSize: 14,
+    fontWeight: "500",
+    minWidth: 40,
+    textAlign: "right",
   },
   bottomPadding: {
     height: 100,
@@ -607,15 +912,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
-  iosOverlay: {
-    backgroundColor: "transparent", // Blue-green tint overlay
-  },
-  androidBackground: {
-    backgroundColor: `${colors.secondary}100`, // Semi-transparent background
-    borderBottomWidth: 1,
-    borderBottomColor: `${colors.secondaryLight}30`,
-  },
-
   iconButton: {
     width: 40,
     height: 40,
@@ -623,53 +919,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: `${colors.backgroundLight}40`,
-  },
-  searchContainer: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    height: 40,
-    marginHorizontal: 10,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  searchIcon: {
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
-    height: 40,
-    padding: 0,
-    fontSize: 16,
-  },
-  clearButton: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: `${colors.backgroundLight}80`,
-  },
-  clearIcon: {
-    width: 10,
-    height: 10,
-    alignItems: "center",
-    justifyContent: "center",
-    position: "relative",
-  },
-  clearIconLine1: {
-    position: "absolute",
-    width: 2,
-    height: 10,
-    backgroundColor: colors.textSecondary,
-    transform: [{ rotate: "45deg" }],
-  },
-  clearIconLine2: {
-    position: "absolute",
-    width: 2,
-    height: 10,
-    backgroundColor: colors.textSecondary,
-    transform: [{ rotate: "-45deg" }],
   },
 });

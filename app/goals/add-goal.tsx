@@ -1,3 +1,4 @@
+import { useGoals } from "@/contexts/GoalsContext";
 import { Feather } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import * as Haptics from "expo-haptics";
@@ -31,12 +32,15 @@ const AddGoalScreen = () => {
     targetDate: new Date(new Date().setMonth(new Date().getMonth() + 6)),
     isRecurring: false,
     category: "Savings",
+    autoContributions: false,
+    contributionAmount: "",
+    contributionFrequency: "monthly",
   });
 
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [showTargetDatePicker, setShowTargetDatePicker] = useState(false);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
-
+  const { addGoal } = useGoals();
   const categories = [
     "Savings",
     "Travel",
@@ -73,6 +77,11 @@ const AddGoalScreen = () => {
     )
       return false;
     if (formData.targetDate <= formData.startDate) return false;
+    if (formData.autoContributions) {
+      const amount = parseFloat(formData.contributionAmount);
+      if (isNaN(amount) || amount <= 0) return false;
+    }
+
     return true;
   };
 
@@ -83,17 +92,28 @@ const AddGoalScreen = () => {
     }
 
     const goalData = {
-      ...formData,
-      targetAmount: parseFloat(formData.targetAmount),
-      currentAmount: 0,
-      startDate: formData.startDate.toISOString().split("T")[0],
-      targetDate: formData.targetDate.toISOString().split("T")[0],
-      status: "active",
+      title: formData.title,
+      description: formData.description,
+      target_amount: parseFloat(formData.targetAmount),
+      current_amount: 0,
+      start_date: formData.startDate.toISOString().split("T")[0],
+      is_recuring: formData.isRecurring,
+      category: formData.category,
+      end_date: formData.targetDate.toISOString().split("T")[0],
+      is_active: true,
+      auto_contributions: formData.autoContributions,
+      contribution_amount: formData.autoContributions
+        ? parseFloat(formData.contributionAmount || "0")
+        : null,
+      contribution_frequency: formData.autoContributions
+        ? formData.contributionFrequency
+        : undefined,
     };
 
+    addGoal(goalData);
     console.log("Saving new goal:", goalData);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    router.back();
+    router.replace("/financial-goals");
   };
 
   return (
@@ -113,7 +133,7 @@ const AddGoalScreen = () => {
           >
             <TouchableOpacity
               style={styles.backButton}
-              onPress={() => router.back()}
+              onPress={() => router.replace("/financial-goals")}
             >
               <Feather name="x" size={24} color={colors.text} />
             </TouchableOpacity>
@@ -311,6 +331,86 @@ const AddGoalScreen = () => {
                 </View>
               )}
             </View>
+            {/* Auto Contributions Toggle */}
+            <View style={styles.formGroup}>
+              <View style={styles.switchContainer}>
+                <Text style={styles.label}>Auto Contributions</Text>
+                <Switch
+                  value={formData.autoContributions}
+                  onValueChange={(value) =>
+                    handleInputChange("autoContributions", value)
+                  }
+                  trackColor={{
+                    false: colors.backgroundDark,
+                    true: colors.primary[600],
+                  }}
+                  thumbColor={
+                    formData.autoContributions
+                      ? colors.primary[400]
+                      : colors.textSecondary
+                  }
+                />
+              </View>
+              <Text style={styles.helperText}>
+                Enable to contribute automatically on a schedule
+              </Text>
+            </View>
+
+            {/* Contribution Amount Input */}
+            {formData.autoContributions && (
+              <>
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>Contribution Amount</Text>
+                  <View style={styles.amountInputContainer}>
+                    <Text style={styles.currencySymbol}>$</Text>
+                    <TextInput
+                      style={styles.amountInput}
+                      value={formData.contributionAmount}
+                      onChangeText={(value) =>
+                        handleInputChange(
+                          "contributionAmount",
+                          value.replace(/[^0-9.]/g, "")
+                        )
+                      }
+                      placeholder="0.00"
+                      placeholderTextColor={colors.textMuted}
+                      keyboardType="numeric"
+                    />
+                  </View>
+                </View>
+
+                {/* Contribution Frequency Selector */}
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>Contribution Frequency</Text>
+                  <TouchableOpacity
+                    style={styles.selectButton}
+                    onPress={() =>
+                      handleInputChange(
+                        "contributionFrequency",
+                        formData.contributionFrequency === "monthly"
+                          ? "weekly"
+                          : formData.contributionFrequency === "weekly"
+                          ? "daily"
+                          : "monthly"
+                      )
+                    }
+                  >
+                    <Text style={styles.selectText}>
+                      {formData.contributionFrequency.charAt(0).toUpperCase() +
+                        formData.contributionFrequency.slice(1)}
+                    </Text>
+                    <Feather
+                      name="repeat"
+                      size={20}
+                      color={colors.textSecondary}
+                    />
+                  </TouchableOpacity>
+                  <Text style={styles.helperText}>
+                    Tap to cycle through: Monthly → Weekly → Daily
+                  </Text>
+                </View>
+              </>
+            )}
           </ScrollView>
         </View>
       </TouchableWithoutFeedback>

@@ -1,7 +1,9 @@
 // TransactionItem.jsx - Improved component
+import { useAuth } from "@/contexts/AuthContext";
 import { TransactionModel } from "@/models/transaction";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { useEffect, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
 
@@ -10,11 +12,33 @@ type Props = {
 };
 
 export default function TransactionItem({ transaction }: Props) {
-  const { id, description, amount, date, type, category } = transaction;
+  const { id, description, amount, date, type, category, sender, receiver } =
+    transaction;
   const router = useRouter();
-  // Format amount with currency
+  const [currentUser, setCurrentUser] = useState<string>("");
+  const { getStoredUserData } = useAuth();
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const userData = await getStoredUserData();
+        if (userData) {
+          setCurrentUser(userData["full_name"] ?? "");
+        }
+      } catch (err) {
+        console.error("Failed to load user", err);
+      }
+    };
+    fetchUser();
+  }, []);
+
+  const isTransferReceiver =
+    type === "transfer" && currentUser && receiver === currentUser;
+  const isTransferSender =
+    type === "transfer" && currentUser && sender === currentUser;
+
   const getCurrencySymbol = () => {
-    if (type === "expense" && "currency" in transaction) {
+    if ("currency" in transaction) {
       switch (transaction.currency) {
         case "RON":
           return "RON";
@@ -29,11 +53,25 @@ export default function TransactionItem({ transaction }: Props) {
     return "$";
   };
 
-  const formattedAmount =
-    type === "expense" || type === "transfer"
-      ? `-${getCurrencySymbol()}${amount.toFixed(2)}`
-      : `+${getCurrencySymbol()}${amount.toFixed(2)}`;
+  const formattedAmount = (() => {
+    if (type === "transfer") {
+      if (isTransferReceiver)
+        return `+${getCurrencySymbol()}${amount.toFixed(2)}`;
+      if (isTransferSender)
+        return `-${getCurrencySymbol()}${amount.toFixed(2)}`;
+    }
+    return (
+      (type === "expense" ? "-" : "+") + getCurrencySymbol() + amount.toFixed(2)
+    );
+  })();
 
+  const amountColor = (() => {
+    if (type === "transfer") {
+      if (isTransferReceiver) return "#4CAF50"; // green
+      if (isTransferSender) return "#F44336"; // red
+    }
+    return type === "income" || type === "deposit" ? "#4CAF50" : "#F44336";
+  })();
   const formatDate = (dateString: string | Date | undefined) => {
     if (!dateString) return "";
 
@@ -90,13 +128,7 @@ export default function TransactionItem({ transaction }: Props) {
     <TouchableOpacity onPress={() => router.replace(`./transaction/${id}`)}>
       <Animated.View entering={FadeIn} style={styles.container}>
         <View style={styles.iconContainer}>
-          <Feather
-            name={getIcon()}
-            size={22}
-            color={
-              type === "expense" || type === "transfer" ? "#F44336" : "#4CAF50"
-            }
-          />
+          <Feather name={getIcon()} size={22} color={amountColor} />
         </View>
 
         <View style={styles.textContainer}>
@@ -106,15 +138,7 @@ export default function TransactionItem({ transaction }: Props) {
           <Text style={styles.subtitle}>{formatDate(date)}</Text>
         </View>
 
-        <Text
-          style={[
-            styles.amount,
-            {
-              color:
-                type === "income" || type === "deposit" ? "#4CAF50" : "#F44336",
-            },
-          ]}
-        >
+        <Text style={[styles.amount, { color: amountColor }]}>
           {formattedAmount}
         </Text>
       </Animated.View>

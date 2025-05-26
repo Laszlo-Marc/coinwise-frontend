@@ -6,6 +6,8 @@ import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
+import { useGoals } from "@/contexts/GoalsContext";
+import { GoalModel } from "@/models/goal";
 import React, { useEffect, useState } from "react";
 import {
   Animated,
@@ -26,69 +28,24 @@ type ProgressHistoryItem = {
   amountAdded: number;
 };
 
-type Goal = {
-  id: string;
-  title: string;
-  description: string;
-  targetAmount: number;
-  currentAmount: number;
-  startDate: string;
-  targetDate: string;
-  isRecurring: boolean;
-  category: string;
-  status: string;
-  progressHistory: ProgressHistoryItem[];
-};
-
 const AddContributionScreen = () => {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const insets = useSafeAreaInsets();
-
-  // State
+  const { addContribution } = useGoals();
+  const { goals } = useGoals();
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-  const [goalData, setGoalData] = useState(null as Goal | null);
+  const [goalData, setGoalData] = useState(null as GoalModel | null);
 
   // Animation
   const successOpacity = new Animated.Value(0);
 
   // Fetch goal data
   useEffect(() => {
-    // In a real app, fetch from your state/API
-    // Mock data for this example
-    const mockGoals = [
-      {
-        id: "g1",
-        title: "Emergency Fund",
-        description: "Build a 6-month emergency fund",
-        targetAmount: 10000,
-        currentAmount: 4500,
-        startDate: "2025-01-01",
-        targetDate: "2025-12-31",
-        isRecurring: false,
-        category: "Savings",
-        status: "active",
-        progressHistory: [],
-      },
-      {
-        id: "g2",
-        title: "Trip to Japan ✈️",
-        description: "Save for dream vacation",
-        targetAmount: 5000,
-        currentAmount: 1500,
-        startDate: "2025-02-01",
-        targetDate: "2025-09-01",
-        isRecurring: false,
-        category: "Travel",
-        status: "active",
-        progressHistory: [],
-      },
-    ];
-
-    const goal = mockGoals.find((g) => g.id === id);
+    const goal = goals.find((g) => g.id === id);
     console.log("Goal data:", goal);
     setGoalData(goal || null);
   }, [id]);
@@ -108,42 +65,48 @@ const AddContributionScreen = () => {
     return !isNaN(numAmount) && numAmount > 0;
   };
 
-  const handleAddContribution = () => {
+  const handleAddContribution = async () => {
     if (!validateAmount()) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
     }
 
-    // Prepare contribution data
-    const contributionData = {
-      date: date.toISOString().split("T")[0],
-      amountAdded: parseFloat(amount),
-      id,
+    const numericAmount = parseFloat(amount);
+    const contributionDate = date.toISOString().split("T")[0];
+
+    const newContribution = {
+      goal_id: id as string,
+      amount: numericAmount,
+      date: contributionDate,
     };
+    try {
+      await addContribution(newContribution);
+      console.log("Contribution added:", newContribution);
 
-    // In a real app, you would save this to your state/API
-    console.log("Adding contribution:", contributionData);
+      // Trigger success animation
+      setShowSuccess(true);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-    // Show success animation
-    setShowSuccess(true);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
-    Animated.sequence([
-      Animated.timing(successOpacity, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-      Animated.delay(1000),
-      Animated.timing(successOpacity, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      // Navigate back after the animation
-      router.back();
-    });
+      Animated.sequence([
+        Animated.timing(successOpacity, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.delay(1000),
+        Animated.timing(successOpacity, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        router.back();
+      });
+    } catch (err) {
+      console.error("Failed to add contribution:", err);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      // Optionally show a toast or alert
+    }
   };
 
   // Quick amount buttons
@@ -166,7 +129,7 @@ const AddContributionScreen = () => {
           >
             <TouchableOpacity
               style={styles.backButton}
-              onPress={() => router.back()}
+              onPress={() => router.replace("/financial-goals")}
             >
               <Feather name="x" size={24} color={colors.text} />
             </TouchableOpacity>
@@ -185,7 +148,7 @@ const AddContributionScreen = () => {
                   {new Intl.NumberFormat("en-US", {
                     style: "currency",
                     currency: "USD",
-                  }).format(goalData.currentAmount)}
+                  }).format(goalData.current_amount)}
                 </Text>
               </View>
             )}

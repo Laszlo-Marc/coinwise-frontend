@@ -1,6 +1,12 @@
 import axios from "axios";
 import * as SecureStore from "expo-secure-store";
-import React, { createContext, useContext, useMemo, useState } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { PaginatedResponse, TransactionModel } from "../models/transaction";
 
 interface TransactionContextType {
@@ -44,6 +50,17 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({
   const pageSize = 50;
   const hasMore = currentPage < totalPages;
 
+  useEffect(() => {
+    const initializeTransactions = async () => {
+      try {
+        await fetchTransactions(1, currentFilter);
+      } catch (e) {
+        handleApiError(e);
+      }
+    };
+
+    initializeTransactions();
+  }, [currentFilter]);
   const handleApiError = (error: any) => {
     console.error("API Error:", error);
     setError("Something went wrong. Please try again.");
@@ -152,7 +169,7 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const updateTransaction = async (
-    id: string ,
+    id: string,
     updates: Partial<TransactionModel>
   ): Promise<void> => {
     try {

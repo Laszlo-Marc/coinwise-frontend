@@ -1,9 +1,11 @@
 import BottomBar from "@/components/mainComponents/BottomBar";
+import { colors } from "@/constants/colors";
+import { useGoals } from "@/contexts/GoalsContext";
+import { GoalModel } from "@/models/goal";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React from "react";
 import {
   FlatList,
   ScrollView,
@@ -12,179 +14,21 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { Swipeable } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-import { colors } from "@/constants/colors";
 import { calculatePercentage, formatCurrency } from "../utils/formatting";
-
-// Mock data for initial development
-const initialGoals = [
-  {
-    id: "g1",
-    title: "Emergency Fund",
-    description: "Build a 6-month emergency fund",
-    targetAmount: 10000,
-    currentAmount: 4500,
-    startDate: "2025-01-01",
-    targetDate: "2025-12-31",
-    isRecurring: false,
-    category: "Savings",
-    status: "active",
-    progressHistory: [
-      { date: "2025-01-15", amountAdded: 1000 },
-      { date: "2025-02-15", amountAdded: 1500 },
-      { date: "2025-03-15", amountAdded: 2000 },
-    ],
-  },
-  {
-    id: "g2",
-    title: "Trip to Japan ✈️",
-    description: "Save for dream vacation",
-    targetAmount: 5000,
-    currentAmount: 1500,
-    startDate: "2025-02-01",
-    targetDate: "2025-09-01",
-    isRecurring: false,
-    category: "Travel",
-    status: "active",
-    progressHistory: [
-      { date: "2025-02-10", amountAdded: 500 },
-      { date: "2025-03-10", amountAdded: 500 },
-      { date: "2025-04-10", amountAdded: 500 },
-    ],
-  },
-  {
-    id: "g3",
-    title: "New Laptop 💻",
-    description: "Replace old computer",
-    targetAmount: 2000,
-    currentAmount: 1800,
-    startDate: "2025-01-15",
-    targetDate: "2025-04-30",
-    isRecurring: false,
-    category: "Tech",
-    status: "active",
-    progressHistory: [
-      { date: "2025-02-01", amountAdded: 800 },
-      { date: "2025-03-01", amountAdded: 500 },
-      { date: "2025-04-01", amountAdded: 500 },
-    ],
-  },
-  {
-    id: "g4",
-    title: "Emergency Fund",
-    description: "Build a 6-month emergency fund",
-    targetAmount: 10000,
-    currentAmount: 4500,
-    startDate: "2025-01-01",
-    targetDate: "2025-12-31",
-    isRecurring: false,
-    category: "Savings",
-    status: "active",
-    progressHistory: [
-      { date: "2025-01-15", amountAdded: 1000 },
-      { date: "2025-02-15", amountAdded: 1500 },
-      { date: "2025-03-15", amountAdded: 2000 },
-    ],
-  },
-  {
-    id: "g5",
-    title: "Trip to Japan ✈️",
-    description: "Save for dream vacation",
-    targetAmount: 5000,
-    currentAmount: 1500,
-    startDate: "2025-02-01",
-    targetDate: "2025-09-01",
-    isRecurring: false,
-    category: "Travel",
-    status: "active",
-    progressHistory: [
-      { date: "2025-02-10", amountAdded: 500 },
-      { date: "2025-03-10", amountAdded: 500 },
-      { date: "2025-04-10", amountAdded: 500 },
-    ],
-  },
-  {
-    id: "g6",
-    title: "New Laptop 💻",
-    description: "Replace old computer",
-    targetAmount: 2000,
-    currentAmount: 1800,
-    startDate: "2025-01-15",
-    targetDate: "2025-04-30",
-    isRecurring: false,
-    category: "Tech",
-    status: "active",
-    progressHistory: [
-      { date: "2025-02-01", amountAdded: 800 },
-      { date: "2025-03-01", amountAdded: 500 },
-      { date: "2025-04-01", amountAdded: 500 },
-    ],
-  },
-  {
-    id: "g7",
-    title: "Emergency Fund",
-    description: "Build a 6-month emergency fund",
-    targetAmount: 10000,
-    currentAmount: 4500,
-    startDate: "2025-01-01",
-    targetDate: "2025-12-31",
-    isRecurring: false,
-    category: "Savings",
-    status: "active",
-    progressHistory: [
-      { date: "2025-01-15", amountAdded: 1000 },
-      { date: "2025-02-15", amountAdded: 1500 },
-      { date: "2025-03-15", amountAdded: 2000 },
-    ],
-  },
-  {
-    id: "g8",
-    title: "Trip to Japan ✈️",
-    description: "Save for dream vacation",
-    targetAmount: 5000,
-    currentAmount: 1500,
-    startDate: "2025-02-01",
-    targetDate: "2025-09-01",
-    isRecurring: false,
-    category: "Travel",
-    status: "active",
-    progressHistory: [
-      { date: "2025-02-10", amountAdded: 500 },
-      { date: "2025-03-10", amountAdded: 500 },
-      { date: "2025-04-10", amountAdded: 500 },
-    ],
-  },
-  {
-    id: "g9",
-    title: "New Laptop 💻",
-    description: "Replace old computer",
-    targetAmount: 2000,
-    currentAmount: 1800,
-    startDate: "2025-01-15",
-    targetDate: "2025-04-30",
-    isRecurring: false,
-    category: "Tech",
-    status: "active",
-    progressHistory: [
-      { date: "2025-02-01", amountAdded: 800 },
-      { date: "2025-03-01", amountAdded: 500 },
-      { date: "2025-04-01", amountAdded: 500 },
-    ],
-  },
-];
 
 const FinancialGoalsScreen = () => {
   const insets = useSafeAreaInsets();
-  const [goals, setGoals] = useState(initialGoals);
+  const { goals, deleteGoal } = useGoals();
 
   // Calculate summary data
   const totalGoals = goals.length;
-  const totalSaved = goals.reduce((acc, goal) => acc + goal.currentAmount, 0);
+  const totalSaved = goals.reduce((acc, goal) => acc + goal.current_amount, 0);
 
   const calculateCompletionRate = () => {
     const totalProgress = goals.reduce((acc, goal) => {
-      return acc + goal.currentAmount / goal.targetAmount;
+      return acc + goal.current_amount / goal.target_amount;
     }, 0);
     return goals.length > 0 ? (totalProgress / goals.length) * 100 : 0;
   };
@@ -196,19 +40,9 @@ const FinancialGoalsScreen = () => {
     router.replace("./goals/add-goal");
   };
 
-  const handleSelectGoal = (goal: {
-    id: any;
-    title?: string;
-    description?: string;
-    targetAmount?: number;
-    currentAmount?: number;
-    startDate?: string;
-    targetDate?: string;
-    isRecurring?: boolean;
-    category?: string;
-    status?: string;
-    progressHistory?: { date: string; amountAdded: number }[];
-  }) => {
+  const handleSelectGoal = (goal: GoalModel) => {
+    console.log("Selected Goal:", goal);
+    console.log("Goal ID:", goal.id);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.replace(`./goals/goal-details/${goal.id}`);
   };
@@ -219,20 +53,44 @@ const FinancialGoalsScreen = () => {
     return colors.success;
   };
 
+  const handleDeleteGoal = async (goalId: string) => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      await deleteGoal(goalId);
+    } catch (error) {
+      console.error("Error deleting goal:", error);
+    }
+  };
+
+  const renderRightActions = (goal: GoalModel) => (
+    <View style={styles.swipeActions}>
+      <TouchableOpacity
+        onPress={() => handleDeleteGoal(goal.id || "")}
+        style={[styles.swipeBtn, { backgroundColor: "red" }]}
+      >
+        <Feather name="trash" size={20} color="#fff" />
+      </TouchableOpacity>
+    </View>
+  );
+
+  const renderLeftActions = (goal: GoalModel) => (
+    <View style={styles.swipeActions}>
+      <TouchableOpacity
+        onPress={() => router.push(`./goals/edit-goal/${goal.id}`)}
+        style={[styles.swipeBtn, { backgroundColor: "orange" }]}
+      >
+        <Feather name="edit-2" size={20} color="#fff" />
+      </TouchableOpacity>
+    </View>
+  );
   return (
     <View style={styles.container}>
-      {/* Header with gradient */}
-      <LinearGradient
-        colors={[colors.secondary[500], colors.primary[500]]}
-        start={{ x: 1, y: 0 }}
-        end={{ x: 0, y: 1 }}
-        style={[styles.header, { paddingTop: insets.top + 10 }]}
-      >
-        <Text style={styles.headerTitle}>Financial Goals</Text>
-        <TouchableOpacity style={styles.addButton} onPress={handleAddGoal}>
-          <Feather name="plus" size={24} color={colors.text} />
+      <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
+        <Text style={styles.headerTitle}>Goals</Text>
+        <TouchableOpacity onPress={handleAddGoal}>
+          <Feather name="plus" size={26} color={colors.primary[500]} />
         </TouchableOpacity>
-      </LinearGradient>
+      </View>
 
       {/* Progress Summary */}
       <View style={styles.summaryContainer}>
@@ -261,33 +119,43 @@ const FinancialGoalsScreen = () => {
       {/* Goals List */}
       <FlatList
         data={goals}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item.id ?? ""}
         contentContainerStyle={styles.goalsList}
         renderItem={({ item }) => {
           const progressPercentage = calculatePercentage(
-            item.currentAmount,
-            item.targetAmount
+            item.current_amount,
+            item.target_amount
           );
           const progressColor = getProgressColor(progressPercentage);
 
           return (
-            <TouchableOpacity
+            <Swipeable
+  renderLeftActions={() => renderLeftActions(item)}
+  renderRightActions={() => renderRightActions(item)}
+>
+  <TouchableOpacity
               style={styles.goalCard}
               onPress={() => handleSelectGoal(item)}
             >
               <View style={styles.goalHeader}>
                 <Text style={styles.goalTitle}>{item.title}</Text>
                 <View style={styles.goalActions}>
-                  <TouchableOpacity style={styles.actionButton}>
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={() => router.push(`./goals/edit-goal/${item.id}`)}
+                  >
                     <Feather
                       name="edit-2"
                       size={18}
                       color={colors.textSecondary}
                     />
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.actionButton}>
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={() => handleDeleteGoal(item.id ?? "")}
+                  >
                     <Feather
-                      name="archive"
+                      name="trash"
                       size={18}
                       color={colors.textSecondary}
                     />
@@ -310,15 +178,17 @@ const FinancialGoalsScreen = () => {
 
               <View style={styles.goalDetails}>
                 <Text style={styles.goalAmount}>
-                  {formatCurrency(item.currentAmount)} /{" "}
-                  {formatCurrency(item.targetAmount)}
+                  {formatCurrency(item.current_amount)} /{" "}
+                  {formatCurrency(item.target_amount)}
                 </Text>
 
                 <Text style={styles.goalDate}>
-                  Target: {new Date(item.targetDate).toLocaleDateString()}
+                  Target: {new Date(item.end_date).toLocaleDateString()}
                 </Text>
               </View>
             </TouchableOpacity>
+</Swipeable>
+            
           );
         }}
       />
@@ -338,14 +208,19 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 20,
-    paddingBottom: 15,
+    paddingHorizontal: 30,
+    paddingBottom: 20,
+    backgroundColor: colors.background, // flat, clean
+    borderBottomWidth: 0.5,
+    borderBottomColor: "rgba(0,0,0,0.1)", // subtle divider
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
+    fontSize: 22,
+    fontWeight: "600",
     color: colors.text,
+    fontFamily: "Montserrat",
   },
+
   addButton: {
     width: 40,
     height: 40,
@@ -371,40 +246,46 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
     marginBottom: 6,
+    fontFamily: "Montserrat",
   },
   summaryValue: {
     fontSize: 20,
     fontWeight: "bold",
     color: colors.text,
+    fontFamily: "Montserrat",
   },
   goalsList: {
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 150,
   },
+  swipeActions: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  swipeBtn: {
+    width: 70,
+    justifyContent: "center",
+    alignItems: "center",
+    height: "100%",
+  },
+
   goalCard: {
     backgroundColor: colors.backgroundLight,
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.05)",
   },
+
   goalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 12,
   },
-  goalTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: colors.text,
-    flex: 1,
-  },
+
   goalActions: {
     flexDirection: "row",
   },
@@ -429,13 +310,23 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 8,
   },
-  goalAmount: {
+  goalTitle: {
     fontSize: 16,
+    fontWeight: "600",
     color: colors.text,
+    flex: 1,
+    fontFamily: "Montserrat",
+  },
+  goalAmount: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: colors.primary[500],
+    fontFamily: "Montserrat",
   },
   goalDate: {
-    fontSize: 14,
+    fontSize: 13,
     color: colors.textSecondary,
+    fontFamily: "Montserrat",
   },
 });
 

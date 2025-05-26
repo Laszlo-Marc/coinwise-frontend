@@ -1,3 +1,4 @@
+import { useGoals } from "@/contexts/GoalsContext";
 import { Feather } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import * as Haptics from "expo-haptics";
@@ -5,6 +6,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
+  Alert,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -22,8 +24,10 @@ import { colors } from "../../../constants/colors";
 
 const EditGoalScreen = () => {
   const router = useRouter();
-  const goalId = useLocalSearchParams() as unknown as string;
+  const params = useLocalSearchParams();
+  const goalId = params.id as string; // Extract the actual ID from params
   const insets = useSafeAreaInsets();
+  const { goals, updateGoal } = useGoals();
 
   const [formData, setFormData] = useState({
     title: "",
@@ -33,11 +37,15 @@ const EditGoalScreen = () => {
     targetDate: new Date(),
     isRecurring: false,
     category: "Savings",
+    autoContributions: false,
+    contributionAmount: "",
+    contributionFrequency: "monthly",
   });
 
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [showTargetDatePicker, setShowTargetDatePicker] = useState(false);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const categories = [
     "Savings",
@@ -50,49 +58,53 @@ const EditGoalScreen = () => {
   ];
 
   useEffect(() => {
-    // Fetch goal data based on goalId
-    const mockGoals = [
-      {
-        id: "g1",
-        title: "Emergency Fund",
-        description: "Build a 6-month emergency fund",
-        targetAmount: 10000,
-        currentAmount: 4500,
-        startDate: "2025-01-01",
-        targetDate: "2025-12-31",
-        isRecurring: false,
-        category: "Savings",
-        status: "active",
-        progressHistory: [],
-      },
-    ];
-
-    const goal = mockGoals.find((g) => g.id === goalId);
-    if (goal) {
-      setFormData({
-        title: goal.title,
-        description: goal.description,
-        targetAmount: goal.targetAmount.toString(),
-        startDate: new Date(goal.startDate),
-        targetDate: new Date(goal.targetDate),
-        isRecurring: goal.isRecurring,
-        category: goal.category,
-      });
+    if (goalId && goals.length > 0) {
+      const goal = goals.find((g) => g.id === goalId);
+      if (goal) {
+        setFormData({
+          title: goal.title || "",
+          description: goal.description || "",
+          targetAmount: goal.target_amount ? goal.target_amount.toString() : "",
+          startDate: goal.start_date ? new Date(goal.start_date) : new Date(),
+          targetDate: goal.end_date ? new Date(goal.end_date) : new Date(),
+          isRecurring: goal.is_recuring || false,
+          category: goal.category || "Savings",
+          autoContributions: goal.auto_contribution_enabled || false,
+          contributionAmount: goal.auto_contribution_amount
+            ? goal.auto_contribution_amount.toString()
+            : "",
+          contributionFrequency: goal.contribution_frequency || "monthly",
+        });
+        setIsLoading(false);
+      } else {
+        // Goal not found
+        Alert.alert("Error", "Goal not found", [
+          { text: "OK", onPress: () => router.back() },
+        ]);
+      }
     }
-  }, [goalId]);
+  }, [goalId, goals]);
 
   const handleInputChange = (field: string, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleStartDateChange = (event: any, selectedDate: any) => {
+  const handleStartDateChange = (event: any, selectedDate?: Date) => {
     setShowStartDatePicker(false);
     if (selectedDate) {
-      setFormData((prev) => ({ ...prev, startDate: selectedDate }));
+      setFormData((prev) => ({
+        ...prev,
+        startDate: selectedDate,
+        // Ensure target date is after start date
+        targetDate:
+          selectedDate >= prev.targetDate
+            ? new Date(selectedDate.getTime() + 86400000)
+            : prev.targetDate,
+      }));
     }
   };
 
-  const handleTargetDateChange = (event: any, selectedDate: any) => {
+  const handleTargetDateChange = (event: any, selectedDate?: Date) => {
     setShowTargetDatePicker(false);
     if (selectedDate) {
       setFormData((prev) => ({ ...prev, targetDate: selectedDate }));
@@ -107,26 +119,60 @@ const EditGoalScreen = () => {
     )
       return false;
     if (formData.targetDate <= formData.startDate) return false;
+    if (formData.autoContributions) {
+      const amount = parseFloat(formData.contributionAmount);
+      if (isNaN(amount) || amount <= 0) return false;
+    }
     return true;
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!validateForm()) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert(
+        "Validation Error",
+        "Please check all required fields and ensure the target date is after the start date."
+      );
       return;
     }
 
-    const updatedGoal = {
-      ...formData,
-      targetAmount: parseFloat(formData.targetAmount),
-      startDate: formData.startDate.toISOString().split("T")[0],
-      targetDate: formData.targetDate.toISOString().split("T")[0],
-    };
+    try {
+      const updatedGoal = {
+        title: formData.title.trim(),
+        description: formData.description.trim(),
+        target_amount: parseFloat(formData.targetAmount),
+        start_date: formData.startDate.toISOString().split("T")[0],
+        end_date: formData.targetDate.toISOString().split("T")[0],
+        is_recuring: formData.isRecurring,
+        category: formData.category,
+        auto_contribution_enabled: formData.autoContributions,
+        auto_contribution_amount: formData.autoContributions
+          ? parseFloat(formData.contributionAmount || "0")
+          : undefined,
 
-    console.log("Saving edited goal:", updatedGoal);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    router.back();
+        contribution_frequency: formData.autoContributions
+          ? formData.contributionFrequency
+          : undefined,
+      };
+
+      await updateGoal(goalId, updatedGoal);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      router.back();
+    } catch (error) {
+      console.error("Error updating goal:", error);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert("Error", "Failed to update goal. Please try again.");
+    }
   };
+
+  // Show loading state while data is being loaded
+  if (isLoading) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <Text style={styles.loadingText}>Loading...</Text>
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
@@ -164,7 +210,7 @@ const EditGoalScreen = () => {
             </TouchableOpacity>
           </LinearGradient>
 
-          <ScrollView style={styles.form}>
+          <ScrollView style={styles.form} showsVerticalScrollIndicator={false}>
             {/* Title */}
             <View style={styles.formGroup}>
               <Text style={styles.label}>Goal Title *</Text>
@@ -174,6 +220,7 @@ const EditGoalScreen = () => {
                 onChangeText={(value) => handleInputChange("title", value)}
                 placeholder="What are you saving for?"
                 placeholderTextColor={colors.textMuted}
+                maxLength={50}
               />
             </View>
 
@@ -190,6 +237,7 @@ const EditGoalScreen = () => {
                 placeholderTextColor={colors.textMuted}
                 multiline
                 numberOfLines={3}
+                maxLength={200}
               />
             </View>
 
@@ -201,15 +249,21 @@ const EditGoalScreen = () => {
                 <TextInput
                   style={styles.amountInput}
                   value={formData.targetAmount}
-                  onChangeText={(value) =>
-                    handleInputChange(
-                      "targetAmount",
-                      value.replace(/[^0-9.]/g, "")
-                    )
-                  }
+                  onChangeText={(value) => {
+                    // Allow numbers and one decimal point
+                    const cleanedValue = value.replace(/[^0-9.]/g, "");
+                    const parts = cleanedValue.split(".");
+                    if (parts.length > 2) {
+                      return; // Don't allow multiple decimal points
+                    }
+                    if (parts[1] && parts[1].length > 2) {
+                      return; // Don't allow more than 2 decimal places
+                    }
+                    handleInputChange("targetAmount", cleanedValue);
+                  }}
                   placeholder="0.00"
                   placeholderTextColor={colors.textMuted}
-                  keyboardType="numeric"
+                  keyboardType="decimal-pad"
                 />
               </View>
             </View>
@@ -343,6 +397,96 @@ const EditGoalScreen = () => {
                 </View>
               )}
             </View>
+
+            {/* Auto Contributions Toggle */}
+            <View style={styles.formGroup}>
+              <View style={styles.switchContainer}>
+                <Text style={styles.label}>Auto Contributions</Text>
+                <Switch
+                  value={formData.autoContributions}
+                  onValueChange={(value) =>
+                    handleInputChange("autoContributions", value)
+                  }
+                  trackColor={{
+                    false: colors.backgroundDark,
+                    true: colors.primary[600],
+                  }}
+                  thumbColor={
+                    formData.autoContributions
+                      ? colors.primary[400]
+                      : colors.textSecondary
+                  }
+                />
+              </View>
+              <Text style={styles.helperText}>
+                Enable to contribute automatically on a schedule
+              </Text>
+            </View>
+
+            {/* Contribution Amount Input */}
+            {formData.autoContributions && (
+              <>
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>Contribution Amount</Text>
+                  <View style={styles.amountInputContainer}>
+                    <Text style={styles.currencySymbol}>$</Text>
+                    <TextInput
+                      style={styles.amountInput}
+                      value={formData.contributionAmount}
+                      onChangeText={(value) => {
+                        // Allow numbers and one decimal point
+                        const cleanedValue = value.replace(/[^0-9.]/g, "");
+                        const parts = cleanedValue.split(".");
+                        if (parts.length > 2) {
+                          return; // Don't allow multiple decimal points
+                        }
+                        if (parts[1] && parts[1].length > 2) {
+                          return; // Don't allow more than 2 decimal places
+                        }
+                        handleInputChange("contributionAmount", cleanedValue);
+                      }}
+                      placeholder="0.00"
+                      placeholderTextColor={colors.textMuted}
+                      keyboardType="decimal-pad"
+                    />
+                  </View>
+                </View>
+
+                {/* Contribution Frequency Selector */}
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>Contribution Frequency</Text>
+                  <TouchableOpacity
+                    style={styles.selectButton}
+                    onPress={() =>
+                      handleInputChange(
+                        "contributionFrequency",
+                        formData.contributionFrequency === "monthly"
+                          ? "weekly"
+                          : formData.contributionFrequency === "weekly"
+                          ? "daily"
+                          : "monthly"
+                      )
+                    }
+                  >
+                    <Text style={styles.selectText}>
+                      {formData.contributionFrequency.charAt(0).toUpperCase() +
+                        formData.contributionFrequency.slice(1)}
+                    </Text>
+                    <Feather
+                      name="repeat"
+                      size={20}
+                      color={colors.textSecondary}
+                    />
+                  </TouchableOpacity>
+                  <Text style={styles.helperText}>
+                    Tap to cycle through: Monthly → Weekly → Daily
+                  </Text>
+                </View>
+              </>
+            )}
+
+            {/* Add some bottom padding for scroll */}
+            <View style={{ height: 50 }} />
           </ScrollView>
         </View>
       </TouchableWithoutFeedback>
@@ -357,6 +501,14 @@ const styles = StyleSheet.create({
   },
   innerContainer: {
     flex: 1,
+  },
+  loadingContainer: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    color: colors.text,
+    fontSize: 16,
   },
   header: {
     flexDirection: "row",
@@ -403,6 +555,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.text,
     marginBottom: 8,
+    fontWeight: "500",
   },
   input: {
     backgroundColor: colors.backgroundLight,
@@ -411,6 +564,8 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     color: colors.text,
     fontSize: 16,
+    borderWidth: 1,
+    borderColor: "transparent",
   },
   textArea: {
     minHeight: 80,
@@ -422,11 +577,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.backgroundLight,
     borderRadius: 8,
     paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: "transparent",
   },
   currencySymbol: {
     fontSize: 16,
     color: colors.text,
     marginRight: 4,
+    fontWeight: "500",
   },
   amountInput: {
     flex: 1,
@@ -442,6 +600,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: "transparent",
   },
   dateText: {
     color: colors.text,
@@ -456,6 +616,7 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontSize: 14,
     marginTop: 8,
+    lineHeight: 20,
   },
   selectButton: {
     flexDirection: "row",
@@ -465,6 +626,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: "transparent",
   },
   selectText: {
     color: colors.text,
@@ -475,6 +638,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginTop: 8,
     paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: colors.backgroundDark,
   },
   categoryOption: {
     paddingVertical: 12,
@@ -492,4 +657,5 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 });
+
 export default EditGoalScreen;
