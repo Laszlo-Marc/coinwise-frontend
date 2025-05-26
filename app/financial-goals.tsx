@@ -1,11 +1,12 @@
 import BottomBar from "@/components/mainComponents/BottomBar";
+import DeleteConfirmModal from "@/components/mainComponents/DeleteModal";
 import { colors } from "@/constants/colors";
 import { useGoals } from "@/contexts/GoalsContext";
 import { GoalModel } from "@/models/goal";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
-import React from "react";
+import React, { useState } from "react";
 import {
   FlatList,
   ScrollView,
@@ -21,8 +22,9 @@ import { calculatePercentage, formatCurrency } from "../utils/formatting";
 const FinancialGoalsScreen = () => {
   const insets = useSafeAreaInsets();
   const { goals, deleteGoal } = useGoals();
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
 
-  // Calculate summary data
   const totalGoals = goals.length;
   const totalSaved = goals.reduce((acc, goal) => acc + goal.current_amount, 0);
 
@@ -41,8 +43,6 @@ const FinancialGoalsScreen = () => {
   };
 
   const handleSelectGoal = (goal: GoalModel) => {
-    console.log("Selected Goal:", goal);
-    console.log("Goal ID:", goal.id);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.replace(`./goals/goal-details/${goal.id}`);
   };
@@ -53,13 +53,26 @@ const FinancialGoalsScreen = () => {
     return colors.success;
   };
 
-  const handleDeleteGoal = async (goalId: string) => {
+  const handleDeleteGoal = (goalId: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setSelectedGoalId(goalId);
+    setModalVisible(true);
+  };
+  const handleDeleteConfirm = async () => {
+    if (!selectedGoalId) return;
     try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      await deleteGoal(goalId);
+      await deleteGoal(selectedGoalId);
     } catch (error) {
       console.error("Error deleting goal:", error);
+    } finally {
+      setModalVisible(false);
+      setSelectedGoalId(null);
     }
+  };
+
+  const handleDeleteCancel = () => {
+    setModalVisible(false);
+    setSelectedGoalId(null);
   };
 
   const renderRightActions = (goal: GoalModel) => (
@@ -130,69 +143,77 @@ const FinancialGoalsScreen = () => {
 
           return (
             <Swipeable
-  renderLeftActions={() => renderLeftActions(item)}
-  renderRightActions={() => renderRightActions(item)}
->
-  <TouchableOpacity
-              style={styles.goalCard}
-              onPress={() => handleSelectGoal(item)}
+              renderLeftActions={() => renderLeftActions(item)}
+              renderRightActions={() => renderRightActions(item)}
             >
-              <View style={styles.goalHeader}>
-                <Text style={styles.goalTitle}>{item.title}</Text>
-                <View style={styles.goalActions}>
-                  <TouchableOpacity
-                    style={styles.actionButton}
-                    onPress={() => router.push(`./goals/edit-goal/${item.id}`)}
-                  >
-                    <Feather
-                      name="edit-2"
-                      size={18}
-                      color={colors.textSecondary}
-                    />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.actionButton}
-                    onPress={() => handleDeleteGoal(item.id ?? "")}
-                  >
-                    <Feather
-                      name="trash"
-                      size={18}
-                      color={colors.textSecondary}
-                    />
-                  </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.goalCard}
+                onPress={() => handleSelectGoal(item)}
+              >
+                <View style={styles.goalHeader}>
+                  <Text style={styles.goalTitle}>{item.title}</Text>
+                  <View style={styles.goalActions}>
+                    <TouchableOpacity
+                      style={styles.actionButton}
+                      onPress={() =>
+                        router.push(`./goals/edit-goal/${item.id}`)
+                      }
+                    >
+                      <Feather
+                        name="edit-2"
+                        size={18}
+                        color={colors.textSecondary}
+                      />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.actionButton}
+                      onPress={() => handleDeleteGoal(item.id ?? "")}
+                    >
+                      <Feather
+                        name="trash"
+                        size={18}
+                        color={colors.textSecondary}
+                      />
+                    </TouchableOpacity>
+                  </View>
                 </View>
-              </View>
 
-              {/* Progress bar */}
-              <View style={styles.progressBarContainer}>
-                <View
-                  style={[
-                    styles.progressBar,
-                    {
-                      width: `${progressPercentage}%`,
-                      backgroundColor: progressColor,
-                    },
-                  ]}
-                />
-              </View>
+                {/* Progress bar */}
+                <View style={styles.progressBarContainer}>
+                  <View
+                    style={[
+                      styles.progressBar,
+                      {
+                        width: `${progressPercentage}%`,
+                        backgroundColor: progressColor,
+                      },
+                    ]}
+                  />
+                </View>
 
-              <View style={styles.goalDetails}>
-                <Text style={styles.goalAmount}>
-                  {formatCurrency(item.current_amount)} /{" "}
-                  {formatCurrency(item.target_amount)}
-                </Text>
+                <View style={styles.goalDetails}>
+                  <Text style={styles.goalAmount}>
+                    {formatCurrency(item.current_amount)} /{" "}
+                    {formatCurrency(item.target_amount)}
+                  </Text>
 
-                <Text style={styles.goalDate}>
-                  Target: {new Date(item.end_date).toLocaleDateString()}
-                </Text>
-              </View>
-            </TouchableOpacity>
-</Swipeable>
-            
+                  <Text style={styles.goalDate}>
+                    Target: {new Date(item.end_date).toLocaleDateString()}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            </Swipeable>
           );
         }}
       />
       <BottomBar />
+      <DeleteConfirmModal
+        visible={modalVisible}
+        title="Delete Goal"
+        message="Are you sure you want to delete this goal?"
+        onCancel={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+      />
 
       {/* Safe area insets for bottom bar */}
     </View>

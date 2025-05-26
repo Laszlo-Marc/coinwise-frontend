@@ -30,7 +30,6 @@ const BudgetsScreen = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [currentBudget, setCurrentBudget] = useState<Budget | null>(null);
-
   const [budgetName, setBudgetName] = useState("");
   const [budgetAmount, setBudgetAmount] = useState("");
   const [budgetCategory, setBudgetCategory] = useState("Food");

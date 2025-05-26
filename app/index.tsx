@@ -1,3 +1,10 @@
+import { useTransactionContext } from "@/contexts/AppContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { useBudgets } from "@/contexts/BudgetsContext";
+import { useGoals } from "@/contexts/GoalsContext";
+import { BudgetModel } from "@/models/budget";
+import { GoalModel } from "@/models/goal";
+import { TransactionModel } from "@/models/transaction";
 import {
   AntDesign,
   Entypo,
@@ -23,15 +30,6 @@ import {
 } from "react-native";
 import "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-import { useAuth } from "@/contexts/AuthContext";
-
-import { useTransactionContext } from "@/contexts/AppContext";
-import { useBudgets } from "@/contexts/BudgetsContext";
-import { useGoals } from "@/contexts/GoalsContext";
-import { BudgetModel } from "@/models/budget";
-import { GoalModel } from "@/models/goal";
-import { TransactionModel } from "@/models/transaction";
 import BottomBar from "../components/mainComponents/BottomBar";
 import { colors } from "../constants/colors";
 
@@ -41,11 +39,23 @@ export default function HomePage() {
   const { state } = useAuth();
   const { goals } = useGoals();
   const { budgets } = useBudgets();
-  const { transactions } = useTransactionContext();
-
+  const { transactions, fetchTransactions } = useTransactionContext();
+  const { fetchGoals, fetchContributions } = useGoals();
   const [isFocused, setIsFocused] = useState(false);
   const [focusAnim] = useState(new Animated.Value(0));
+  useEffect(() => {
+    const initializeData = async () => {
+      try {
+        await fetchGoals();
+        await fetchContributions();
+        await fetchTransactions();
+      } catch (e) {
+        console.error("Failed to initialize goals", e);
+      }
+    };
 
+    initializeData();
+  }, []);
   useEffect(() => {
     const checkUser = async () => {
       if (!state.userToken || !state.user) {
@@ -476,7 +486,10 @@ export default function HomePage() {
 
         {/* Goals Card */}
         <View style={styles.card}>
-          <TouchableOpacity style={styles.sectionHeaderButton}>
+          <TouchableOpacity
+            style={styles.sectionHeaderButton}
+            onPress={() => router.replace("./financial-goals")}
+          >
             <Text style={styles.sectionHeaderText}>Financial Goals</Text>
             <Entypo name="chevron-right" size={24} color={colors.text} />
           </TouchableOpacity>

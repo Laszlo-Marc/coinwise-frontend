@@ -1,10 +1,12 @@
 import { useGoals } from "@/contexts/GoalsContext";
 import { GoalModel } from "@/models/goal";
+import { ContributionModel } from "@/models/goal-contribution";
 import { Feather } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   Animated,
   ScrollView,
@@ -15,7 +17,10 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors } from "../../../constants/colors";
-import { calculatePercentage, formatCurrency } from "../../../utils/formatting";
+import {
+  calculatePercentage,
+  formatCurrency,
+} from "../../../hooks/goals-helpers";
 
 const GoalDetailsScreen = () => {
   const { id } = useLocalSearchParams();
@@ -24,26 +29,31 @@ const GoalDetailsScreen = () => {
   const { goals, contributions } = useGoals();
   const [goal, setGoal] = useState<GoalModel | null>(null);
   const [progressAnim] = useState(new Animated.Value(0));
-
-  const correspondingContributions = contributions.filter(
-    (c) => c.goal_id === id
-  );
-
-  useEffect(() => {
-    const foundGoal = goals.find((g) => g.id === id);
-    setGoal(foundGoal ?? null);
-    if (foundGoal) {
-      const progressPercentage = calculatePercentage(
-        foundGoal.current_amount,
-        foundGoal.target_amount
+  const [correspondingContributions, setCorrespondingContributions] = useState<
+    ContributionModel[]
+  >([]);
+  useFocusEffect(
+    useCallback(() => {
+      const foundGoal = goals.find((g) => g.id === id);
+      setGoal(foundGoal ?? null);
+      const matchingContributions = contributions.filter(
+        (c) => c.goal_id === String(id)
       );
-      Animated.timing(progressAnim, {
-        toValue: progressPercentage / 100,
-        duration: 1000,
-        useNativeDriver: false,
-      }).start();
-    }
-  }, [id, goals]);
+      setCorrespondingContributions(matchingContributions);
+      if (foundGoal) {
+        const progressPercentage = calculatePercentage(
+          foundGoal.current_amount,
+          foundGoal.target_amount
+        );
+        progressAnim.setValue(0);
+        Animated.timing(progressAnim, {
+          toValue: progressPercentage / 100,
+          duration: 1000,
+          useNativeDriver: false,
+        }).start();
+      }
+    }, [id, goals])
+  );
 
   const getProgressColor = (percentage: number): string => {
     if (percentage < 30) return colors.error;
@@ -53,12 +63,12 @@ const GoalDetailsScreen = () => {
 
   const handleAddContribution = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    router.push(`./add-contribution/${goal?.id}`);
+    router.replace(`./add-contribution/${goal?.id}`);
   };
 
   const handleEditGoal = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push(`../edit-goal/${goal?.id}`);
+    router.replace(`../edit-goal/${goal?.id}`);
   };
 
   if (!goal) return null;
@@ -70,9 +80,9 @@ const GoalDetailsScreen = () => {
   const progressColor = getProgressColor(progressPercentage);
 
   const startDate = new Date(goal.start_date).toLocaleDateString();
-  const targetDate = new Date(goal.start_date).toLocaleDateString();
+  const targetDate = new Date(goal.end_date).toLocaleDateString();
 
-  const targetDateObj = new Date(goal.start_date);
+  const targetDateObj = new Date(goal.end_date);
   const today = new Date();
   const monthsLeft =
     (targetDateObj.getFullYear() - today.getFullYear()) * 12 +

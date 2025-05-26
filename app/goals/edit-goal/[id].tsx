@@ -95,7 +95,7 @@ const EditGoalScreen = () => {
       setFormData((prev) => ({
         ...prev,
         startDate: selectedDate,
-        // Ensure target date is after start date
+        
         targetDate:
           selectedDate >= prev.targetDate
             ? new Date(selectedDate.getTime() + 86400000)
@@ -147,17 +147,18 @@ const EditGoalScreen = () => {
         category: formData.category,
         auto_contribution_enabled: formData.autoContributions,
         auto_contribution_amount: formData.autoContributions
-          ? parseFloat(formData.contributionAmount || "0")
-          : undefined,
+          ? parseFloat(formData.contributionAmount || "0.0")
+          : 0.0,
 
         contribution_frequency: formData.autoContributions
           ? formData.contributionFrequency
-          : undefined,
+          : "",
       };
 
+      console.log("Updating goal with data:", updatedGoal);
       await updateGoal(goalId, updatedGoal);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      router.back();
+      router.replace("/financial-goals");
     } catch (error) {
       console.error("Error updating goal:", error);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -165,7 +166,7 @@ const EditGoalScreen = () => {
     }
   };
 
-  // Show loading state while data is being loaded
+
   if (isLoading) {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
@@ -250,14 +251,14 @@ const EditGoalScreen = () => {
                   style={styles.amountInput}
                   value={formData.targetAmount}
                   onChangeText={(value) => {
-                    // Allow numbers and one decimal point
+               
                     const cleanedValue = value.replace(/[^0-9.]/g, "");
                     const parts = cleanedValue.split(".");
                     if (parts.length > 2) {
-                      return; // Don't allow multiple decimal points
+                      return; 
                     }
                     if (parts[1] && parts[1].length > 2) {
-                      return; // Don't allow more than 2 decimal places
+                      return; 
                     }
                     handleInputChange("targetAmount", cleanedValue);
                   }}
@@ -321,7 +322,7 @@ const EditGoalScreen = () => {
                   onChange={handleTargetDateChange}
                   minimumDate={
                     new Date(formData.startDate.getTime() + 86400000)
-                  } // Day after start date
+                  } 
                 />
               )}
             </View>
@@ -434,14 +435,14 @@ const EditGoalScreen = () => {
                       style={styles.amountInput}
                       value={formData.contributionAmount}
                       onChangeText={(value) => {
-                        // Allow numbers and one decimal point
+                        
                         const cleanedValue = value.replace(/[^0-9.]/g, "");
                         const parts = cleanedValue.split(".");
                         if (parts.length > 2) {
-                          return; // Don't allow multiple decimal points
+                          return; 
                         }
                         if (parts[1] && parts[1].length > 2) {
-                          return; // Don't allow more than 2 decimal places
+                          return; 
                         }
                         handleInputChange("contributionAmount", cleanedValue);
                       }}

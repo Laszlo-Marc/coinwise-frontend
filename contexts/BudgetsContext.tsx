@@ -14,7 +14,7 @@ interface BudgetContextType {
 
 const BudgetContext = createContext<BudgetContextType | undefined>(undefined);
 const API_BASE_URL = "http://192.168.1.156:5000/api";
-const BUDGET_API_URL = `${API_BASE_URL}/goals`;
+const BUDGET_API_URL = `${API_BASE_URL}/budgets`;
 
 export const BudgetsProvider: React.FC<{ children: React.ReactNode }> = ({
   children,

@@ -8,7 +8,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { useGoals } from "@/contexts/GoalsContext";
 import { GoalModel } from "@/models/goal";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
   Keyboard,
@@ -39,14 +39,11 @@ const AddContributionScreen = () => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [goalData, setGoalData] = useState(null as GoalModel | null);
+  const successOpacity = useRef(new Animated.Value(0)).current;
 
-  // Animation
-  const successOpacity = new Animated.Value(0);
-
-  // Fetch goal data
+  
   useEffect(() => {
     const goal = goals.find((g) => g.id === id);
-    console.log("Goal data:", goal);
     setGoalData(goal || null);
   }, [id]);
 
@@ -81,9 +78,6 @@ const AddContributionScreen = () => {
     };
     try {
       await addContribution(newContribution);
-      console.log("Contribution added:", newContribution);
-
-      // Trigger success animation
       setShowSuccess(true);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
@@ -100,17 +94,15 @@ const AddContributionScreen = () => {
           useNativeDriver: true,
         }),
       ]).start(() => {
-        router.back();
+        router.replace(`../${id}`);
       });
     } catch (err) {
       console.error("Failed to add contribution:", err);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      // Optionally show a toast or alert
     }
   };
 
-  // Quick amount buttons
-  const quickAmounts = [50, 100, 200, 500];
+  const quickAmounts = [50, 100, 200, 500, 1000, 5000];
 
   return (
     <KeyboardAvoidingView
@@ -331,16 +323,20 @@ const styles = StyleSheet.create({
   },
   quickAmountButtons: {
     flexDirection: "row",
+    flexWrap: "wrap",
     justifyContent: "space-between",
+    gap: 12,
   },
+
   quickAmountButton: {
     backgroundColor: colors.backgroundLight,
     borderRadius: 8,
     paddingVertical: 12,
-    paddingHorizontal: 0,
-    width: "22%",
     alignItems: "center",
+    width: "30%",
+    marginBottom: 12,
   },
+
   quickAmountText: {
     color: colors.text,
     fontSize: 16,

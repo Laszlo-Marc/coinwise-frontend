@@ -2,13 +2,7 @@ import { GoalModel } from "@/models/goal";
 import { ContributionModel } from "@/models/goal-contribution";
 import axios from "axios";
 import * as SecureStore from "expo-secure-store";
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import React, { createContext, useContext, useMemo, useState } from "react";
 
 interface GoalContextType {
   goals: GoalModel[];
@@ -34,18 +28,6 @@ export const GoalsProvider: React.FC<{ children: React.ReactNode }> = ({
   const [contributions, setContributions] = useState<ContributionModel[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const initializeGoals = async () => {
-      try {
-        await fetchGoals();
-        await fetchContributions();
-      } catch (e) {
-        handleApiError(e);
-      }
-    };
-
-    initializeGoals();
-  }, []);
   const handleApiError = (error: any) => {
     console.error("API Error:", error);
     setError("Something went wrong. Please try again.");
@@ -110,11 +92,13 @@ export const GoalsProvider: React.FC<{ children: React.ReactNode }> = ({
         }
       );
 
+      console.log("Contribution added:", response.data);
       const updatedGoal: GoalModel = response.data;
-
+      console.log("Updated Goal after contribution:", updatedGoal);
       setGoals((prev) =>
         prev.map((gl) => (gl.id === updatedGoal.id ? updatedGoal : gl))
       );
+      setContributions((prev) => [...prev, contribution]);
     } catch (e) {
       handleApiError(e);
     }
@@ -131,7 +115,6 @@ export const GoalsProvider: React.FC<{ children: React.ReactNode }> = ({
           "Content-Type": "application/json",
         },
       });
-      console.log("Contributions fetched:", response.data);
 
       setContributions(response.data);
       return response.data;
@@ -148,6 +131,7 @@ export const GoalsProvider: React.FC<{ children: React.ReactNode }> = ({
     try {
       console.log("Updating goal with ID:", id, "Updates:", updates);
       const token = await SecureStore.getItem("auth_token");
+
       const response = await axios.put(`${GOALS_API_URL}/edit/${id}`, updates, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -191,7 +175,7 @@ export const GoalsProvider: React.FC<{ children: React.ReactNode }> = ({
       addContribution,
       fetchContributions,
     }),
-    [goals, error]
+    [goals, error, contributions]
   );
 
   return (
