@@ -1,1115 +1,532 @@
-// screens/BudgetFormScreen.tsx
-
-import { colors } from "@/constants/colors";
-import { Feather, MaterialIcons } from "@expo/vector-icons";
+import BudgetCategoryDropdown from "@/components/budgetsComponents/BudgetCategoryDropdown";
+import ThresholdToggle from "@/components/budgetsComponents/ThresholdToggle";
+import { useBudgets } from "@/contexts/BudgetsContext";
+import { Feather } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
-import React, { useEffect, useRef, useState } from "react";
+import { useRouter } from "expo-router";
+import React, { useState } from "react";
 import {
-  Alert,
-  Animated,
-  Dimensions,
-  FlatList,
-  Modal,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
   Switch,
   Text,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { colors } from "../../constants/colors";
 
-const { width } = Dimensions.get("window");
-
-interface SubBudget {
-  id: string;
-  name: string;
-  amount: number;
-  spent: number;
-  category: string;
-}
-
-interface Budget {
-  id: string;
-  name: string;
-  category: string;
-  amount: number;
-  spent: number;
-  period: "weekly" | "monthly" | "yearly" | "custom";
-  createdAt: string;
-  startDate: string;
-  endDate: string;
-  threshold?: number;
-  subBudgets?: SubBudget[];
-  description?: string;
-  currency: string;
-  icon: string;
-  color: string;
-  autoReset: boolean;
-  notifications: boolean;
-  recurringType?: "fixed" | "rollover";
-  tags: string[];
-  priority: "low" | "medium" | "high";
-}
-
-const categories = [
-  { name: "Food & Dining", icon: "restaurant", color: "#FF6B6B" },
-  { name: "Transportation", icon: "car", color: "#4ECDC4" },
-  { name: "Shopping", icon: "shopping-bag", color: "#45B7D1" },
-  { name: "Entertainment", icon: "movie", color: "#96CEB4" },
-  { name: "Bills & Utilities", icon: "receipt", color: "#FECA57" },
-  { name: "Healthcare", icon: "medical-bag", color: "#FF9FF3" },
-  { name: "Education", icon: "school", color: "#54A0FF" },
-  { name: "Travel", icon: "airplane", color: "#5F27CD" },
-  { name: "Savings", icon: "piggy-bank", color: "#00D2D3" },
-  { name: "Investment", icon: "trending-up", color: "#FF9F43" },
-  { name: "Insurance", icon: "shield", color: "#26de81" },
-  { name: "Other", icon: "more-horizontal", color: "#74b9ff" },
-];
-
-const currencies = ["USD", "EUR", "GBP", "JPY", "CAD", "AUD", "CHF", "CNY"];
-const periods = [
-  { value: "weekly", label: "Weekly" },
-  { value: "monthly", label: "Monthly" },
-  { value: "yearly", label: "Yearly" },
-  { value: "custom", label: "Custom Period" },
-];
-
-const BudgetFormScreen = ({ route, navigation }) => {
+const AddBudgetScreen = () => {
   const insets = useSafeAreaInsets();
-  const { budget, isEdit = false } = route.params || {};
-
-  // Form states
-  const [budgetName, setBudgetName] = useState(budget?.name || "");
-  const [budgetAmount, setBudgetAmount] = useState(
-    budget?.amount?.toString() || ""
-  );
-  const [selectedCategory, setSelectedCategory] = useState(
-    categories.find((c) => c.name === budget?.category) || categories[0]
-  );
-  const [budgetPeriod, setBudgetPeriod] = useState(budget?.period || "monthly");
-  const [startDate, setStartDate] = useState(
-    new Date(budget?.startDate || Date.now())
-  );
-  const [endDate, setEndDate] = useState(
-    new Date(budget?.endDate || Date.now() + 30 * 24 * 60 * 60 * 1000)
-  );
-  const [description, setDescription] = useState(budget?.description || "");
-  const [currency, setCurrency] = useState(budget?.currency || "USD");
-  const [selectedIcon, setSelectedIcon] = useState(budget?.icon || "wallet");
-  const [selectedColor, setSelectedColor] = useState(
-    budget?.color || "#4ECDC4"
-  );
-  const [autoReset, setAutoReset] = useState(budget?.autoReset || false);
-  const [notifications, setNotifications] = useState(
-    budget?.notifications || true
-  );
-  const [threshold, setThreshold] = useState(budget?.threshold || 80);
-  const [recurringType, setRecurringType] = useState(
-    budget?.recurringType || "fixed"
-  );
-  const [tags, setTags] = useState(budget?.tags || []);
-  const [priority, setPriority] = useState(budget?.priority || "medium");
-  const [subBudgets, setSubBudgets] = useState(budget?.subBudgets || []);
-
-  // Modal states
-  const [showCategoryModal, setShowCategoryModal] = useState(false);
-  const [showCurrencyModal, setShowCurrencyModal] = useState(false);
+  const router = useRouter();
+  const [formData, setFormData] = useState({
+    title: "",
+    description: "",
+    amount: "",
+    start_date: new Date(),
+    end_date: new Date(new Date().setMonth(new Date().getMonth() + 1)),
+    isRecurring: false,
+    category: "Groceries",
+    recurring_frequency: "monthly",
+    notificationsEnabled: false,
+    notificationThreshold: 80,
+  });
+  const { addBudget } = useBudgets();
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
-  const [showSubBudgets, setShowSubBudgets] = useState(
-    budget?.subBudgets?.length > 0
-  );
-  const [newTag, setNewTag] = useState("");
 
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(50)).current;
+  const handleInputChange = (
+    field: string,
+    value: string | boolean | number
+  ) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
 
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, []);
+  const handleStartDateChange = (event: any, selectedDate: any) => {
+    setShowStartDatePicker(false);
+    if (selectedDate) {
+      setFormData((prev) => ({
+        ...prev,
+        start_date: selectedDate,
+        // Ensure end date is at least one day after start date
+        end_date:
+          prev.end_date <= selectedDate
+            ? new Date(selectedDate.getTime() + 86400000)
+            : prev.end_date,
+      }));
+    }
+  };
+
+  const handleEndDateChange = (event: any, selectedDate: any) => {
+    setShowEndDatePicker(false);
+    if (selectedDate) {
+      setFormData((prev) => ({ ...prev, end_date: selectedDate }));
+    }
+  };
+
+  const validateForm = () => {
+    // Check title is not empty
+    if (!formData.title.trim()) return false;
+
+    // Check amount is valid number and greater than 0
+    const amount = parseFloat(formData.amount);
+    if (isNaN(amount) || amount <= 0) return false;
+
+    // Check end date is after start date
+    if (formData.end_date <= formData.start_date) return false;
+
+    // Check notification threshold if notifications are enabled
+    if (formData.notificationsEnabled) {
+      const threshold = formData.notificationThreshold;
+      if (isNaN(threshold) || threshold <= 0 || threshold > 100) return false;
+    }
+
+    return true;
+  };
 
   const handleSave = () => {
-    if (!budgetName.trim() || !budgetAmount.trim()) {
-      Alert.alert("Error", "Please fill in all required fields");
+    if (!validateForm()) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
     }
 
-    const amount = parseFloat(budgetAmount);
-    if (isNaN(amount) || amount <= 0) {
-      Alert.alert("Error", "Please enter a valid amount");
-      return;
-    }
-
-    const newBudget: Budget = {
-      id: budget?.id || `budget_${Date.now()}`,
-      name: budgetName.trim(),
-      category: selectedCategory.name,
-      amount,
-      spent: budget?.spent || 0,
-      period: budgetPeriod,
-      createdAt: budget?.createdAt || new Date().toISOString(),
-      startDate: startDate.toISOString(),
-      endDate: endDate.toISOString(),
-      description,
-      currency,
-      icon: selectedIcon,
-      color: selectedColor,
-      autoReset,
-      notifications,
-      threshold,
-      recurringType,
-      tags,
-      priority,
-      subBudgets: showSubBudgets ? subBudgets : undefined,
+    const amount = parseFloat(formData.amount);
+    const budgetData = {
+      title: formData.title,
+      description: formData.description || "",
+      amount: amount,
+      spent: 0,
+      remaining: amount,
+      start_date: formData.start_date.toISOString().split("T")[0],
+      is_recurring: formData.isRecurring,
+      recurring_frequency: formData.recurring_frequency,
+      category: formData.category,
+      end_date: formData.end_date.toISOString().split("T")[0],
+      notificationsEnabled: formData.notificationsEnabled,
+      notificationThreshold: formData.notificationThreshold,
     };
 
-    // Here you would typically save to your state management or database
-    console.log("Saving budget:", newBudget);
+    addBudget(budgetData);
 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    navigation.goBack();
+    router.replace("/budgets");
   };
-
-  const addSubBudget = () => {
-    const newSub: SubBudget = {
-      id: `sub_${Date.now()}`,
-      name: "New Sub-Budget",
-      amount: 0,
-      spent: 0,
-      category: "Other",
-    };
-    setSubBudgets([...subBudgets, newSub]);
-  };
-
-  const updateSubBudget = (id: string, field: keyof SubBudget, value: any) => {
-    setSubBudgets(
-      subBudgets.map((sb) => (sb.id === id ? { ...sb, [field]: value } : sb))
-    );
-  };
-
-  const removeSubBudget = (id: string) => {
-    setSubBudgets(subBudgets.filter((sb) => sb.id !== id));
-  };
-
-  const addTag = () => {
-    if (newTag.trim() && !tags.includes(newTag.trim())) {
-      setTags([...tags, newTag.trim()]);
-      setNewTag("");
-    }
-  };
-
-  const removeTag = (tag: string) => {
-    setTags(tags.filter((t) => t !== tag));
-  };
-
-  const GlassCard = ({ children, style = {} }) => (
-    <BlurView
-      intensity={20}
-      tint="light"
-      style={[
-        {
-          backgroundColor: "rgba(255,255,255,0.1)",
-          borderRadius: 16,
-          padding: 20,
-          marginBottom: 16,
-          borderWidth: 1,
-          borderColor: "rgba(255,255,255,0.2)",
-        },
-        style,
-      ]}
-    >
-      {children}
-    </BlurView>
-  );
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <LinearGradient
-        colors={[selectedCategory.color + "40", colors.background]}
-        style={{ flex: 1 }}
-      >
-        {/* Header */}
-        <LinearGradient
-          colors={[selectedCategory.color, colors.primary[500]]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={{
-            paddingTop: insets.top + 10,
-            paddingHorizontal: 20,
-            paddingBottom: 20,
-            flexDirection: "row",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Feather name="arrow-left" size={24} color={colors.text} />
-          </TouchableOpacity>
-          <Text
-            style={{ fontSize: 20, fontWeight: "bold", color: colors.text }}
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={styles.innerContainer}>
+          {/* Header with gradient */}
+          <LinearGradient
+            colors={[colors.secondary[500], colors.primary[500]]}
+            start={{ x: 1, y: 0 }}
+            end={{ x: 0, y: 1 }}
+            style={[styles.header, { paddingTop: insets.top + 10 }]}
           >
-            {isEdit ? "Edit Budget" : "New Budget"}
-          </Text>
-          <TouchableOpacity onPress={handleSave}>
-            <Text
-              style={{ fontSize: 16, fontWeight: "600", color: colors.text }}
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => router.replace("/budgets")}
             >
-              Save
-            </Text>
-          </TouchableOpacity>
-        </LinearGradient>
+              <Feather name="x" size={24} color={colors.text} />
+            </TouchableOpacity>
 
-        <Animated.ScrollView
-          style={{
-            flex: 1,
-            opacity: fadeAnim,
-            transform: [{ translateY: slideAnim }],
-          }}
-          contentContainerStyle={{ padding: 20, paddingBottom: 100 }}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Basic Information */}
-          <GlassCard>
-            <Text
-              style={{
-                fontSize: 18,
-                fontWeight: "bold",
-                color: colors.text,
-                marginBottom: 16,
-              }}
+            <Text style={styles.headerTitle}>Create a new budget</Text>
+
+            <TouchableOpacity
+              style={[
+                styles.saveButton,
+                !validateForm() && styles.saveButtonDisabled,
+              ]}
+              onPress={handleSave}
+              disabled={!validateForm()}
             >
-              Basic Information
-            </Text>
+              <Text style={styles.saveButtonText}>Save</Text>
+            </TouchableOpacity>
+          </LinearGradient>
 
-            <View style={{ marginBottom: 16 }}>
-              <Text
-                style={{
-                  fontSize: 14,
-                  fontWeight: "600",
-                  color: colors.textSecondary,
-                  marginBottom: 8,
-                }}
-              >
-                Budget Name *
-              </Text>
+          <ScrollView style={styles.form}>
+            {/* Title */}
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Title *</Text>
               <TextInput
-                value={budgetName}
-                onChangeText={setBudgetName}
-                placeholder="Enter budget name"
-                placeholderTextColor={colors.textSecondary}
-                style={{
-                  backgroundColor: "rgba(255,255,255,0.1)",
-                  borderRadius: 12,
-                  padding: 16,
-                  color: colors.text,
-                  fontSize: 16,
-                  borderWidth: 1,
-                  borderColor: "rgba(255,255,255,0.2)",
-                }}
+                style={styles.input}
+                value={formData.title}
+                onChangeText={(value) => handleInputChange("title", value)}
+                placeholder="What is this budget for?"
+                placeholderTextColor={colors.textMuted}
               />
             </View>
 
-            <View style={{ marginBottom: 16 }}>
-              <Text
-                style={{
-                  fontSize: 14,
-                  fontWeight: "600",
-                  color: colors.textSecondary,
-                  marginBottom: 8,
+            {/* Description */}
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Description</Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                value={formData.description}
+                onChangeText={(value) =>
+                  handleInputChange("description", value)
+                }
+                placeholder="Optional description..."
+                placeholderTextColor={colors.textMuted}
+                multiline
+                numberOfLines={3}
+              />
+            </View>
+
+            {/* Category */}
+            <View style={styles.formGroup}>
+              <BudgetCategoryDropdown
+                selectedCategory={formData.category}
+                onSelectCategory={(category) => {
+                  handleInputChange("category", category);
+
+                  Haptics.selectionAsync();
                 }}
-              >
-                Amount *
-              </Text>
-              <View style={{ flexDirection: "row", alignItems: "center" }}>
-                <TouchableOpacity
-                  onPress={() => setShowCurrencyModal(true)}
-                  style={{
-                    backgroundColor: "rgba(255,255,255,0.1)",
-                    borderRadius: 12,
-                    padding: 16,
-                    marginRight: 12,
-                    borderWidth: 1,
-                    borderColor: "rgba(255,255,255,0.2)",
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: colors.text,
-                      fontSize: 16,
-                      fontWeight: "600",
-                    }}
-                  >
-                    {currency}
-                  </Text>
-                </TouchableOpacity>
+              />
+            </View>
+            {/* Amount */}
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Amount *</Text>
+              <View style={styles.amountInputContainer}>
+                <Text style={styles.currencySymbol}>RON</Text>
                 <TextInput
-                  value={budgetAmount}
-                  onChangeText={setBudgetAmount}
-                  placeholder="0.00"
-                  placeholderTextColor={colors.textSecondary}
-                  keyboardType="numeric"
-                  style={{
-                    flex: 1,
-                    backgroundColor: "rgba(255,255,255,0.1)",
-                    borderRadius: 12,
-                    padding: 16,
-                    color: colors.text,
-                    fontSize: 16,
-                    borderWidth: 1,
-                    borderColor: "rgba(255,255,255,0.2)",
+                  style={styles.amountInput}
+                  value={formData.amount}
+                  onChangeText={(value) => {
+                    const sanitized = value.replace(/[^0-9.]/g, "");
+
+                    const parts = sanitized.split(".");
+                    const cleanValue =
+                      parts.length > 2
+                        ? parts[0] + "." + parts.slice(1).join("")
+                        : sanitized;
+                    handleInputChange("amount", cleanValue);
                   }}
+                  placeholder="0.00"
+                  placeholderTextColor={colors.textMuted}
+                  keyboardType="decimal-pad"
                 />
               </View>
             </View>
 
-            <View style={{ marginBottom: 16 }}>
-              <Text
-                style={{
-                  fontSize: 14,
-                  fontWeight: "600",
-                  color: colors.textSecondary,
-                  marginBottom: 8,
-                }}
-              >
-                Category
-              </Text>
+            {/* Start Date */}
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Start Date</Text>
               <TouchableOpacity
-                onPress={() => setShowCategoryModal(true)}
-                style={{
-                  backgroundColor: "rgba(255,255,255,0.1)",
-                  borderRadius: 12,
-                  padding: 16,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  borderWidth: 1,
-                  borderColor: "rgba(255,255,255,0.2)",
-                }}
+                style={styles.datePickerButton}
+                onPress={() => setShowStartDatePicker(true)}
               >
-                <View style={{ flexDirection: "row", alignItems: "center" }}>
-                  <View
-                    style={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: 16,
-                      backgroundColor: selectedCategory.color + "40",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      marginRight: 12,
-                    }}
-                  >
-                    <MaterialIcons
-                      name={selectedCategory.icon}
-                      size={18}
-                      color={selectedCategory.color}
-                    />
-                  </View>
-                  <Text style={{ color: colors.text, fontSize: 16 }}>
-                    {selectedCategory.name}
-                  </Text>
-                </View>
+                <Text style={styles.dateText}>
+                  {formData.start_date.toLocaleDateString()}
+                </Text>
                 <Feather
-                  name="chevron-right"
+                  name="calendar"
                   size={20}
                   color={colors.textSecondary}
                 />
               </TouchableOpacity>
+
+              {showStartDatePicker && (
+                <DateTimePicker
+                  value={formData.start_date}
+                  mode="date"
+                  display="default"
+                  onChange={handleStartDateChange}
+                  minimumDate={new Date()}
+                />
+              )}
             </View>
 
-            <View>
-              <Text
-                style={{
-                  fontSize: 14,
-                  fontWeight: "600",
-                  color: colors.textSecondary,
-                  marginBottom: 8,
-                }}
-              >
-                Description
-              </Text>
-              <TextInput
-                value={description}
-                onChangeText={setDescription}
-                placeholder="Add a description (optional)"
-                placeholderTextColor={colors.textSecondary}
-                multiline
-                numberOfLines={3}
-                style={{
-                  backgroundColor: "rgba(255,255,255,0.1)",
-                  borderRadius: 12,
-                  padding: 16,
-                  color: colors.text,
-                  fontSize: 16,
-                  textAlignVertical: "top",
-                  borderWidth: 1,
-                  borderColor: "rgba(255,255,255,0.2)",
-                }}
-              />
-            </View>
-          </GlassCard>
-
-          {/* Period Settings */}
-          <GlassCard>
-            <Text
-              style={{
-                fontSize: 18,
-                fontWeight: "bold",
-                color: colors.text,
-                marginBottom: 16,
-              }}
-            >
-              Period Settings
-            </Text>
-
-            <View style={{ marginBottom: 16 }}>
-              <Text
-                style={{
-                  fontSize: 14,
-                  fontWeight: "600",
-                  color: colors.textSecondary,
-                  marginBottom: 8,
-                }}
-              >
-                Budget Period
-              </Text>
-              <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
-                {periods.map((period) => (
-                  <TouchableOpacity
-                    key={period.value}
-                    onPress={() => setBudgetPeriod(period.value)}
-                    style={{
-                      backgroundColor:
-                        budgetPeriod === period.value
-                          ? selectedCategory.color + "40"
-                          : "rgba(255,255,255,0.1)",
-                      borderRadius: 12,
-                      padding: 12,
-                      marginRight: 8,
-                      marginBottom: 8,
-                      borderWidth: 1,
-                      borderColor:
-                        budgetPeriod === period.value
-                          ? selectedCategory.color
-                          : "rgba(255,255,255,0.2)",
-                    }}
-                  >
-                    <Text
-                      style={{
-                        color:
-                          budgetPeriod === period.value
-                            ? selectedCategory.color
-                            : colors.text,
-                        fontSize: 14,
-                        fontWeight: "600",
-                      }}
-                    >
-                      {period.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
-            {budgetPeriod === "custom" && (
-              <View
-                style={{
-                  flexDirection: "row",
-                  justifyContent: "space-between",
-                }}
-              >
-                <TouchableOpacity
-                  onPress={() => setShowStartDatePicker(true)}
-                  style={{ flex: 1, marginRight: 8 }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 14,
-                      fontWeight: "600",
-                      color: colors.textSecondary,
-                      marginBottom: 8,
-                    }}
-                  >
-                    Start Date
-                  </Text>
-                  <View
-                    style={{
-                      backgroundColor: "rgba(255,255,255,0.1)",
-                      borderRadius: 12,
-                      padding: 16,
-                      borderWidth: 1,
-                      borderColor: "rgba(255,255,255,0.2)",
-                    }}
-                  >
-                    <Text style={{ color: colors.text }}>
-                      {startDate.toLocaleDateString()}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  onPress={() => setShowEndDatePicker(true)}
-                  style={{ flex: 1, marginLeft: 8 }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 14,
-                      fontWeight: "600",
-                      color: colors.textSecondary,
-                      marginBottom: 8,
-                    }}
-                  >
-                    End Date
-                  </Text>
-                  <View
-                    style={{
-                      backgroundColor: "rgba(255,255,255,0.1)",
-                      borderRadius: 12,
-                      padding: 16,
-                      borderWidth: 1,
-                      borderColor: "rgba(255,255,255,0.2)",
-                    }}
-                  >
-                    <Text style={{ color: colors.text }}>
-                      {endDate.toLocaleDateString()}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              </View>
-            )}
-          </GlassCard>
-
-          {/* Advanced Settings */}
-          <GlassCard>
-            <Text
-              style={{
-                fontSize: 18,
-                fontWeight: "bold",
-                color: colors.text,
-                marginBottom: 16,
-              }}
-            >
-              Advanced Settings
-            </Text>
-
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 16,
-              }}
-            >
-              <Text style={{ fontSize: 16, color: colors.text }}>
-                Notifications
-              </Text>
-              <Switch
-                value={notifications}
-                onValueChange={setNotifications}
-                trackColor={{
-                  false: "rgba(255,255,255,0.2)",
-                  true: selectedCategory.color + "40",
-                }}
-                thumbColor={
-                  notifications ? selectedCategory.color : colors.textSecondary
-                }
-              />
-            </View>
-
-            {notifications && (
-              <View style={{ marginBottom: 16 }}>
-                <Text
-                  style={{
-                    fontSize: 14,
-                    fontWeight: "600",
-                    color: colors.textSecondary,
-                    marginBottom: 8,
-                  }}
-                >
-                  Alert Threshold ({threshold}%)
-                </Text>
-                <View style={{ flexDirection: "row", alignItems: "center" }}>
-                  <Text
-                    style={{ color: colors.textSecondary, marginRight: 12 }}
-                  >
-                    50%
-                  </Text>
-                  <View
-                    style={{
-                      flex: 1,
-                      height: 4,
-                      backgroundColor: "rgba(255,255,255,0.2)",
-                      borderRadius: 2,
-                    }}
-                  >
-                    <View
-                      style={{
-                        width: `${threshold}%`,
-                        height: "100%",
-                        backgroundColor: selectedCategory.color,
-                        borderRadius: 2,
-                      }}
-                    />
-                  </View>
-                  <Text style={{ color: colors.textSecondary, marginLeft: 12 }}>
-                    90%
-                  </Text>
-                </View>
-              </View>
-            )}
-
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 16,
-              }}
-            >
-              <Text style={{ fontSize: 16, color: colors.text }}>
-                Auto Reset
-              </Text>
-              <Switch
-                value={autoReset}
-                onValueChange={setAutoReset}
-                trackColor={{
-                  false: "rgba(255,255,255,0.2)",
-                  true: selectedCategory.color + "40",
-                }}
-                thumbColor={
-                  autoReset ? selectedCategory.color : colors.textSecondary
-                }
-              />
-            </View>
-
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <Text style={{ fontSize: 16, color: colors.text }}>
-                Sub-Budgets
-              </Text>
-              <Switch
-                value={showSubBudgets}
-                onValueChange={setShowSubBudgets}
-                trackColor={{
-                  false: "rgba(255,255,255,0.2)",
-                  true: selectedCategory.color + "40",
-                }}
-                thumbColor={
-                  showSubBudgets ? selectedCategory.color : colors.textSecondary
-                }
-              />
-            </View>
-          </GlassCard>
-
-          {/* Sub-Budgets */}
-          {showSubBudgets && (
-            <GlassCard>
-              <View
-                style={{
-                  flexDirection: "row",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  marginBottom: 16,
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 18,
-                    fontWeight: "bold",
-                    color: colors.text,
-                  }}
-                >
-                  Sub-Budgets
-                </Text>
-                <TouchableOpacity onPress={addSubBudget}>
-                  <Feather
-                    name="plus-circle"
-                    size={24}
-                    color={selectedCategory.color}
-                  />
-                </TouchableOpacity>
-              </View>
-
-              {subBudgets.map((sub, index) => (
-                <View
-                  key={sub.id}
-                  style={{
-                    backgroundColor: "rgba(255,255,255,0.05)",
-                    borderRadius: 12,
-                    padding: 16,
-                    marginBottom: 12,
-                    borderWidth: 1,
-                    borderColor: "rgba(255,255,255,0.1)",
-                  }}
-                >
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      marginBottom: 8,
-                    }}
-                  >
-                    <TextInput
-                      value={sub.name}
-                      onChangeText={(text) =>
-                        updateSubBudget(sub.id, "name", text)
-                      }
-                      style={{
-                        flex: 1,
-                        color: colors.text,
-                        fontSize: 16,
-                        fontWeight: "600",
-                        marginRight: 12,
-                      }}
-                      placeholder="Sub-budget name"
-                      placeholderTextColor={colors.textSecondary}
-                    />
-                    <TouchableOpacity onPress={() => removeSubBudget(sub.id)}>
-                      <Feather name="trash-2" size={18} color="#FF6B6B" />
-                    </TouchableOpacity>
-                  </View>
-
-                  <TextInput
-                    value={sub.amount.toString()}
-                    onChangeText={(text) =>
-                      updateSubBudget(sub.id, "amount", parseFloat(text) || 0)
-                    }
-                    placeholder="Amount"
-                    placeholderTextColor={colors.textSecondary}
-                    keyboardType="numeric"
-                    style={{
-                      backgroundColor: "rgba(255,255,255,0.1)",
-                      borderRadius: 8,
-                      padding: 12,
-                      color: colors.text,
-                      fontSize: 14,
-                    }}
-                  />
-                </View>
-              ))}
-            </GlassCard>
-          )}
-
-          {/* Tags */}
-          <GlassCard>
-            <Text
-              style={{
-                fontSize: 18,
-                fontWeight: "bold",
-                color: colors.text,
-                marginBottom: 16,
-              }}
-            >
-              Tags
-            </Text>
-
-            <View
-              style={{
-                flexDirection: "row",
-                flexWrap: "wrap",
-                marginBottom: 12,
-              }}
-            >
-              {tags.map((tag) => (
-                <TouchableOpacity
-                  key={tag}
-                  onPress={() => removeTag(tag)}
-                  style={{
-                    backgroundColor: selectedCategory.color + "20",
-                    borderRadius: 16,
-                    paddingHorizontal: 12,
-                    paddingVertical: 6,
-                    marginRight: 8,
-                    marginBottom: 8,
-                    flexDirection: "row",
-                    alignItems: "center",
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: selectedCategory.color,
-                      fontSize: 14,
-                      marginRight: 4,
-                    }}
-                  >
-                    {tag}
-                  </Text>
-                  <Feather name="x" size={12} color={selectedCategory.color} />
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <View style={{ flexDirection: "row" }}>
-              <TextInput
-                value={newTag}
-                onChangeText={setNewTag}
-                placeholder="Add tag"
-                placeholderTextColor={colors.textSecondary}
-                style={{
-                  flex: 1,
-                  backgroundColor: "rgba(255,255,255,0.1)",
-                  borderRadius: 12,
-                  padding: 12,
-                  color: colors.text,
-                  marginRight: 8,
-                  borderWidth: 1,
-                  borderColor: "rgba(255,255,255,0.2)",
-                }}
-                onSubmitEditing={addTag}
-              />
+            {/* End Date */}
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>End Date *</Text>
               <TouchableOpacity
-                onPress={addTag}
-                style={{
-                  backgroundColor: selectedCategory.color,
-                  borderRadius: 12,
-                  paddingHorizontal: 16,
-                  justifyContent: "center",
-                }}
+                style={styles.datePickerButton}
+                onPress={() => setShowEndDatePicker(true)}
               >
-                <Feather name="plus" size={20} color="white" />
+                <Text style={styles.dateText}>
+                  {formData.end_date.toLocaleDateString()}
+                </Text>
+                <Feather
+                  name="calendar"
+                  size={20}
+                  color={colors.textSecondary}
+                />
               </TouchableOpacity>
-            </View>
-          </GlassCard>
-        </Animated.ScrollView>
 
-        {/* Category Modal */}
-        <Modal visible={showCategoryModal} transparent animationType="slide">
-          <BlurView
-            intensity={20}
-            tint="dark"
-            style={{ flex: 1, justifyContent: "flex-end" }}
-          >
-            <View
-              style={{
-                backgroundColor: colors.background,
-                borderTopLeftRadius: 24,
-                borderTopRightRadius: 24,
-                paddingTop: 20,
-                paddingBottom: insets.bottom + 20,
-                maxHeight: "80%",
-              }}
-            >
-              <View
-                style={{
-                  flexDirection: "row",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  paddingHorizontal: 20,
-                  marginBottom: 20,
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 20,
-                    fontWeight: "bold",
-                    color: colors.text,
+              {showEndDatePicker && (
+                <DateTimePicker
+                  value={formData.end_date}
+                  mode="date"
+                  display="default"
+                  onChange={handleEndDateChange}
+                  minimumDate={
+                    new Date(formData.start_date.getTime() + 86400000)
+                  } // Day after start date
+                />
+              )}
+            </View>
+
+            {/* Notifications Toggle */}
+            <View style={styles.formGroup}>
+              <View style={styles.switchContainer}>
+                <Text style={styles.label}>Notifications</Text>
+                <Switch
+                  value={formData.notificationsEnabled}
+                  onValueChange={(value) =>
+                    handleInputChange("notificationsEnabled", value)
+                  }
+                  trackColor={{
+                    false: colors.backgroundDark,
+                    true: colors.primary[600],
+                  }}
+                  thumbColor={
+                    formData.notificationsEnabled
+                      ? colors.primary[400]
+                      : colors.textSecondary
+                  }
+                />
+              </View>
+              <Text style={styles.helperText}>
+                Enable notifications for when a certain threshold is reached
+                (e.g. 70% of budget spent)
+              </Text>
+            </View>
+
+            {/* Notifications Threshold */}
+            {formData.notificationsEnabled && (
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Notification Threshold</Text>
+                <ThresholdToggle
+                  enabled={formData.notificationsEnabled}
+                  threshold={formData.notificationThreshold}
+                  onToggle={() => {}}
+                  onChangeThreshold={(value) =>
+                    handleInputChange("notificationThreshold", value)
+                  }
+                />
+              </View>
+            )}
+
+            {/* Is Recurring Toggle */}
+            <View style={styles.formGroup}>
+              <View style={styles.switchContainer}>
+                <Text style={styles.label}>Recurring</Text>
+                <Switch
+                  value={formData.isRecurring}
+                  onValueChange={(value) =>
+                    handleInputChange("isRecurring", value)
+                  }
+                  trackColor={{
+                    false: colors.backgroundDark,
+                    true: colors.primary[600],
+                  }}
+                  thumbColor={
+                    formData.isRecurring
+                      ? colors.primary[400]
+                      : colors.textSecondary
+                  }
+                />
+              </View>
+              <Text style={styles.helperText}>
+                Enable for recurring budgets (e.g. weekly groceries budget)
+              </Text>
+            </View>
+
+            {/* Recurring Frequency */}
+            {formData.isRecurring && (
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Frequency</Text>
+                <TouchableOpacity
+                  style={styles.selectButton}
+                  onPress={() => {
+                    const frequencies = ["monthly", "weekly", "daily"];
+                    const currentIndex = frequencies.indexOf(
+                      formData.recurring_frequency
+                    );
+                    const nextIndex = (currentIndex + 1) % frequencies.length;
+                    handleInputChange(
+                      "recurring_frequency",
+                      frequencies[nextIndex]
+                    );
+                    Haptics.selectionAsync();
                   }}
                 >
-                  Select Category
-                </Text>
-                <TouchableOpacity onPress={() => setShowCategoryModal(false)}>
-                  <Feather name="x" size={24} color={colors.textSecondary} />
+                  <Text style={styles.selectText}>
+                    {formData.recurring_frequency.charAt(0).toUpperCase() +
+                      formData.recurring_frequency.slice(1)}
+                  </Text>
+                  <Feather
+                    name="repeat"
+                    size={20}
+                    color={colors.textSecondary}
+                  />
                 </TouchableOpacity>
-              </View>
-
-              <FlatList
-                data={categories}
-                numColumns={2}
-                keyExtractor={(item) => item.name}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    onPress={() => {
-                      setSelectedCategory(item);
-                      setShowCategoryModal(false);
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    }}
-                    style={{
-                      flex: 1,
-                      margin: 8,
-                      backgroundColor:
-                        selectedCategory.name === item.name
-                          ? item.color + "20"
-                          : "rgba(255,255,255,0.05)",
-                      borderRadius: 16,
-                      padding: 16,
-                      alignItems: "center",
-                      borderWidth: 2,
-                      borderColor:
-                        selectedCategory.name === item.name
-                          ? item.color
-                          : "transparent",
-                    }}
-                  >
-                    <View
-                      style={{
-                        width: 48,
-                        height: 48,
-                        borderRadius: 24,
-                        backgroundColor: item.color + "20",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        marginBottom: 8,
-                      }}
-                    >
-                      <MaterialIcons
-                        name={item.icon}
-                        size={24}
-                        color={item.color}
-                      />
-                    </View>
-                    <Text
-                      style={{
-                        color: colors.text,
-                        fontSize: 12,
-                        textAlign: "center",
-                        fontWeight: "600",
-                      }}
-                    >
-                      {item.name}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-                contentContainerStyle={{ paddingHorizontal: 12 }}
-              />
-            </View>
-          </BlurView>
-        </Modal>
-
-        {/* Currency Modal */}
-        <Modal visible={showCurrencyModal} transparent animationType="slide">
-          <BlurView
-            intensity={20}
-            tint="dark"
-            style={{ flex: 1, justifyContent: "flex-end" }}
-          >
-            <View
-              style={{
-                backgroundColor: colors.background,
-                borderTopLeftRadius: 24,
-                borderTopRightRadius: 24,
-                paddingTop: 20,
-                paddingBottom: insets.bottom + 20,
-                maxHeight: "50%",
-              }}
-            >
-              <View
-                style={{
-                  flexDirection: "row",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  paddingHorizontal: 20,
-                  marginBottom: 20,
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 20,
-                    fontWeight: "bold",
-                    color: colors.text,
-                  }}
-                >
-                  Select Currency
+                <Text style={styles.helperText}>
+                  Tap to cycle through: Monthly → Weekly → Daily
                 </Text>
-                <TouchableOpacity onPress={() => setShowCurrencyModal(false)}>
-                  <Feather name="x" size={24} color={colors.textSecondary} />
-                </TouchableOpacity>
               </View>
-
-              <FlatList
-                data={currencies}
-                keyExtractor={(item) => item}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    onPress={() => {
-                      setCurrency(item);
-                      setShowCurrencyModal(false);
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    }}
-                    style={{
-                      flexDirection: "row",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      paddingHorizontal: 20,
-                      paddingVertical: 16,
-                      backgroundColor:
-                        currency === item
-                          ? selectedCategory.color + "20"
-                          : "transparent",
-                    }}
-                  >
-                    <Text
-                      style={{
-                        color: colors.text,
-                        fontSize: 16,
-                        fontWeight: currency === item ? "600" : "400",
-                      }}
-                    >
-                      {item}
-                    </Text>
-                    {currency === item && (
-                      <Feather
-                        name="check"
-                        size={20}
-                        color={selectedCategory.color}
-                      />
-                    )}
-                  </TouchableOpacity>
-                )}
-              />
-            </View>
-          </BlurView>
-        </Modal>
-
-        {/* Date Pickers */}
-        {showStartDatePicker && (
-          <DateTimePicker
-            value={startDate}
-            mode="date"
-            display="default"
-            onChange={(event, selectedDate) => {
-              setShowStartDatePicker(false);
-              if (selectedDate) {
-                setStartDate(selectedDate);
-              }
-            }}
-          />
-        )}
-
-        {showEndDatePicker && (
-          <DateTimePicker
-            value={endDate}
-            mode="date"
-            display="default"
-            onChange={(event, selectedDate) => {
-              setShowEndDatePicker(false);
-              if (selectedDate) {
-                setEndDate(selectedDate);
-              }
-            }}
-          />
-        )}
-      </LinearGradient>
-    </View>
+            )}
+          </ScrollView>
+        </View>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 };
 
-export default BudgetFormScreen;
+export default AddBudgetScreen;
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  innerContainer: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(0, 0, 0, 0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: colors.text,
+  },
+  saveButton: {
+    backgroundColor: colors.primary[400],
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  saveButtonDisabled: {
+    backgroundColor: colors.backgroundLight,
+    opacity: 0.6,
+  },
+  saveButtonText: {
+    color: colors.text,
+    fontWeight: "600",
+  },
+  form: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 24,
+  },
+  formGroup: {
+    marginBottom: 24,
+  },
+  label: {
+    fontSize: 16,
+    color: colors.text,
+    marginBottom: 8,
+  },
+  input: {
+    backgroundColor: colors.backgroundLight,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    color: colors.text,
+    fontSize: 16,
+  },
+  textArea: {
+    minHeight: 80,
+    textAlignVertical: "top",
+  },
+  amountInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.backgroundLight,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+  },
+  currencySymbol: {
+    fontSize: 16,
+    color: colors.text,
+    marginRight: 4,
+  },
+  amountInput: {
+    flex: 1,
+    paddingVertical: 12,
+    color: colors.text,
+    fontSize: 16,
+  },
+  datePickerButton: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: colors.backgroundLight,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  dateText: {
+    color: colors.text,
+    fontSize: 16,
+  },
+  switchContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  helperText: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    marginTop: 8,
+  },
+  selectButton: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: colors.backgroundLight,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  selectText: {
+    color: colors.text,
+    fontSize: 16,
+  },
+  categoryPicker: {
+    backgroundColor: colors.backgroundLight,
+    borderRadius: 8,
+    marginTop: 8,
+    paddingVertical: 8,
+  },
+  categoryOption: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  categoryOptionSelected: {
+    backgroundColor: colors.secondary[800],
+  },
+  categoryOptionText: {
+    color: colors.text,
+    fontSize: 16,
+  },
+  categoryOptionTextSelected: {
+    color: colors.primary[300],
+    fontWeight: "600",
+  },
+});

@@ -1,8 +1,6 @@
-// components/budgets/ThresholdToggle.tsx
-
 import { colors } from "@/constants/colors";
 import React from "react";
-import { StyleSheet, Switch, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 type Props = {
   enabled: boolean;
@@ -19,20 +17,6 @@ const ThresholdToggle = ({
 }: Props) => {
   return (
     <View style={styles.formGroup}>
-      {/* Toggle */}
-      <View style={styles.switchContainer}>
-        <Text style={styles.formLabel}>Notification Threshold</Text>
-        <Switch
-          value={enabled}
-          onValueChange={onToggle}
-          trackColor={{
-            false: colors.backgroundLight,
-            true: colors.primary[400],
-          }}
-          thumbColor={enabled ? colors.primary[500] : colors.textSecondary}
-        />
-      </View>
-
       {/* Threshold % Options */}
       {enabled && (
         <View style={styles.sliderContainer}>

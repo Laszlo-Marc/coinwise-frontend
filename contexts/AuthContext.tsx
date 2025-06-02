@@ -20,7 +20,7 @@ const API_URL = "http://192.168.1.156:5000/api/auth";
 
 type AuthContextType = {
   state: AuthState;
-  signIn: (email: string, password: string) => Promise<void>;
+  signIn: (email: string, password: string) => Promise<string | null>;
   signUp: (
     email: string,
     password: string,
@@ -28,6 +28,7 @@ type AuthContextType = {
   ) => Promise<void>;
   signOut: () => Promise<void>;
   checkUserExists: (email: string) => Promise<boolean>;
+  checkSessionValidity: () => Promise<boolean>;
   refreshTokenFunction: () => Promise<boolean>;
   updateProfile: (profileData: Partial<User>) => Promise<User>;
   resetPassword: (email: string) => Promise<void>;
@@ -86,10 +87,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  // Helper to store user data
   const storeUserData = async (user: User) => {
     try {
-      console.log("Storing user data:", user);
       await AsyncStorage.setItem(USER_KEY, JSON.stringify(user));
       setState((prev) => ({
         ...prev,
@@ -130,6 +129,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     } catch (error) {
       console.error("Failed to decode token:", error);
       return 0;
+    }
+  };
+
+  const checkSessionValidity = async (): Promise<boolean> => {
+    try {
+      const userToken = await SecureStore.getItemAsync(TOKEN_KEY);
+      if (!userToken) {
+        return false;
+      }
+
+      const expiry = getTokenExpiry(userToken);
+      const now = Date.now();
+
+      if (expiry <= now) {
+        console.warn("Token has expired");
+        return false;
+      }
+
+      userTokenRef.current = userToken;
+      return true;
+    } catch (error) {
+      console.error("Error checking session validity:", error);
+      return false;
     }
   };
 
@@ -317,11 +339,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       });
 
       const { access_token, refresh_token, user } = response.data;
-      console.log("Sign in response", response.data);
+
       await storeTokens(access_token, refresh_token);
       await storeUserData(user);
 
-      console.log("Sign in response", response.data);
       api.defaults.headers.common["Authorization"] = `Bearer ${access_token}`;
 
       scheduleTokenRefresh(access_token);
@@ -333,6 +354,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         error: null,
         isSignout: false,
       }));
+      return access_token;
     } catch (error: any) {
       console.error("Sign in error", error);
 
@@ -362,7 +384,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       });
 
       const { access_token, refresh_token, user } = response.data;
-      console.log("Sign up response", response.data);
 
       api.defaults.headers.common["Authorization"] = `Bearer ${access_token}`;
 
@@ -495,6 +516,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     refreshTokenFunction,
     updateProfile,
     resetPassword,
+    checkSessionValidity,
     updatePassword,
     clearError,
     getStoredUserData,

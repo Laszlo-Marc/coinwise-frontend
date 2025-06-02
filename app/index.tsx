@@ -36,34 +36,33 @@ import { colors } from "../constants/colors";
 export default function HomePage() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { state } = useAuth();
+  const { checkSessionValidity } = useAuth();
   const { goals } = useGoals();
   const { budgets } = useBudgets();
-  const { transactions, fetchTransactions } = useTransactionContext();
-  const { fetchGoals, fetchContributions } = useGoals();
+  const { transactions } = useTransactionContext();
+  const [dataLoaded, setDataLoaded] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
+  const { fetchGoals } = useGoals();
+  const { fetchBudgets } = useBudgets();
+  const { fetchTransactions } = useTransactionContext();
+  const { fetchContributions } = useGoals();
   const [focusAnim] = useState(new Animated.Value(0));
-  useEffect(() => {
-    const initializeData = async () => {
-      try {
-        await fetchGoals();
-        await fetchContributions();
-        await fetchTransactions();
-      } catch (e) {
-        console.error("Failed to initialize goals", e);
-      }
-    };
 
-    initializeData();
-  }, []);
   useEffect(() => {
     const checkUser = async () => {
-      if (!state.userToken || !state.user) {
+      const isValid = await checkSessionValidity();
+      if (!isValid) {
         router.replace("/auth/sign-in");
+      } else if (isValid && !dataLoaded) {
+        await fetchGoals();
+        await fetchBudgets();
+        await fetchTransactions();
+        await fetchContributions();
+        setDataLoaded(true);
       }
     };
     checkUser();
-  }, [state.userToken, state.user]);
+  }, [checkSessionValidity]);
 
   // Calculate recent transactions
   const recentTransactions = useMemo(() => {
@@ -148,9 +147,9 @@ export default function HomePage() {
       .filter((budget: BudgetModel) => {
         // Calculate spent amount for current period
         const periodStart =
-          budget.period === "monthly"
+          budget.reccuring_frequency === "monthly"
             ? new Date(now.getFullYear(), now.getMonth(), 1)
-            : budget.period === "weekly"
+            : budget.reccuring_frequency === "weekly"
             ? new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
             : new Date(now.getFullYear(), 0, 1);
 
@@ -164,11 +163,11 @@ export default function HomePage() {
           .reduce((sum: any, t: { amount: any }) => sum + t.amount, 0);
 
         budget.spent = spent;
-        return spent < budget.limit;
+        return spent < budget.amount;
       })
       .sort((a: BudgetModel, b: BudgetModel) => {
-        const percentageA = (a.spent / a.limit) * 100;
-        const percentageB = (b.spent / b.limit) * 100;
+        const percentageA = (a.spent / a.amount) * 100;
+        const percentageB = (b.spent / b.amount) * 100;
         return percentageB - percentageA;
       })
       .slice(0, 3);
@@ -548,7 +547,7 @@ export default function HomePage() {
           {riskiestBudgets.length > 0 ? (
             <View>
               {riskiestBudgets.map((budget: BudgetModel, index: any) => {
-                const percentage = (budget.spent / budget.limit) * 100;
+                const percentage = (budget.spent / budget.amount) * 100;
                 const isAtRisk = percentage > 80;
                 return (
                   <View key={budget.id || index} style={styles.budgetItem}>
@@ -556,7 +555,7 @@ export default function HomePage() {
                       <Text style={styles.budgetTitle}>{budget.category}</Text>
                       <Text style={styles.budgetAmount}>
                         {formatCurrency(budget.spent)} of{" "}
-                        {formatCurrency(budget.limit)}
+                        {formatCurrency(budget.amount)}
                       </Text>
                     </View>
                     <View style={styles.budgetProgressContainer}>

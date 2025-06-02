@@ -6,8 +6,10 @@ export type BudgetModel = {
   start_date: string;
   end_date: string;
   created_at?: string;
+  title: string;
+  is_reccuring?: boolean;
+  reccuring_frequency?: string;
   spent: number;
-  limit: number;
   remaining: number;
-  period: string;
+  description?: string;
 };

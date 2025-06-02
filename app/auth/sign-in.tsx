@@ -1,4 +1,6 @@
+import { useTransactionContext } from "@/contexts/AppContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useGoals } from "@/contexts/GoalsContext";
 import { FontAwesome } from "@expo/vector-icons";
 import { Link, router } from "expo-router";
 import React, { useState } from "react";
@@ -16,7 +18,9 @@ export default function SignIn() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-
+  const { fetchGoals } = useGoals();
+  const { fetchContributions } = useGoals();
+  const { fetchTransactions } = useTransactionContext();
   const { signIn } = useAuth();
   const handleSignIn = async () => {
     if (!email || !password) {
@@ -24,10 +28,27 @@ export default function SignIn() {
       return;
     }
 
+    const initializeData = async () => {
+      try {
+        await fetchGoals();
+        await fetchContributions();
+        await fetchTransactions();
+      } catch (e) {
+        console.error("Failed to initialize app data", e);
+      }
+    };
+
     try {
       setLoading(true);
-      await signIn(email, password);
-      router.replace("/");
+      const user = await signIn(email, password);
+      console.log("Sign in response:", user);
+      if (user) {
+        Alert.alert("Success", "You have successfully signed in");
+        await initializeData();
+        router.replace("/");
+      } else {
+        Alert.alert("Error", "Sign in failed. Please try again.");
+      }
     } catch (error: any) {
       Alert.alert(
         "Error",

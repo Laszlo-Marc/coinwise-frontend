@@ -1,4 +1,5 @@
 import { colors } from "@/constants/colors";
+import { useAuth } from "@/contexts/AuthContext";
 import { Feather, Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React from "react";
@@ -13,6 +14,7 @@ import {
 } from "react-native";
 
 const ProfileScreen = () => {
+  const { signOut } = useAuth();
   const menuItems = [
     {
       icon: "help-circle-outline",
@@ -82,6 +84,10 @@ const ProfileScreen = () => {
       iconLib: "Ionicons",
       label: "Log out",
       badge: null,
+      onPress: () => {
+        signOut();
+        router.push("/auth/sign-in");
+      },
     },
   ];
 
@@ -124,6 +130,7 @@ const ProfileScreen = () => {
     label: string;
     badge: number | null;
     isLast?: boolean;
+    onPress?: () => void;
   };
 
   const MenuItem: React.FC<MenuItemProps> = ({
@@ -132,10 +139,12 @@ const ProfileScreen = () => {
     label,
     badge,
     isLast = false,
+    onPress = () => {},
   }) => (
     <TouchableOpacity
       style={[styles.menuItem, isLast && styles.lastMenuItem]}
       activeOpacity={0.7}
+      onPress={onPress}
     >
       <View style={styles.menuItemLeft}>
         {renderIcon(icon, iconLib)}

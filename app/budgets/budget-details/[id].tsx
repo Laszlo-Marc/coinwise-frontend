@@ -1,10 +1,11 @@
-// screens/BudgetDetailsScreen.tsx
-
 import { colors } from "@/constants/colors";
+import { useBudgets } from "@/contexts/BudgetsContext";
+import { BudgetModel } from "@/models/budget";
 import { Feather, MaterialIcons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
+import { useLocalSearchParams } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Alert,
@@ -21,62 +22,27 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const { width } = Dimensions.get("window");
 
-interface Transaction {
-  id: string;
-  amount: number;
-  description: string;
-  date: string;
-  category: string;
-  type: "expense" | "income";
-}
-
-interface SubBudget {
-  id: string;
-  name: string;
-  amount: number;
-  spent: number;
-  category: string;
-}
-
-interface Budget {
-  id: string;
-  name: string;
-  category: string;
-  amount: number;
-  spent: number;
-  period: "weekly" | "monthly" | "yearly" | "custom";
-  createdAt: string;
-  startDate: string;
-  endDate: string;
-  threshold?: number;
-  subBudgets?: SubBudget[];
-  description?: string;
-  currency: string;
-  icon: string;
-  color: string;
-  autoReset: boolean;
-  notifications: boolean;
-  recurringType?: "fixed" | "rollover";
-  tags: string[];
-  priority: "low" | "medium" | "high";
-  transactions?: Transaction[];
-}
-
-const BudgetDetailsScreen = ({ route, navigation }) => {
+const BudgetDetailsScreen = () => {
   const insets = useSafeAreaInsets();
-  const { budget: initialBudget } = route.params;
-
-  const [budget, setBudget] = useState<Budget>(initialBudget);
+  const { id } = useLocalSearchParams();
+  const { budgets } = useBudgets();
+  const [budget, setBudget] = useState<BudgetModel>();
   const [showAddExpenseModal, setShowAddExpenseModal] = useState(false);
   const [expenseAmount, setExpenseAmount] = useState("");
   const [expenseDescription, setExpenseDescription] = useState("");
-  const [selectedTimeframe, setSelectedTimeframe] = useState("week"); // week, month, year
+  const [selectedTimeframe, setSelectedTimeframe] = useState("week");
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
   const chartAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    const foundBudget = budgets.find((b) => b.id === id);
+    if (foundBudget) {
+      setBudget(foundBudget);
+    } else {
+      Alert.alert("Error", "Budget not found");
+    }
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -84,7 +50,7 @@ const BudgetDetailsScreen = ({ route, navigation }) => {
         useNativeDriver: true,
       }),
       Animated.timing(progressAnim, {
-        toValue: budget.spent / budget.amount,
+        toValue: budget ? budget.spent / budget.amount : 0,
         duration: 1500,
         useNativeDriver: false,
       }),
@@ -96,13 +62,15 @@ const BudgetDetailsScreen = ({ route, navigation }) => {
     ]).start();
   }, [budget]);
 
-  const progressPercentage = (budget.spent / budget.amount) * 100;
-  const remainingAmount = budget.amount - budget.spent;
-  const daysLeft = Math.ceil(
-    (new Date(budget.endDate).getTime() - new Date().getTime()) /
-      (1000 * 60 * 60 * 24)
-  );
-  const dailyBudget = remainingAmount / Math.max(daysLeft, 1);
+  const progressPercentage = budget ? (budget.spent / budget.amount) * 100 : 0;
+  const remainingAmount = budget ? budget.amount - budget.spent : 0;
+  const daysLeft = budget
+    ? Math.ceil(
+        (new Date(budget.end_date).getTime() - new Date().getTime()) /
+          (1000 * 60 * 60 * 24)
+      )
+    : 0;
+  const dailyBudget = budget ? remainingAmount / Math.max(daysLeft, 1) : 0;
 
   const handleAddExpense = () => {
     if (!expenseAmount.trim() || !expenseDescription.trim()) {

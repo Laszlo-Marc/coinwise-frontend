@@ -29,8 +29,6 @@ const PeriodSelector = ({
 }: Props) => {
   return (
     <View style={styles.formGroup}>
-      <Text style={styles.formLabel}>Budget Period</Text>
-
       {/* Period Options */}
       <View style={styles.periodSelectorContainer}>
         {["weekly", "monthly", "custom"].map((p) => (

@@ -32,7 +32,6 @@ const CategoryDropdown = ({ selectedCategory, onSelectCategory }: Props) => {
 
   return (
     <View style={styles.formGroup}>
-      <Text style={styles.formLabel}>Category</Text>
       <TouchableOpacity
         style={styles.dropdownButton}
         onPress={() => setIsOpen(!isOpen)}
@@ -82,7 +81,7 @@ const styles = StyleSheet.create({
   formGroup: { marginBottom: 20 },
   formLabel: { fontSize: 16, color: colors.text, marginBottom: 8 },
   dropdownButton: {
-    backgroundColor: colors.backgroundDark,
+    backgroundColor: colors.backgroundLight,
     padding: 14,
     borderRadius: 12,
     flexDirection: "row",
@@ -91,7 +90,7 @@ const styles = StyleSheet.create({
   },
   dropdownButtonText: { color: colors.text, fontSize: 16 },
   dropdownMenu: {
-    backgroundColor: colors.backgroundDark,
+    backgroundColor: colors.backgroundLight,
     borderRadius: 12,
     marginTop: 8,
     overflow: "hidden",

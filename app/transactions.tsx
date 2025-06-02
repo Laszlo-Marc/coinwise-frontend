@@ -9,6 +9,7 @@ import {
 import BottomBar from "@/components/mainComponents/BottomBar";
 import MainSection from "@/components/mainComponents/MainSection";
 
+import ProcessingModal from "@/components/financesComponents/ProcessingModal";
 import { TransactionList } from "@/components/financesComponents/TransactionList";
 import { useTransactionContext } from "@/contexts/AppContext";
 import { TransactionModel } from "@/models/transaction";
@@ -31,6 +32,15 @@ export default function TransactionsListScreen() {
     fetchTransactions,
     updateTransaction,
   } = useTransactionContext();
+  const [processingStage, setProcessingStage] = useState<
+    | "anonymizing"
+    | "extracting_sections"
+    | "normalizing"
+    | "extracting_transactions"
+    | "done"
+    | ""
+  >("");
+
   const [displayedTransactions, setDisplayedTransactions] = useState<
     TransactionModel[]
   >([]);
@@ -62,46 +72,47 @@ export default function TransactionsListScreen() {
         copyToCacheDirectory: true,
       });
 
-      if (result.canceled) {
-        console.log("User canceled document picker");
-        return;
-      }
+      if (result.canceled) return;
 
       const document = result.assets[0];
-      console.log("Picked document:", document);
-
       setIsLoading(true);
-      setUploadStatus("Preparing document for upload...");
+      setProcessingStage("anonymizing");
+
+      await new Promise((res) => setTimeout(res, 1000));
+      setProcessingStage("extracting_sections");
+
+      await new Promise((res) => setTimeout(res, 1000));
+      setProcessingStage("normalizing");
+
+      await new Promise((res) => setTimeout(res, 1000));
+      setProcessingStage("extracting_transactions");
 
       const formData = new FormData();
-
       formData.append("file", {
         uri: document.uri,
         name: document.name || "upload.pdf",
         type: document.mimeType || "application/pdf",
       } as any);
 
-      setUploadStatus("Uploading document to server...");
-
       const response = await uploadBankStatement(formData);
-
       console.log("Upload response:", response);
-      setUploadStatus("Document processed successfully!");
 
+      setProcessingStage("done");
       setTimeout(() => {
         setIsLoading(false);
-        setUploadStatus("");
-      }, 1500);
-    } catch (error) {
-      console.error("Upload failed:", error);
+        setProcessingStage("");
+      }, 1000);
+    } catch (err) {
+      console.error("Upload failed:", err);
       setIsLoading(false);
-      setUploadStatus("");
+      setProcessingStage("");
       Alert.alert(
         "Upload Failed",
         "There was a problem uploading your document."
       );
     }
-  }, [uploadBankStatement]);
+  }, []);
+
   const handleFilterChange = useCallback(
     (filters: {
       transactionClass: string;
@@ -353,6 +364,8 @@ export default function TransactionsListScreen() {
           {renderForm()}
         </View>
       )}
+      <ProcessingModal visible={isLoading} currentStage={processingStage} />
+
       <BottomBar />
     </View>
   );
