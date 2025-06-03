@@ -231,7 +231,7 @@ export default function Finances() {
         }}
         rightButton={{
           icon: "user",
-          onPress: () => router.replace("/profile"),
+          onPress: () => router.push("/profile"),
           accessibilityLabel: "View profile",
         }}
         actionButtons={[

@@ -41,7 +41,6 @@ const AddContributionScreen = () => {
   const [goalData, setGoalData] = useState(null as GoalModel | null);
   const successOpacity = useRef(new Animated.Value(0)).current;
 
-  
   useEffect(() => {
     const goal = goals.find((g) => g.id === id);
     setGoalData(goal || null);
@@ -121,7 +120,7 @@ const AddContributionScreen = () => {
           >
             <TouchableOpacity
               style={styles.backButton}
-              onPress={() => router.replace("/financial-goals")}
+              onPress={() => router.back()}
             >
               <Feather name="x" size={24} color={colors.text} />
             </TouchableOpacity>

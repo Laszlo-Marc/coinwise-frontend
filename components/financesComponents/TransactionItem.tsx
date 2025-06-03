@@ -125,7 +125,7 @@ export default function TransactionItem({ transaction }: Props) {
   };
 
   return (
-    <TouchableOpacity onPress={() => router.replace(`./transaction/${id}`)}>
+    <TouchableOpacity onPress={() => router.push(`./transaction/${id}`)}>
       <Animated.View entering={FadeIn} style={styles.container}>
         <View style={styles.iconContainer}>
           <Feather name={getIcon()} size={22} color={amountColor} />

@@ -1,3 +1,4 @@
+import { categories } from "@/constants/categories";
 import { useGoals } from "@/contexts/GoalsContext";
 import { Feather } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
@@ -41,15 +42,6 @@ const AddGoalScreen = () => {
   const [showTargetDatePicker, setShowTargetDatePicker] = useState(false);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const { addGoal } = useGoals();
-  const categories = [
-    "Savings",
-    "Travel",
-    "Tech",
-    "Education",
-    "Home",
-    "Automotive",
-    "Other",
-  ];
 
   const handleInputChange = (field: string, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value }));

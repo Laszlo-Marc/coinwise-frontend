@@ -1,5 +1,6 @@
 // components/budgets/CategoryDropdown.tsx
 
+import { categories } from "@/constants/categories";
 import { colors } from "@/constants/colors";
 import { Feather } from "@expo/vector-icons";
 import React, { useState } from "react";
@@ -15,17 +16,6 @@ type Props = {
   selectedCategory: string;
   onSelectCategory: (category: string) => void;
 };
-
-const categories = [
-  "Food",
-  "Transport",
-  "Shopping",
-  "Health",
-  "Leisure",
-  "Travel",
-  "Bills",
-  "Other",
-];
 
 const CategoryDropdown = ({ selectedCategory, onSelectCategory }: Props) => {
   const [isOpen, setIsOpen] = useState(false);

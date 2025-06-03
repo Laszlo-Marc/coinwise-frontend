@@ -7,9 +7,12 @@ export type BudgetModel = {
   end_date: string;
   created_at?: string;
   title: string;
-  is_reccuring?: boolean;
-  reccuring_frequency?: string;
+  is_recurring?: boolean;
+  recurring_frequency?: string;
+  notificationsEnabled?: boolean;
+  notificationsThreshold?: number;
   spent: number;
   remaining: number;
   description?: string;
+  transactions?: string[];
 };

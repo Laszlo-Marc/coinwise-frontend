@@ -44,11 +44,11 @@ export default function TransactionDetailsScreen() {
         style={[styles.headerContainer, { paddingTop: insets.top + 10 }]}
       >
         <View style={styles.headerRow}>
-          <TouchableOpacity onPress={() => router.replace("/transactions")}>
+          <TouchableOpacity onPress={() => router.back()}>
             <Feather name="arrow-left" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Transaction</Text>
-          <TouchableOpacity onPress={() => router.replace("/profile")}>
+          <TouchableOpacity onPress={() => router.push("/profile")}>
             <Feather name="user" size={24} color={colors.text} />
           </TouchableOpacity>
         </View>

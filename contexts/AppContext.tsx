@@ -6,15 +6,17 @@ import { PaginatedResponse, TransactionModel } from "../models/transaction";
 interface TransactionContextType {
   transactions: TransactionModel[];
   isLoading: boolean;
-  isLoadingMore: boolean; // Added for pagination loading state
+  isLoadingMore: boolean;
   error: string | null;
   currentPage: number;
   totalPages: number;
   hasMore: boolean;
-  loadMore: (transactionClass?: string) => Promise<void>; // Updated to accept filter type
+  loadMore: (transactionClass?: string) => Promise<void>;
   refreshTransactions: () => Promise<void>;
-  addTransaction: (transaction: TransactionModel) => Promise<void>;
-  fetchTransactions: (page?: number, filter?: string) => Promise<void>; // Updated to accept filter
+  addTransaction: (
+    transaction: TransactionModel
+  ) => Promise<string | undefined>;
+  fetchTransactions: (page?: number, filter?: string) => Promise<void>;
   uploadBankStatement: (file: FormData) => Promise<any>;
   deleteTransaction: (id: string) => Promise<void>;
   updateTransaction: (
@@ -41,12 +43,28 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({
   const [totalPages, setTotalPages] = useState(1);
   const [currentFilter, setCurrentFilter] = useState<string | undefined>();
 
-  const pageSize = 50;
+  const pageSize = 100;
   const hasMore = currentPage < totalPages;
 
   const handleApiError = (error: any) => {
     console.error("API Error:", error);
     setError("Something went wrong. Please try again.");
+  };
+  const fixTransferData = async () => {
+    const token = await SecureStore.getItem("auth_token");
+
+    const response = await axios.post(
+      `${TRANSACTIONS_API_URL}/fix-transfer-names`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    console.log(response.data);
   };
 
   const fetchTransactions = async (
@@ -62,15 +80,14 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({
     setError(null);
 
     try {
+      const reponse = await fixTransferData();
       const token = await SecureStore.getItem("auth_token");
 
-      // Add filter to API request if provided
       const params: Record<string, any> = {
         page,
         page_size: pageSize,
       };
 
-      // Apply filter if provided
       if (filter) {
         params.type =
           filter === "expenses"
@@ -124,13 +141,14 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const addTransaction = async (
     transaction: TransactionModel
-  ): Promise<void> => {
+  ): Promise<string | undefined> => {
     setIsLoading(true);
     setError(null);
     try {
       const token = await SecureStore.getItem("auth_token");
       const { id, ...dataToSend } = transaction;
-
+      console.log("Adding transaction:", dataToSend);
+      console.log(id);
       const response = await axios.post(
         `${TRANSACTIONS_API_URL}/add`,
         dataToSend,
@@ -143,7 +161,9 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({
       );
 
       const addedTransaction = response.data;
+
       setTransactions((prev) => [addedTransaction, ...prev]);
+      return response.data.id;
     } catch (e) {
       handleApiError(e);
     } finally {

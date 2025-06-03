@@ -23,14 +23,13 @@ import BottomBar from "../components/mainComponents/BottomBar";
 
 const BudgetsScreen = () => {
   const insets = useSafeAreaInsets();
-  const { budgets, addBudget, updateBudget, deleteBudget, fetchBudgets } =
-    useBudgets();
+  const { budgets, deleteBudget, fetchBudgets } = useBudgets();
   const router = useRouter();
   const headerAnimation = useRef(new Animated.Value(0)).current;
   const fabAnimation = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    // Animate header on mount
+    
     Animated.spring(headerAnimation, {
       toValue: 1,
       useNativeDriver: true,

@@ -1,79 +1,107 @@
 import { colors } from "@/constants/colors";
+import { useTransactionContext } from "@/contexts/AppContext";
 import { useBudgets } from "@/contexts/BudgetsContext";
+
 import { BudgetModel } from "@/models/budget";
+import { TransactionModel } from "@/models/transaction";
 import { Feather, MaterialIcons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Alert,
   Animated,
   Dimensions,
   Modal,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
-import { LineChart } from "react-native-chart-kit";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const { width } = Dimensions.get("window");
 
 const BudgetDetailsScreen = () => {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { id } = useLocalSearchParams();
-  const { budgets } = useBudgets();
-  const [budget, setBudget] = useState<BudgetModel>();
+  const { budgets, updateBudget } = useBudgets();
+  const { transactions = [], addTransaction } = useTransactionContext();
+  const [budget, setBudget] = useState<BudgetModel | null>(null);
   const [showAddExpenseModal, setShowAddExpenseModal] = useState(false);
   const [expenseAmount, setExpenseAmount] = useState("");
   const [expenseDescription, setExpenseDescription] = useState("");
   const [selectedTimeframe, setSelectedTimeframe] = useState("week");
-
+  const [expenseMerchant, setExpenseMerchant] = useState("");
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
-  const chartAnim = useRef(new Animated.Value(0)).current;
+
+  const getBudgetTransactions = (): TransactionModel[] => {
+    if (!budget?.transactions?.length) return [];
+
+    return transactions
+      .filter((transaction: TransactionModel) =>
+        budget.transactions?.includes(transaction.id!)
+      )
+      .sort(
+        (a: TransactionModel, b: TransactionModel) =>
+          new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+  };
+
+  const budgetTransactions = getBudgetTransactions();
 
   useEffect(() => {
+    console.log(budgets);
     const foundBudget = budgets.find((b) => b.id === id);
+
     if (foundBudget) {
       setBudget(foundBudget);
+
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(progressAnim, {
+          toValue: foundBudget.spent / foundBudget.amount,
+          duration: 1500,
+          useNativeDriver: false,
+        }),
+      ]).start();
     } else {
-      Alert.alert("Error", "Budget not found");
+      Alert.alert("Error", "Budget not found", [
+        { text: "OK", onPress: () => router.back() },
+      ]);
     }
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 800,
-        useNativeDriver: true,
-      }),
-      Animated.timing(progressAnim, {
-        toValue: budget ? budget.spent / budget.amount : 0,
-        duration: 1500,
-        useNativeDriver: false,
-      }),
-      Animated.timing(chartAnim, {
-        toValue: 1,
-        duration: 1200,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [budget]);
+  }, [id, budgets, transactions]);
 
-  const progressPercentage = budget ? (budget.spent / budget.amount) * 100 : 0;
-  const remainingAmount = budget ? budget.amount - budget.spent : 0;
-  const daysLeft = budget
-    ? Math.ceil(
-        (new Date(budget.end_date).getTime() - new Date().getTime()) /
-          (1000 * 60 * 60 * 24)
-      )
-    : 0;
-  const dailyBudget = budget ? remainingAmount / Math.max(daysLeft, 1) : 0;
+  if (!budget) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={[styles.text, { color: colors.text }]}>Loading...</Text>
+      </View>
+    );
+  }
 
-  const handleAddExpense = () => {
-    if (!expenseAmount.trim() || !expenseDescription.trim()) {
+  const progressPercentage = (budget.spent / budget.amount) * 100;
+  const daysLeft = Math.ceil(
+    (new Date(budget.end_date).getTime() - new Date().getTime()) /
+      (1000 * 60 * 60 * 24)
+  );
+  const dailyBudget = budget.remaining / Math.max(daysLeft, 1);
+
+  const handleAddExpense = async () => {
+    if (
+      !expenseAmount.trim() ||
+      !expenseDescription.trim() ||
+      !expenseMerchant.trim()
+    ) {
       Alert.alert("Error", "Please fill in all fields");
       return;
     }
@@ -84,26 +112,43 @@ const BudgetDetailsScreen = () => {
       return;
     }
 
-    const newTransaction: Transaction = {
-      id: `trans_${Date.now()}`,
-      amount,
-      description: expenseDescription,
-      date: new Date().toISOString(),
-      category: budget.category,
-      type: "expense",
-    };
+    try {
+      const newTransaction: TransactionModel = {
+        amount,
+        description: expenseDescription,
+        date: new Date().toISOString(),
+        category: budget.category,
+        type: "expense",
+        currency: "RON",
+        merchant: expenseMerchant,
+      };
 
-    setBudget((prev) => ({
-      ...prev,
-      spent: prev.spent + amount,
-      transactions: [...(prev.transactions || []), newTransaction],
-    }));
+      const transactionId = await addTransaction(newTransaction);
 
-    setExpenseAmount("");
-    setExpenseDescription("");
-    setShowAddExpenseModal(false);
+      const updatedTransactionIds = [
+        ...(budget.transactions || []),
+        transactionId,
+      ].filter((id): id is string => typeof id === "string");
+      console.log("Updated Transaction IDs:", updatedTransactionIds);
+      const updatedBudget: BudgetModel = {
+        ...budget,
+        spent: budget.spent + amount,
+        remaining: budget.remaining - amount,
+        transactions: updatedTransactionIds,
+      };
+      console.log("Updated Budget:", updatedBudget);
+      await updateBudget(Array.isArray(id) ? id[0] : id, updatedBudget);
+      setBudget(updatedBudget);
 
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setExpenseAmount("");
+      setExpenseDescription("");
+      setExpenseMerchant("");
+      setShowAddExpenseModal(false);
+
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (error) {
+      Alert.alert("Error", "Failed to add expense");
+    }
   };
 
   const getStatusColor = () => {
@@ -113,38 +158,38 @@ const BudgetDetailsScreen = () => {
   };
 
   const getSpendingData = () => {
-    const transactions = budget.transactions || [];
     const now = new Date();
     let filteredTransactions = [];
 
     switch (selectedTimeframe) {
       case "week":
         const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        filteredTransactions = transactions.filter(
+        filteredTransactions = budgetTransactions.filter(
           (t) => new Date(t.date) >= weekAgo
         );
         break;
       case "month":
         const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-        filteredTransactions = transactions.filter(
+        filteredTransactions = budgetTransactions.filter(
           (t) => new Date(t.date) >= monthAgo
         );
         break;
       case "year":
         const yearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
-        filteredTransactions = transactions.filter(
+        filteredTransactions = budgetTransactions.filter(
           (t) => new Date(t.date) >= yearAgo
         );
         break;
       default:
-        filteredTransactions = transactions;
+        filteredTransactions = budgetTransactions;
     }
 
-    // Group by day for chart
-    const dailySpending = {};
+    const dailySpending: { [key: string]: number } = {};
     filteredTransactions.forEach((t) => {
-      const date = new Date(t.date).toLocaleDateString();
-      dailySpending[date] = (dailySpending[date] || 0) + t.amount;
+      if (t.type === "expense") {
+        const date = new Date(t.date).toLocaleDateString();
+        dailySpending[date] = (dailySpending[date] || 0) + t.amount;
+      }
     });
 
     return Object.entries(dailySpending)
@@ -152,322 +197,178 @@ const BudgetDetailsScreen = () => {
         date,
         amount,
       }))
-      .slice(-7); // Last 7 data points
+      .slice(-7);
   };
 
-  const GlassCard = ({ children, style = {} }) => (
-    <BlurView
-      intensity={15}
-      tint="light"
-      style={[
-        {
-          backgroundColor: "rgba(255,255,255,0.1)",
-          borderRadius: 20,
-          padding: 20,
-          marginBottom: 16,
-          borderWidth: 1,
-          borderColor: "rgba(255,255,255,0.2)",
-        },
-        style,
-      ]}
-    >
-      {children}
-    </BlurView>
+  const GlassCard = ({
+    children,
+    style = {},
+  }: {
+    children: React.ReactNode;
+    style?: any;
+  }) => (
+    <View style={[styles.glassCard, style]}>
+      <BlurView intensity={15} tint="light" style={styles.glassCardBlur}>
+        {children}
+      </BlurView>
+    </View>
   );
 
   const spendingData = getSpendingData();
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <LinearGradient
-        colors={[budget.color + "60", colors.background]}
-        style={{ flex: 1 }}
+        colors={[colors.primary[500] + "60", colors.background]}
+        style={styles.container}
       >
         {/* Header */}
         <LinearGradient
-          colors={[budget.color, colors.primary[500]]}
+          colors={[colors.primary[300], colors.primary[700]]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={{
-            paddingTop: insets.top + 10,
-            paddingHorizontal: 20,
-            paddingBottom: 20,
-          }}
+          style={[styles.header, { paddingTop: insets.top + 10 }]}
         >
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: 20,
-            }}
-          >
-            <TouchableOpacity onPress={() => navigation.goBack()}>
+          <View style={styles.headerActions}>
+            <TouchableOpacity onPress={() => router.back()}>
               <Feather name="arrow-left" size={24} color={colors.text} />
             </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() =>
-                navigation.navigate("BudgetForm", { budget, isEdit: true })
-              }
-            >
-              <Feather name="edit-3" size={24} color={colors.text} />
-            </TouchableOpacity>
-          </View>
 
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              marginBottom: 12,
-            }}
-          >
-            <View
-              style={{
-                width: 48,
-                height: 48,
-                borderRadius: 24,
-                backgroundColor: "rgba(255,255,255,0.2)",
-                justifyContent: "center",
-                alignItems: "center",
-                marginRight: 16,
-              }}
-            >
+            <View style={styles.headerCenter}>
+              <Text style={[styles.headerTitle, { color: colors.text }]}>
+                Budget Details
+              </Text>
+            </View>
+
+            <View style={styles.budgetIconHeader}>
               <MaterialIcons
-                name={budget.icon || "wallet"}
+                name="account-balance-wallet"
                 size={24}
                 color="white"
               />
             </View>
-            <View style={{ flex: 1 }}>
-              <Text
-                style={{ fontSize: 24, fontWeight: "bold", color: colors.text }}
-              >
-                {budget.name}
+          </View>
+
+          <View style={styles.budgetInfo}>
+            <View style={styles.budgetDetails}>
+              <Text style={[styles.budgetTitle, { color: colors.text }]}>
+                {budget.title}
               </Text>
-              <Text style={{ fontSize: 14, color: "rgba(255,255,255,0.8)" }}>
-                {budget.category} • {budget.period}
+              <Text style={styles.budgetSubtitle}>
+                {budget.category} •{" "}
+                {budget.is_recurring ? "Recurring" : "One-time"}
               </Text>
             </View>
           </View>
 
           {budget.description && (
-            <Text
-              style={{
-                fontSize: 14,
-                color: "rgba(255,255,255,0.9)",
-                marginBottom: 12,
-              }}
-            >
-              {budget.description}
-            </Text>
-          )}
-
-          {/* Tags */}
-          {budget.tags?.length > 0 && (
-            <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
-              {budget.tags.map((tag) => (
-                <View
-                  key={tag}
-                  style={{
-                    backgroundColor: "rgba(255,255,255,0.2)",
-                    borderRadius: 12,
-                    paddingHorizontal: 8,
-                    paddingVertical: 4,
-                    marginRight: 8,
-                    marginBottom: 4,
-                  }}
-                >
-                  <Text style={{ color: colors.text, fontSize: 12 }}>
-                    {tag}
-                  </Text>
-                </View>
-              ))}
-            </View>
+            <Text style={styles.budgetDescription}>{budget.description}</Text>
           )}
         </LinearGradient>
 
         <Animated.ScrollView
-          style={{
-            flex: 1,
-            opacity: fadeAnim,
-          }}
-          contentContainerStyle={{ padding: 20, paddingBottom: 100 }}
+          style={[styles.scrollView, { opacity: fadeAnim }]}
+          contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
           {/* Progress Overview */}
           <GlassCard>
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 20,
-              }}
-            >
-              <Text
-                style={{ fontSize: 18, fontWeight: "bold", color: colors.text }}
-              >
+            <View style={styles.overviewHeader}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
                 Budget Overview
               </Text>
               <View
-                style={{
-                  backgroundColor: getStatusColor() + "20",
-                  borderRadius: 12,
-                  paddingHorizontal: 12,
-                  paddingVertical: 6,
-                }}
+                style={[
+                  styles.statusBadge,
+                  { backgroundColor: getStatusColor() + "20" },
+                ]}
               >
-                <Text
-                  style={{
-                    color: getStatusColor(),
-                    fontSize: 12,
-                    fontWeight: "600",
-                  }}
-                >
+                <Text style={[styles.statusText, { color: getStatusColor() }]}>
                   {progressPercentage.toFixed(1)}% Used
                 </Text>
               </View>
             </View>
 
             {/* Progress Bar */}
-            <View style={{ marginBottom: 20 }}>
-              <View
-                style={{
-                  height: 12,
-                  backgroundColor: "rgba(255,255,255,0.1)",
-                  borderRadius: 6,
-                  overflow: "hidden",
-                }}
-              >
+            <View style={styles.progressBarContainer}>
+              <View style={styles.progressBarTrack}>
                 <Animated.View
-                  style={{
-                    height: "100%",
-                    backgroundColor: getStatusColor(),
-                    borderRadius: 6,
-                    width: progressAnim.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [
-                        "0%",
-                        `${Math.min(100, progressPercentage)}%`,
-                      ],
-                    }),
-                  }}
+                  style={[
+                    styles.progressBarFill,
+                    {
+                      backgroundColor: getStatusColor(),
+                      width: progressAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [
+                          "0%",
+                          `${Math.min(100, progressPercentage)}%`,
+                        ],
+                      }),
+                    },
+                  ]}
                 />
               </View>
             </View>
 
             {/* Amount Details */}
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                marginBottom: 16,
-              }}
-            >
-              <View style={{ flex: 1 }}>
+            <View style={styles.amountRow}>
+              <View style={styles.amountItem}>
                 <Text
-                  style={{
-                    fontSize: 12,
-                    color: colors.textSecondary,
-                    marginBottom: 4,
-                  }}
+                  style={[styles.amountLabel, { color: colors.textSecondary }]}
                 >
                   Spent
                 </Text>
-                <Text
-                  style={{
-                    fontSize: 18,
-                    fontWeight: "bold",
-                    color: colors.text,
-                  }}
-                >
-                  {budget.currency} {budget.spent.toFixed(2)}
+                <Text style={[styles.amountValue, { color: colors.text }]}>
+                  RON {budget.spent.toFixed(2)}
                 </Text>
               </View>
-              <View style={{ flex: 1, alignItems: "center" }}>
+              <View style={[styles.amountItem, styles.amountItemCenter]}>
                 <Text
-                  style={{
-                    fontSize: 12,
-                    color: colors.textSecondary,
-                    marginBottom: 4,
-                  }}
+                  style={[styles.amountLabel, { color: colors.textSecondary }]}
                 >
                   Remaining
                 </Text>
                 <Text
-                  style={{
-                    fontSize: 18,
-                    fontWeight: "bold",
-                    color: remainingAmount >= 0 ? "#4ECDC4" : "#FF6B6B",
-                  }}
+                  style={[
+                    styles.amountValue,
+                    { color: budget.remaining >= 0 ? "#4ECDC4" : "#FF6B6B" },
+                  ]}
                 >
-                  {budget.currency} {remainingAmount.toFixed(2)}
+                  RON {budget.remaining.toFixed(2)}
                 </Text>
               </View>
-              <View style={{ flex: 1, alignItems: "flex-end" }}>
+              <View style={[styles.amountItem, styles.amountItemEnd]}>
                 <Text
-                  style={{
-                    fontSize: 12,
-                    color: colors.textSecondary,
-                    marginBottom: 4,
-                  }}
+                  style={[styles.amountLabel, { color: colors.textSecondary }]}
                 >
                   Total
                 </Text>
-                <Text
-                  style={{
-                    fontSize: 18,
-                    fontWeight: "bold",
-                    color: colors.text,
-                  }}
-                >
-                  {budget.currency} {budget.amount.toFixed(2)}
+                <Text style={[styles.amountValue, { color: colors.text }]}>
+                  RON {budget.amount.toFixed(2)}
                 </Text>
               </View>
             </View>
 
             {/* Time & Daily Budget */}
-            <View
-              style={{ flexDirection: "row", justifyContent: "space-between" }}
-            >
-              <View style={{ flex: 1 }}>
+            <View style={styles.timeRow}>
+              <View style={styles.timeItem}>
                 <Text
-                  style={{
-                    fontSize: 12,
-                    color: colors.textSecondary,
-                    marginBottom: 4,
-                  }}
+                  style={[styles.amountLabel, { color: colors.textSecondary }]}
                 >
                   Days Left
                 </Text>
-                <Text
-                  style={{
-                    fontSize: 16,
-                    fontWeight: "600",
-                    color: colors.text,
-                  }}
-                >
+                <Text style={[styles.timeValue, { color: colors.text }]}>
                   {daysLeft > 0 ? daysLeft : "Expired"}
                 </Text>
               </View>
-              <View style={{ flex: 1, alignItems: "flex-end" }}>
+              <View style={[styles.timeItem, styles.timeItemEnd]}>
                 <Text
-                  style={{
-                    fontSize: 12,
-                    color: colors.textSecondary,
-                    marginBottom: 4,
-                  }}
+                  style={[styles.amountLabel, { color: colors.textSecondary }]}
                 >
                   Daily Budget
                 </Text>
-                <Text
-                  style={{
-                    fontSize: 16,
-                    fontWeight: "600",
-                    color: colors.text,
-                  }}
-                >
-                  {budget.currency} {dailyBudget.toFixed(2)}
+                <Text style={[styles.timeValue, { color: colors.text }]}>
+                  RON {dailyBudget.toFixed(2)}
                 </Text>
               </View>
             </View>
@@ -475,380 +376,113 @@ const BudgetDetailsScreen = () => {
 
           {/* Quick Actions */}
           <GlassCard>
-            <Text
-              style={{
-                fontSize: 18,
-                fontWeight: "bold",
-                color: colors.text,
-                marginBottom: 16,
-              }}
-            >
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
               Quick Actions
             </Text>
 
-            <View
-              style={{ flexDirection: "row", justifyContent: "space-between" }}
-            >
+            <View style={styles.actionsRow}>
               <TouchableOpacity
                 onPress={() => setShowAddExpenseModal(true)}
-                style={{
-                  flex: 1,
-                  backgroundColor: budget.color + "20",
-                  borderRadius: 16,
-                  padding: 16,
-                  alignItems: "center",
-                  marginRight: 8,
-                  borderWidth: 1,
-                  borderColor: budget.color + "40",
-                }}
+                style={[
+                  styles.actionButton,
+                  {
+                    backgroundColor: colors.primary[500] + "20",
+                    borderColor: colors.primary[500] + "40",
+                  },
+                ]}
               >
-                <Feather name="plus" size={24} color={budget.color} />
+                <Feather name="plus" size={24} color={colors.primary[500]} />
                 <Text
-                  style={{
-                    color: budget.color,
-                    fontSize: 14,
-                    fontWeight: "600",
-                    marginTop: 8,
-                  }}
+                  style={[
+                    styles.actionButtonText,
+                    { color: colors.primary[500] },
+                  ]}
                 >
                   Add Expense
                 </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                onPress={() =>
-                  navigation.navigate("BudgetForm", { budget, isEdit: true })
-                }
-                style={{
-                  flex: 1,
-                  backgroundColor: "rgba(255,255,255,0.1)",
-                  borderRadius: 16,
-                  padding: 16,
-                  alignItems: "center",
-                  marginLeft: 8,
-                  borderWidth: 1,
-                  borderColor: "rgba(255,255,255,0.2)",
-                }}
+                onPress={() => router.push(`/budgets`)}
+                style={styles.actionButtonSecondary}
               >
                 <Feather name="edit-3" size={24} color={colors.text} />
-                <Text
-                  style={{
-                    color: colors.text,
-                    fontSize: 14,
-                    fontWeight: "600",
-                    marginTop: 8,
-                  }}
-                >
+                <Text style={[styles.actionButtonText, { color: colors.text }]}>
                   Edit Budget
                 </Text>
               </TouchableOpacity>
             </View>
           </GlassCard>
 
-          {/* Spending Chart */}
-          {spendingData.length > 0 && (
-            <GlassCard>
-              <View
-                style={{
-                  flexDirection: "row",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  marginBottom: 16,
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 18,
-                    fontWeight: "bold",
-                    color: colors.text,
-                  }}
-                >
-                  Spending Trend
-                </Text>
-                <View style={{ flexDirection: "row" }}>
-                  {["week", "month", "year"].map((timeframe) => (
-                    <TouchableOpacity
-                      key={timeframe}
-                      onPress={() => setSelectedTimeframe(timeframe)}
-                      style={{
-                        backgroundColor:
-                          selectedTimeframe === timeframe
-                            ? budget.color + "40"
-                            : "rgba(255,255,255,0.1)",
-                        borderRadius: 8,
-                        paddingHorizontal: 12,
-                        paddingVertical: 6,
-                        marginLeft: 4,
-                      }}
-                    >
-                      <Text
-                        style={{
-                          color:
-                            selectedTimeframe === timeframe
-                              ? budget.color
-                              : colors.textSecondary,
-                          fontSize: 12,
-                          fontWeight: "600",
-                          textTransform: "capitalize",
-                        }}
-                      >
-                        {timeframe}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-
-              <Animated.View style={{ opacity: chartAnim }}>
-                <LineChart
-                  data={{
-                    labels: spendingData.map((d) =>
-                      new Date(d.date).getDate().toString()
-                    ),
-                    datasets: [
-                      {
-                        data: spendingData.map((d) => d.amount),
-                        color: (opacity = 1) =>
-                          budget.color + opacity.toString(16).padStart(2, "0"),
-                        strokeWidth: 3,
-                      },
-                    ],
-                  }}
-                  width={width - 80}
-                  height={200}
-                  chartConfig={{
-                    backgroundColor: "transparent",
-                    backgroundGradientFrom: "transparent",
-                    backgroundGradientTo: "transparent",
-                    decimalPlaces: 0,
-                    color: (opacity = 1) =>
-                      colors.text + opacity.toString(16).padStart(2, "0"),
-                    labelColor: (opacity = 1) =>
-                      colors.textSecondary +
-                      opacity.toString(16).padStart(2, "0"),
-                    style: { borderRadius: 16 },
-                    propsForDots: {
-                      r: "4",
-                      strokeWidth: "2",
-                      stroke: budget.color,
-                      fill: budget.color,
-                    },
-                  }}
-                  bezier
-                  style={{
-                    marginVertical: 8,
-                    borderRadius: 16,
-                  }}
-                />
-              </Animated.View>
-            </GlassCard>
-          )}
-
-          {/* Sub-Budgets */}
-          {budget.subBudgets && budget.subBudgets.length > 0 && (
-            <GlassCard>
-              <Text
-                style={{
-                  fontSize: 18,
-                  fontWeight: "bold",
-                  color: colors.text,
-                  marginBottom: 16,
-                }}
-              >
-                Sub-Budgets
-              </Text>
-
-              {budget.subBudgets.map((sub) => {
-                const subProgress = (sub.spent / sub.amount) * 100;
-                return (
-                  <View
-                    key={sub.id}
-                    style={{
-                      backgroundColor: "rgba(255,255,255,0.05)",
-                      borderRadius: 16,
-                      padding: 16,
-                      marginBottom: 12,
-                      borderWidth: 1,
-                      borderColor: "rgba(255,255,255,0.1)",
-                    }}
-                  >
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        marginBottom: 8,
-                      }}
-                    >
-                      <Text
-                        style={{
-                          fontSize: 16,
-                          fontWeight: "600",
-                          color: colors.text,
-                        }}
-                      >
-                        {sub.name}
-                      </Text>
-                      <Text
-                        style={{ fontSize: 14, color: colors.textSecondary }}
-                      >
-                        {subProgress.toFixed(1)}%
-                      </Text>
-                    </View>
-
-                    <View
-                      style={{
-                        height: 6,
-                        backgroundColor: "rgba(255,255,255,0.1)",
-                        borderRadius: 3,
-                        marginBottom: 8,
-                      }}
-                    >
-                      <View
-                        style={{
-                          height: "100%",
-                          backgroundColor: budget.color,
-                          borderRadius: 3,
-                          width: `${Math.min(100, subProgress)}%`,
-                        }}
-                      />
-                    </View>
-
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        justifyContent: "space-between",
-                      }}
-                    >
-                      <Text
-                        style={{ fontSize: 12, color: colors.textSecondary }}
-                      >
-                        Spent: {budget.currency} {sub.spent.toFixed(2)}
-                      </Text>
-                      <Text
-                        style={{ fontSize: 12, color: colors.textSecondary }}
-                      >
-                        Budget: {budget.currency} {sub.amount.toFixed(2)}
-                      </Text>
-                    </View>
-                  </View>
-                );
-              })}
-            </GlassCard>
-          )}
-
           {/* Recent Transactions */}
-          {budget.transactions && budget.transactions.length > 0 && (
+          {budgetTransactions.length > 0 && (
             <GlassCard>
-              <Text
-                style={{
-                  fontSize: 18,
-                  fontWeight: "bold",
-                  color: colors.text,
-                  marginBottom: 16,
-                }}
-              >
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
                 Recent Transactions
               </Text>
 
-              {budget.transactions
-                .slice(-5)
-                .reverse()
-                .map((transaction) => (
-                  <View
-                    key={transaction.id}
-                    style={{
-                      flexDirection: "row",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      paddingVertical: 12,
-                      borderBottomWidth: 1,
-                      borderBottomColor: "rgba(255,255,255,0.1)",
-                    }}
-                  >
-                    <View style={{ flex: 1 }}>
-                      <Text
-                        style={{
-                          fontSize: 16,
-                          color: colors.text,
-                          marginBottom: 4,
-                        }}
-                      >
-                        {transaction.description}
-                      </Text>
-                      <Text
-                        style={{ fontSize: 12, color: colors.textSecondary }}
-                      >
-                        {new Date(transaction.date).toLocaleDateString()}
-                      </Text>
-                    </View>
+              {budgetTransactions.slice(0, 5).map((transaction) => (
+                <View key={transaction.id} style={styles.transactionItem}>
+                  <View style={styles.transactionInfo}>
                     <Text
-                      style={{
-                        fontSize: 16,
-                        fontWeight: "600",
+                      style={[
+                        styles.transactionDescription,
+                        { color: colors.text },
+                      ]}
+                    >
+                      {transaction.description}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.transactionDate,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      {new Date(transaction.date).toLocaleDateString()}
+                      {transaction.merchant && ` • ${transaction.merchant}`}
+                    </Text>
+                  </View>
+                  <Text
+                    style={[
+                      styles.transactionAmount,
+                      {
                         color:
                           transaction.type === "expense"
                             ? "#FF6B6B"
                             : "#4ECDC4",
-                      }}
-                    >
-                      {transaction.type === "expense" ? "-" : "+"}
-                      {budget.currency} {transaction.amount.toFixed(2)}
-                    </Text>
-                  </View>
-                ))}
+                      },
+                    ]}
+                  >
+                    {transaction.type === "expense" ? "-" : "+"}
+                    {transaction.currency} {transaction.amount.toFixed(2)}
+                  </Text>
+                </View>
+              ))}
 
-              <TouchableOpacity
-                style={{
-                  alignItems: "center",
-                  paddingVertical: 12,
-                  marginTop: 8,
-                }}
-              >
-                <Text
-                  style={{
-                    color: budget.color,
-                    fontSize: 14,
-                    fontWeight: "600",
-                  }}
-                >
-                  View All Transactions
-                </Text>
-              </TouchableOpacity>
+              {budgetTransactions.length > 5 && (
+                <TouchableOpacity style={styles.viewAllButton}>
+                  <Text
+                    style={[styles.viewAllText, { color: colors.primary[500] }]}
+                  >
+                    View All Transactions ({budgetTransactions.length})
+                  </Text>
+                </TouchableOpacity>
+              )}
             </GlassCard>
           )}
         </Animated.ScrollView>
 
         {/* Add Expense Modal */}
         <Modal visible={showAddExpenseModal} transparent animationType="slide">
-          <BlurView
-            intensity={20}
-            tint="dark"
-            style={{ flex: 1, justifyContent: "center", padding: 20 }}
-          >
+          <BlurView intensity={20} tint="dark" style={styles.modalOverlay}>
             <View
-              style={{
-                backgroundColor: colors.background,
-                borderRadius: 24,
-                padding: 20,
-                maxHeight: "80%",
-              }}
+              style={[
+                styles.modalContent,
+                { backgroundColor: colors.background },
+              ]}
             >
-              <View
-                style={{
-                  flexDirection: "row",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  marginBottom: 20,
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 20,
-                    fontWeight: "bold",
-                    color: colors.text,
-                  }}
-                >
+              <View style={styles.modalHeader}>
+                <Text style={[styles.modalTitle, { color: colors.text }]}>
                   Add Expense
                 </Text>
                 <TouchableOpacity onPress={() => setShowAddExpenseModal(false)}>
@@ -856,16 +490,11 @@ const BudgetDetailsScreen = () => {
                 </TouchableOpacity>
               </View>
 
-              <View style={{ marginBottom: 16 }}>
+              <View style={styles.inputGroup}>
                 <Text
-                  style={{
-                    fontSize: 14,
-                    fontWeight: "600",
-                    color: colors.textSecondary,
-                    marginBottom: 8,
-                  }}
+                  style={[styles.inputLabel, { color: colors.textSecondary }]}
                 >
-                  Amount ({budget.currency})
+                  Amount (RON)
                 </Text>
                 <TextInput
                   value={expenseAmount}
@@ -873,26 +502,20 @@ const BudgetDetailsScreen = () => {
                   placeholder="0.00"
                   placeholderTextColor={colors.textSecondary}
                   keyboardType="numeric"
-                  style={{
-                    backgroundColor: "rgba(255,255,255,0.1)",
-                    borderRadius: 12,
-                    padding: 16,
-                    color: colors.text,
-                    fontSize: 18,
-                    borderWidth: 1,
-                    borderColor: "rgba(255,255,255,0.2)",
-                  }}
+                  style={[
+                    styles.amountInput,
+                    {
+                      color: colors.text,
+                      backgroundColor: colors.background,
+                      borderColor: colors.primary[500] + "40",
+                    },
+                  ]}
                 />
               </View>
 
-              <View style={{ marginBottom: 24 }}>
+              <View style={styles.inputGroup}>
                 <Text
-                  style={{
-                    fontSize: 14,
-                    fontWeight: "600",
-                    color: colors.textSecondary,
-                    marginBottom: 8,
-                  }}
+                  style={[styles.inputLabel, { color: colors.textSecondary }]}
                 >
                   Description
                 </Text>
@@ -903,37 +526,55 @@ const BudgetDetailsScreen = () => {
                   placeholderTextColor={colors.textSecondary}
                   multiline
                   numberOfLines={3}
-                  style={{
-                    backgroundColor: "rgba(255,255,255,0.1)",
-                    borderRadius: 12,
-                    padding: 16,
-                    color: colors.text,
-                    fontSize: 16,
-                    textAlignVertical: "top",
-                    borderWidth: 1,
-                    borderColor: "rgba(255,255,255,0.2)",
+                  style={[
+                    styles.descriptionInput,
+                    {
+                      color: colors.text,
+                      backgroundColor: colors.background,
+                      borderColor: colors.primary[500] + "40",
+                    },
+                  ]}
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text
+                  style={[styles.inputLabel, { color: colors.textSecondary }]}
+                >
+                  Merchant
+                </Text>
+                <TextInput
+                  value={expenseMerchant}
+                  onChangeText={setExpenseMerchant}
+                  placeholder="Where did you spend?"
+                  placeholderTextColor={colors.textSecondary}
+                  style={[
+                    styles.descriptionInput,
+                    {
+                      color: colors.text,
+                      backgroundColor: colors.background,
+                      borderColor: colors.primary[500] + "40",
+                    },
+                  ]}
+                  onFocus={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                   }}
                 />
               </View>
 
-              <View style={{ flexDirection: "row" }}>
+              <View style={styles.modalActions}>
                 <TouchableOpacity
                   onPress={() => setShowAddExpenseModal(false)}
-                  style={{
-                    flex: 1,
-                    backgroundColor: "rgba(255,255,255,0.1)",
-                    borderRadius: 12,
-                    padding: 16,
-                    alignItems: "center",
-                    marginRight: 8,
-                  }}
+                  style={[
+                    styles.cancelButton,
+                    {
+                      backgroundColor: colors.textSecondary + "20",
+                      borderColor: colors.textSecondary + "40",
+                    },
+                  ]}
                 >
                   <Text
-                    style={{
-                      color: colors.text,
-                      fontSize: 16,
-                      fontWeight: "600",
-                    }}
+                    style={[styles.cancelButtonText, { color: colors.text }]}
                   >
                     Cancel
                   </Text>
@@ -941,20 +582,12 @@ const BudgetDetailsScreen = () => {
 
                 <TouchableOpacity
                   onPress={handleAddExpense}
-                  style={{
-                    flex: 1,
-                    backgroundColor: budget.color,
-                    borderRadius: 12,
-                    padding: 16,
-                    alignItems: "center",
-                    marginLeft: 8,
-                  }}
+                  style={[
+                    styles.addButton,
+                    { backgroundColor: colors.primary[500] },
+                  ]}
                 >
-                  <Text
-                    style={{ color: "white", fontSize: 16, fontWeight: "600" }}
-                  >
-                    Add Expense
-                  </Text>
+                  <Text style={styles.addButtonText}>Add Expense</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -964,5 +597,310 @@ const BudgetDetailsScreen = () => {
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  text: {
+    fontSize: 16,
+  },
+  header: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
+  headerActions: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  headerCenter: {
+    flex: 1,
+    alignItems: "center",
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: "bold",
+    fontFamily: "Montserrat",
+  },
+  budgetIconHeader: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  budgetInfo: {
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  budgetDetails: {
+    alignItems: "center",
+  },
+  budgetTitle: {
+    fontSize: 24,
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+  budgetSubtitle: {
+    fontSize: 14,
+    color: "rgba(255,255,255,0.8)",
+    textAlign: "center",
+  },
+  budgetDescription: {
+    fontSize: 14,
+    color: "rgba(255,255,255,0.9)",
+    marginBottom: 12,
+    textAlign: "center",
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 20,
+    paddingBottom: 100,
+  },
+  glassCard: {
+    borderRadius: 20,
+    marginBottom: 16,
+    overflow: "hidden",
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+  },
+  glassCardBlur: {
+    padding: 20,
+    borderRadius: 20,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 16,
+  },
+  overviewHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  statusBadge: {
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  progressBarContainer: {
+    marginBottom: 20,
+  },
+  progressBarTrack: {
+    height: 12,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 6,
+    overflow: "hidden",
+  },
+  progressBarFill: {
+    height: "100%",
+    borderRadius: 6,
+  },
+  amountRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 16,
+  },
+  amountItem: {
+    flex: 1,
+  },
+  amountItemCenter: {
+    alignItems: "center",
+  },
+  amountItemEnd: {
+    alignItems: "flex-end",
+  },
+  amountLabel: {
+    fontSize: 12,
+    marginBottom: 4,
+  },
+  amountValue: {
+    fontSize: 18,
+    fontWeight: "bold",
+  },
+  timeRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  timeItem: {
+    flex: 1,
+  },
+  timeItemEnd: {
+    alignItems: "flex-end",
+  },
+  timeValue: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  actionsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  actionButton: {
+    flex: 1,
+    borderRadius: 16,
+    padding: 16,
+    alignItems: "center",
+    marginRight: 8,
+    borderWidth: 1,
+  },
+  actionButtonSecondary: {
+    flex: 1,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 16,
+    padding: 16,
+    alignItems: "center",
+    marginLeft: 8,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+  },
+  actionButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+    marginTop: 8,
+  },
+  chartHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  timeframeButtons: {
+    flexDirection: "row",
+  },
+  timeframeButton: {
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginLeft: 4,
+  },
+  timeframeButtonText: {
+    fontSize: 12,
+    fontWeight: "600",
+    textTransform: "capitalize",
+  },
+
+  transactionItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255,255,255,0.1)",
+  },
+  transactionInfo: {
+    flex: 1,
+  },
+  transactionDescription: {
+    fontSize: 16,
+    marginBottom: 4,
+  },
+  transactionDate: {
+    fontSize: 12,
+  },
+  transactionAmount: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  viewAllButton: {
+    alignItems: "center",
+    paddingVertical: 12,
+    marginTop: 8,
+  },
+  viewAllText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "center",
+    padding: 20,
+  },
+  modalContent: {
+    borderRadius: 24,
+    padding: 20,
+    maxHeight: "80%",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+  },
+  inputGroup: {
+    marginBottom: 16,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    marginBottom: 8,
+  },
+  amountInput: {
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 18,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+  },
+  descriptionInput: {
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    textAlignVertical: "top",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+    minHeight: 80,
+  },
+  modalActions: {
+    flexDirection: "row",
+    marginTop: 8,
+  },
+  cancelButton: {
+    flex: 1,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 12,
+    padding: 16,
+    alignItems: "center",
+    marginRight: 8,
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  addButton: {
+    flex: 1,
+    borderRadius: 12,
+    padding: 16,
+    alignItems: "center",
+    marginLeft: 8,
+  },
+  addButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+});
 
 export default BudgetDetailsScreen;

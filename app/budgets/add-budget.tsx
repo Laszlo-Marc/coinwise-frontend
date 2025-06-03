@@ -55,7 +55,7 @@ const AddBudgetScreen = () => {
       setFormData((prev) => ({
         ...prev,
         start_date: selectedDate,
-        // Ensure end date is at least one day after start date
+
         end_date:
           prev.end_date <= selectedDate
             ? new Date(selectedDate.getTime() + 86400000)
@@ -72,17 +72,13 @@ const AddBudgetScreen = () => {
   };
 
   const validateForm = () => {
-    // Check title is not empty
     if (!formData.title.trim()) return false;
 
-    // Check amount is valid number and greater than 0
     const amount = parseFloat(formData.amount);
     if (isNaN(amount) || amount <= 0) return false;
 
-    // Check end date is after start date
     if (formData.end_date <= formData.start_date) return false;
 
-    // Check notification threshold if notifications are enabled
     if (formData.notificationsEnabled) {
       const threshold = formData.notificationThreshold;
       if (isNaN(threshold) || threshold <= 0 || threshold > 100) return false;
@@ -110,7 +106,8 @@ const AddBudgetScreen = () => {
       category: formData.category,
       end_date: formData.end_date.toISOString().split("T")[0],
       notificationsEnabled: formData.notificationsEnabled,
-      notificationThreshold: formData.notificationThreshold,
+      notificationsThreshold: formData.notificationThreshold,
+      transactions: [],
     };
 
     addBudget(budgetData);
@@ -311,7 +308,12 @@ const AddBudgetScreen = () => {
                 <ThresholdToggle
                   enabled={formData.notificationsEnabled}
                   threshold={formData.notificationThreshold}
-                  onToggle={() => {}}
+                  onToggle={() =>
+                    handleInputChange(
+                      "notificationsEnabled",
+                      !formData.notificationsEnabled
+                    )
+                  }
                   onChangeThreshold={(value) =>
                     handleInputChange("notificationThreshold", value)
                   }

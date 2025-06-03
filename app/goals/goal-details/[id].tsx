@@ -63,12 +63,12 @@ const GoalDetailsScreen = () => {
 
   const handleAddContribution = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    router.replace(`./add-contribution/${goal?.id}`);
+    router.push(`./add-contribution/${goal?.id}`);
   };
 
   const handleEditGoal = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.replace(`../edit-goal/${goal?.id}`);
+    router.push(`../edit-goal/${goal?.id}`);
   };
 
   if (!goal) return null;

@@ -41,8 +41,7 @@ export const BudgetsProvider: React.FC<{ children: React.ReactNode }> = ({
       });
 
       const { data } = response.data;
-
-      setBudgets((prev) => [...prev, ...data]);
+      setBudgets(data);
     } catch (e) {
       handleApiError(e);
     }
@@ -53,7 +52,7 @@ export const BudgetsProvider: React.FC<{ children: React.ReactNode }> = ({
     try {
       const token = await SecureStore.getItem("auth_token");
       const { id, ...dataToSend } = budget;
-
+      console.log("Adding budget:", dataToSend);
       const response = await axios.post(`${BUDGET_API_URL}/add`, dataToSend, {
         headers: {
           Authorization: `Bearer ${token}`,

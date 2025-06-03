@@ -28,23 +28,13 @@ export default function SignIn() {
       return;
     }
 
-    const initializeData = async () => {
-      try {
-        await fetchGoals();
-        await fetchContributions();
-        await fetchTransactions();
-      } catch (e) {
-        console.error("Failed to initialize app data", e);
-      }
-    };
-
     try {
       setLoading(true);
       const user = await signIn(email, password);
       console.log("Sign in response:", user);
       if (user) {
         Alert.alert("Success", "You have successfully signed in");
-        await initializeData();
+
         router.replace("/");
       } else {
         Alert.alert("Error", "Sign in failed. Please try again.");

@@ -1,3 +1,4 @@
+import { categories } from "@/constants/categories";
 import { useGoals } from "@/contexts/GoalsContext";
 import { Feather } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
@@ -47,16 +48,6 @@ const EditGoalScreen = () => {
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  const categories = [
-    "Savings",
-    "Travel",
-    "Tech",
-    "Education",
-    "Home",
-    "Automotive",
-    "Other",
-  ];
-
   useEffect(() => {
     if (goalId && goals.length > 0) {
       const goal = goals.find((g) => g.id === goalId);
@@ -95,7 +86,7 @@ const EditGoalScreen = () => {
       setFormData((prev) => ({
         ...prev,
         startDate: selectedDate,
-        
+
         targetDate:
           selectedDate >= prev.targetDate
             ? new Date(selectedDate.getTime() + 86400000)
@@ -165,7 +156,6 @@ const EditGoalScreen = () => {
       Alert.alert("Error", "Failed to update goal. Please try again.");
     }
   };
-
 
   if (isLoading) {
     return (
@@ -251,14 +241,13 @@ const EditGoalScreen = () => {
                   style={styles.amountInput}
                   value={formData.targetAmount}
                   onChangeText={(value) => {
-               
                     const cleanedValue = value.replace(/[^0-9.]/g, "");
                     const parts = cleanedValue.split(".");
                     if (parts.length > 2) {
-                      return; 
+                      return;
                     }
                     if (parts[1] && parts[1].length > 2) {
-                      return; 
+                      return;
                     }
                     handleInputChange("targetAmount", cleanedValue);
                   }}
@@ -322,7 +311,7 @@ const EditGoalScreen = () => {
                   onChange={handleTargetDateChange}
                   minimumDate={
                     new Date(formData.startDate.getTime() + 86400000)
-                  } 
+                  }
                 />
               )}
             </View>
@@ -435,14 +424,13 @@ const EditGoalScreen = () => {
                       style={styles.amountInput}
                       value={formData.contributionAmount}
                       onChangeText={(value) => {
-                        
                         const cleanedValue = value.replace(/[^0-9.]/g, "");
                         const parts = cleanedValue.split(".");
                         if (parts.length > 2) {
-                          return; 
+                          return;
                         }
                         if (parts[1] && parts[1].length > 2) {
-                          return; 
+                          return;
                         }
                         handleInputChange("contributionAmount", cleanedValue);
                       }}

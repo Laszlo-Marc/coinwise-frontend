@@ -2,6 +2,13 @@ import { useTransactionContext } from "@/contexts/AppContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBudgets } from "@/contexts/BudgetsContext";
 import { useGoals } from "@/contexts/GoalsContext";
+
+import { formatCurrency, formatDate } from "@/hooks/home-page/formatHooks";
+import { useClosestGoals } from "@/hooks/home-page/useClosestGoals";
+import { useCurrentBalance } from "@/hooks/home-page/useCurrentBalance";
+import { useRecentTransactions } from "@/hooks/home-page/useRecentTransactions";
+import { useRiskiestBudgets } from "@/hooks/home-page/useRiskiestBudgets";
+import { useSummaryData } from "@/hooks/home-page/useSummaryData";
 import { BudgetModel } from "@/models/budget";
 import { GoalModel } from "@/models/goal";
 import { TransactionModel } from "@/models/transaction";
@@ -11,204 +18,34 @@ import {
   Feather,
   Ionicons,
   MaterialIcons,
-  SimpleLineIcons,
 } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { useEffect, useMemo, useState } from "react";
+import React from "react";
 import {
-  Animated,
-  Keyboard,
   Platform,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
-  TouchableWithoutFeedback,
   View,
 } from "react-native";
 import "react-native-gesture-handler";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import BottomBar from "../components/mainComponents/BottomBar";
 import { colors } from "../constants/colors";
 
 export default function HomePage() {
-  const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { checkSessionValidity } = useAuth();
+  const { state } = useAuth();
   const { goals } = useGoals();
   const { budgets } = useBudgets();
   const { transactions } = useTransactionContext();
-  const [dataLoaded, setDataLoaded] = useState(false);
-  const [isFocused, setIsFocused] = useState(false);
-  const { fetchGoals } = useGoals();
-  const { fetchBudgets } = useBudgets();
-  const { fetchTransactions } = useTransactionContext();
-  const { fetchContributions } = useGoals();
-  const [focusAnim] = useState(new Animated.Value(0));
-
-  useEffect(() => {
-    const checkUser = async () => {
-      const isValid = await checkSessionValidity();
-      if (!isValid) {
-        router.replace("/auth/sign-in");
-      } else if (isValid && !dataLoaded) {
-        await fetchGoals();
-        await fetchBudgets();
-        await fetchTransactions();
-        await fetchContributions();
-        setDataLoaded(true);
-      }
-    };
-    checkUser();
-  }, [checkSessionValidity]);
-
-  // Calculate recent transactions
-  const recentTransactions = useMemo(() => {
-    return transactions
-      .sort(
-        (
-          a: { date: string | number | Date },
-          b: { date: string | number | Date }
-        ) => new Date(b.date).getTime() - new Date(a.date).getTime()
-      )
-      .slice(0, 5);
-  }, [transactions]);
-
-  // Calculate summary data
-  const summaryData = useMemo(() => {
-    const now = new Date();
-    const lastMonth = new Date(
-      now.getFullYear(),
-      now.getMonth() - 1,
-      now.getDate()
-    );
-    const last3Months = new Date(
-      now.getFullYear(),
-      now.getMonth() - 3,
-      now.getDate()
-    );
-
-    const calculateTotals = (startDate: Date | null = null) => {
-      const filteredTransactions = startDate
-        ? transactions.filter(
-            (t: { date: string | number | Date }) =>
-              new Date(t.date) >= startDate
-          )
-        : transactions;
-
-      const income = filteredTransactions
-        .filter((t: { type: string }) => t.type === "income")
-        .reduce((sum: any, t: { amount: any }) => sum + t.amount, 0);
-
-      const expenses = filteredTransactions
-        .filter((t: { type: string }) => t.type === "expense")
-        .reduce((sum: any, t: { amount: any }) => sum + t.amount, 0);
-
-      return { income, expenses };
-    };
-
-    return {
-      allTime: calculateTotals(),
-      lastMonth: calculateTotals(lastMonth),
-      last3Months: calculateTotals(last3Months),
-    };
-  }, [transactions]);
-
-  // Calculate balance
-  const currentBalance = useMemo(() => {
-    return transactions.reduce(
-      (balance: number, transaction: { type: string; amount: number }) => {
-        return transaction.type === "income"
-          ? balance + transaction.amount
-          : balance - transaction.amount;
-      },
-      0
-    );
-  }, [transactions]);
-
-  // Get closest goals to achievement
-  const closestGoals = useMemo(() => {
-    return goals
-      .filter((goal: GoalModel) => goal.current_amount < goal.target_amount)
-      .sort((a: GoalModel, b: GoalModel) => {
-        const progressA = (a.current_amount / a.target_amount) * 100;
-        const progressB = (b.current_amount / b.target_amount) * 100;
-        return progressB - progressA;
-      })
-      .slice(0, 3);
-  }, [goals]);
-
-  // Get budgets closest to being broken
-  const riskiestBudgets = useMemo(() => {
-    const now = new Date();
-    return budgets
-      .filter((budget: BudgetModel) => {
-        // Calculate spent amount for current period
-        const periodStart =
-          budget.reccuring_frequency === "monthly"
-            ? new Date(now.getFullYear(), now.getMonth(), 1)
-            : budget.reccuring_frequency === "weekly"
-            ? new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-            : new Date(now.getFullYear(), 0, 1);
-
-        const spent = transactions
-          .filter(
-            (t: TransactionModel) =>
-              t.type === "expense" &&
-              t.category === budget.category &&
-              new Date(t.date) >= periodStart
-          )
-          .reduce((sum: any, t: { amount: any }) => sum + t.amount, 0);
-
-        budget.spent = spent;
-        return spent < budget.amount;
-      })
-      .sort((a: BudgetModel, b: BudgetModel) => {
-        const percentageA = (a.spent / a.amount) * 100;
-        const percentageB = (b.spent / b.amount) * 100;
-        return percentageB - percentageA;
-      })
-      .slice(0, 3);
-  }, [budgets, transactions]);
-
-  const handleFocus = () => {
-    setIsFocused(true);
-    Animated.timing(focusAnim, {
-      toValue: 1,
-      duration: 200,
-      useNativeDriver: false,
-    }).start();
-  };
-
-  const formatCurrency = (amount: string | number | bigint) => {
-    const numericAmount = typeof amount === "string" ? Number(amount) : amount;
-    return new Intl.NumberFormat("ro-RO", {
-      style: "currency",
-      currency: "RON",
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    }).format(numericAmount);
-  };
-
-  const formatDate = (dateString: string | number | Date) => {
-    const date = new Date(dateString);
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    if (date.toDateString() === today.toDateString()) {
-      return "Today";
-    } else if (date.toDateString() === yesterday.toDateString()) {
-      return "Yesterday";
-    } else {
-      return date.toLocaleDateString("ro-RO", {
-        month: "short",
-        day: "numeric",
-      });
-    }
-  };
+  const recentTransactions = useRecentTransactions(transactions);
+  const summaryData = useSummaryData(transactions, state.user);
+  const closestGoals = useClosestGoals(goals);
+  const riskiestBudgets = useRiskiestBudgets(budgets, transactions);
+  const currentBalance = useCurrentBalance(transactions, state.user);
 
   return (
     <View style={styles.container}>
@@ -221,36 +58,11 @@ export default function HomePage() {
       >
         {/* Main Balance Section with Gradient */}
         <LinearGradient
-          colors={["rgba(253, 187, 45, 1)", "rgba(34, 193, 195, 1)"]}
+          colors={["rgb(251, 193, 105)", "rgb(198, 119, 0)"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.balanceSection}
         >
-          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-            <View style={[styles.headerWrapper, { paddingTop: insets.top }]}>
-              <View style={styles.headerContainer}>
-                <TouchableOpacity
-                  style={styles.iconButton}
-                  onPress={() => router.replace("/settings")}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons
-                    name="settings-outline"
-                    size={24}
-                    color={colors.text}
-                  />
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.iconButton}
-                  onPress={() => router.push("/profile")}
-                  activeOpacity={0.7}
-                >
-                  <Feather name="user" size={24} color={colors.text} />
-                </TouchableOpacity>
-              </View>
-            </View>
-          </TouchableWithoutFeedback>
           <View style={styles.balanceContainer}>
             <Text style={styles.balanceLabel}>Main · RON</Text>
             <Text style={styles.balanceAmount}>
@@ -269,30 +81,14 @@ export default function HomePage() {
               </View>
               <Text style={styles.actionText}>Transactions</Text>
             </TouchableOpacity>
-
-            <TouchableOpacity style={styles.actionButton}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => router.replace("./profile")}
+            >
               <View style={styles.actionIconContainer}>
-                <Feather name="archive" size={24} color={colors.text} />
+                <Feather name="user" size={24} color={colors.text} />
               </View>
-              <Text style={styles.actionText}>Archive</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.actionButton}>
-              <View style={styles.actionIconContainer}>
-                <SimpleLineIcons
-                  name="paper-plane"
-                  size={24}
-                  color={colors.text}
-                />
-              </View>
-              <Text style={styles.actionText}>Travel account</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.actionButton}>
-              <View style={styles.actionIconContainer}>
-                <Feather name="list" size={24} color={colors.text} />
-              </View>
-              <Text style={styles.actionText}>Details</Text>
+              <Text style={styles.actionText}>Profile</Text>
             </TouchableOpacity>
           </View>
         </LinearGradient>
@@ -378,7 +174,6 @@ export default function HomePage() {
         <View style={styles.card}>
           <TouchableOpacity style={styles.sectionHeaderButton}>
             <Text style={styles.sectionHeaderText}>Summary</Text>
-            <Entypo name="chevron-right" size={24} color={colors.text} />
           </TouchableOpacity>
 
           <View style={styles.summaryContainer}>
@@ -618,7 +413,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   balanceSection: {
-    paddingTop: Platform.OS === "ios" ? 120 : 100,
+    paddingTop: Platform.OS === "ios" ? 100 : 80,
     paddingBottom: 20,
     paddingHorizontal: 20,
     borderBottomLeftRadius: 24,
@@ -638,19 +433,23 @@ const styles = StyleSheet.create({
   },
   balanceAmount: {
     color: colors.text,
-    fontSize: 48,
+    fontSize: 36,
     fontWeight: "bold",
     marginBottom: 16,
     fontFamily: "Montserrat",
+    alignContent: "center",
+    textAlign: "center",
   },
   quickActions: {
     flexDirection: "row",
     paddingHorizontal: 10,
     alignItems: "center",
-    justifyContent: "space-between",
+
+    justifyContent: "center",
   },
   actionButton: {
     alignItems: "center",
+    marginHorizontal: 10,
   },
   actionIconContainer: {
     width: 50,

@@ -1,5 +1,3 @@
-// components/budgets/BudgetList.tsx
-
 import { colors } from "@/constants/colors";
 import { BudgetModel } from "@/models/budget";
 import { formatCurrency } from "@/utils/formatting";
@@ -7,7 +5,6 @@ import { Feather } from "@expo/vector-icons";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
-  Dimensions,
   FlatList,
   RefreshControl,
   StyleSheet,
@@ -23,10 +20,7 @@ type Props = {
   onDeleteBudget: (budgetId: string) => void;
   onAddBudget: () => void;
   onRefresh?: () => Promise<void>;
-  isLoading?: boolean;
 };
-
-const { width: screenWidth } = Dimensions.get("window");
 
 const BudgetList = ({
   budgets,
@@ -34,7 +28,6 @@ const BudgetList = ({
   onDeleteBudget,
   onAddBudget,
   onRefresh,
-  isLoading = false,
 }: Props) => {
   const [refreshing, setRefreshing] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;

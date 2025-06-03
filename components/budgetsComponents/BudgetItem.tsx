@@ -66,7 +66,7 @@ const BudgetItem = ({ budget, onEdit, onDelete, progressAnimation }: Props) => {
     const percentage = (budget.spent / budget.amount) * 100;
     if (percentage < 50) return colors.success;
     if (percentage < 75) return colors.primary[400];
-    if (percentage < 90) return "#FF9500"; // Orange
+    if (percentage < 90) return "#FF9500";
     return colors.error;
   };
 
