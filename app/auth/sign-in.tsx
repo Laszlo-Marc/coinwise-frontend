@@ -31,11 +31,9 @@ export default function SignIn() {
     try {
       setLoading(true);
       const user = await signIn(email, password);
-      console.log("Sign in response:", user);
-      if (user) {
-        Alert.alert("Success", "You have successfully signed in");
 
-        router.replace("/");
+      if (user) {
+        router.replace("/home");
       } else {
         Alert.alert("Error", "Sign in failed. Please try again.");
       }

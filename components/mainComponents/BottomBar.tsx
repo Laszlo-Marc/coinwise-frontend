@@ -29,7 +29,7 @@ const tabs = [
   },
   {
     name: "Home",
-    href: "/",
+    href: "/home",
     icon: (color: string, size: number) => (
       <Feather name="home" color={color} size={size} />
     ),

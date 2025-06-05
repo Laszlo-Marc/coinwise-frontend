@@ -1,12 +1,16 @@
 import BottomBar from "@/components/mainComponents/BottomBar";
-import { AntDesign, Entypo, Feather } from "@expo/vector-icons";
+import { Entypo, Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import * as SecureStore from "expo-secure-store";
+import React, { useCallback, useEffect, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   Dimensions,
   Modal,
   Platform,
+  RefreshControl,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -22,103 +26,279 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors } from "../constants/colors";
 
-// Get screen width for responsive charts
 const screenWidth = Dimensions.get("window").width * 0.9;
 
-// Sample data for charts
-const monthlySpendingData = {
-  labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
-  datasets: [
-    {
-      data: [2100, 1800, 2400, 1900, 2200, 2600],
-      color: () => colors.primary[400],
-      strokeWidth: 2,
-    },
-  ],
-};
+const API_BASE_URL = "http://192.168.1.156:5000/api/stats";
 
-const weeklySpendingData = {
-  labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
-  datasets: [
-    {
-      data: [120, 80, 200, 150, 300, 250, 190],
-      color: () => colors.primary[400],
-      strokeWidth: 2,
-    },
-  ],
-};
-
-const categoryData = [
-  {
-    name: "Food",
-    amount: 850,
-    color: colors.primary[300],
-    legendFontColor: colors.text,
-    legendFontSize: 12,
-    percentage: 32,
-  },
-  {
-    name: "Bills",
-    amount: 650,
-    color: colors.secondary[300],
-    legendFontColor: colors.text,
-    legendFontSize: 12,
-    percentage: 25,
-  },
-  {
-    name: "Entertainment",
-    amount: 450,
-    color: "#E1B733",
-    legendFontColor: colors.text,
-    legendFontSize: 12,
-    percentage: 17,
-  },
-  {
-    name: "Shopping",
-    amount: 380,
-    color: "#336060",
-    legendFontColor: colors.text,
-    legendFontSize: 12,
-    percentage: 14,
-  },
-  {
-    name: "Health",
-    amount: 320,
-    color: "#10B981",
-    legendFontColor: colors.text,
-    legendFontSize: 12,
-    percentage: 12,
-  },
+const timeRanges = [
+  { label: "Week", value: "last_week" },
+  { label: "Month", value: "this_month" },
+  { label: "3 Months", value: "last_3_months" },
+  { label: "6 Months", value: "last_6_months" },
+  { label: "Year", value: "this_year" },
 ];
+// Data State
+type OverviewStats = {
+  total_expenses: number;
+  total_income: number;
+  net_balance: number;
+  total_deposits: number;
+  transaction_count: number;
+};
 
-const timeRanges = ["Week", "Month", "Quarter", "Year", "Custom"];
+type ExpenseCategory = {
+  category: string;
+  total_amount: number;
+  percentage: number;
+};
+
+type TrendData = {
+  period: string;
+  amount: number;
+  transaction_count: number;
+};
+
+type TopExpense = {
+  id: string | number;
+  category: string;
+  merchant?: string;
+  description?: string;
+  date: string;
+  amount: number;
+};
+
+type TransferStats = {
+  total_received: number;
+  received_count: number;
+  total_sent: number;
+  sent_count: number;
+  net_flow: number;
+};
+
+type TopTransferReceiver = {
+  receiver: string;
+  transaction_count: number;
+  total_amount: number;
+};
+
+type CashFlowData = {
+  period: string;
+  net_flow: number;
+};
 
 export default function StatisticsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const [selectedRange, setSelectedRange] = useState("Month");
+
+  // UI State
+  const [selectedRange, setSelectedRange] = useState("this_month");
   const [timeRangeModalVisible, setTimeRangeModalVisible] = useState(false);
   const [chartType, setChartType] = useState("line");
   const [activeTab, setActiveTab] = useState("spending");
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Dynamic spending data based on selected time range
-  const [currentSpendingData, setCurrentSpendingData] =
-    useState(monthlySpendingData);
-  const [totalSpent, setTotalSpent] = useState(0);
-  const [changePercentage, setChangePercentage] = useState(0);
+  const [overviewStats, setOverviewStats] = useState<OverviewStats | null>(
+    null
+  );
+  const [expensesByCategory, setExpensesByCategory] = useState<
+    ExpenseCategory[]
+  >([]);
+  const [expenseTrend, setExpenseTrend] = useState<TrendData[]>([]);
+  const [incomeTrend, setIncomeTrend] = useState<TrendData[]>([]);
+  const [topExpenses, setTopExpenses] = useState<TopExpense[]>([]);
+  const [topTransferReceivers, setTopTransferReceivers] = useState<
+    TopTransferReceiver[]
+  >([]);
+  const [transferStats, setTransferStats] = useState<TransferStats | null>(
+    null
+  );
+  const [cashFlowData, setCashFlowData] = useState<CashFlowData[]>([]);
 
-  // Update data when time range changes
-  useEffect(() => {
-    if (selectedRange === "Week") {
-      setCurrentSpendingData(weeklySpendingData);
-      setTotalSpent(1290);
-      setChangePercentage(3.2);
-    } else {
-      setCurrentSpendingData(monthlySpendingData);
-      setTotalSpent(2600);
-      setChangePercentage(-4.5);
+  const apiCall = async (
+    endpoint: string,
+    options: Partial<RequestInit> = {}
+  ) => {
+    try {
+      const token = await SecureStore.getItemAsync("auth_token");
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+          ...(options.headers as Record<string, string>),
+        },
+        ...options,
+      });
+
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error(`API call failed for ${endpoint}:`, error);
+      throw error;
+    }
+  };
+
+  const fetchStatistics = useCallback(async () => {
+    try {
+      setLoading(true);
+
+      // Fetch overview stats
+      const overview = await apiCall(`/overview?range=${selectedRange}`);
+      setOverviewStats(overview);
+
+      // Fetch expenses by category
+      const expenseCategories = await apiCall(
+        `/expenses/by-category?range=${selectedRange}`
+      );
+      setExpensesByCategory(expenseCategories.categories || []);
+
+      // Fetch expense trends
+      const expenseTrendData = await apiCall(
+        `/expenses/trend?range=${selectedRange}&granularity=monthly`
+      );
+      setExpenseTrend(expenseTrendData.trend_data || []);
+
+      // Fetch income trends
+      const incomeTrendData = await apiCall(
+        `/income/trend?range=${selectedRange}&granularity=monthly`
+      );
+      setIncomeTrend(incomeTrendData.trend_data || []);
+
+      // Fetch top expenses
+      const topExpensesData = await apiCall(`/expenses/top?limit=5`);
+      setTopExpenses(topExpensesData || []);
+
+      // Fetch transfer
+      const transferStatsData = await apiCall(
+        `/transfers/sent-received?range=${selectedRange}`
+      );
+      setTransferStats(transferStatsData);
+
+      // Fetch top transfer receivers
+      const topReceiversData = await apiCall(
+        `/transfers/top-receivers?limit=3`
+      );
+      setTopTransferReceivers(topReceiversData || []);
+
+      // Fetch cash flow data
+      const cashFlowStats = await apiCall(
+        `/cashflow?range=${selectedRange}&granularity=monthly`
+      );
+      setCashFlowData(cashFlowStats.cash_flow_data || []);
+    } catch (error) {
+      console.error("Error fetching statistics:", error);
+      Alert.alert("Error", "Failed to load statistics. Please try again.");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
   }, [selectedRange]);
+
+  // Initial data fetch
+  useEffect(() => {
+    fetchStatistics();
+  }, [fetchStatistics]);
+
+  // Refresh handler
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchStatistics();
+  }, [fetchStatistics]);
+
+  // Transform data for charts
+  const getCurrentTrendData = () => {
+    let trendData;
+    if (activeTab === "spending") {
+      trendData = expenseTrend;
+    } else if (activeTab === "income") {
+      trendData = incomeTrend;
+    } else {
+      // For savings, we'll show net cash flow
+      trendData = cashFlowData.map((item) => ({
+        period: item.period,
+        amount: item.net_flow,
+        transaction_count: 0,
+      }));
+    }
+
+    if (!trendData || trendData.length === 0) {
+      return {
+        labels: ["No Data"],
+        datasets: [
+          { data: [0], color: () => colors.primary[400], strokeWidth: 2 },
+        ],
+      };
+    }
+
+    return {
+      labels: trendData.map((item) => {
+        const date = new Date(item.period + "-01");
+        return date.toLocaleDateString("en-US", { month: "short" });
+      }),
+      datasets: [
+        {
+          data: trendData.map((item) => Math.abs(item.amount)),
+          color: () => colors.primary[400],
+          strokeWidth: 2,
+        },
+      ],
+    };
+  };
+
+  // Transform category data for pie chart
+  const getCategoryPieData = () => {
+    if (!expensesByCategory || expensesByCategory.length === 0) {
+      return [];
+    }
+
+    const colorPalette = [
+      colors.primary[300],
+      colors.secondary[300],
+      "#E1B733",
+      "#336060",
+      "#10B981",
+      "#F59E0B",
+      "#EF4444",
+      "#8B5CF6",
+    ];
+
+    return expensesByCategory.slice(0, 8).map((category, index) => ({
+      name: category.category,
+      amount: category.total_amount,
+      color: colorPalette[index % colorPalette.length],
+      legendFontColor: colors.text,
+      legendFontSize: 12,
+      percentage: Math.round(category.percentage),
+    }));
+  };
+
+  // Get current tab total and change
+  const getCurrentTabStats = () => {
+    if (!overviewStats) return { total: 0, change: 0 };
+
+    switch (activeTab) {
+      case "spending":
+        return {
+          total: overviewStats.total_expenses,
+          change: 0,
+        };
+      case "income":
+        return {
+          total: overviewStats.total_income,
+          change: 0,
+        };
+      case "savings":
+        return {
+          total: overviewStats.net_balance,
+          change: 0,
+        };
+      default:
+        return { total: 0, change: 0 };
+    }
+  };
 
   // Chart configuration
   const chartConfig = {
@@ -141,16 +321,13 @@ export default function StatisticsScreen() {
     },
   };
 
-  const barChartConfig = {
-    ...chartConfig,
-    color: (opacity = 1) => `rgba(212, 175, 55, ${opacity})`,
-  };
-
   const renderChart = () => {
+    const data = getCurrentTrendData();
+
     if (chartType === "line") {
       return (
         <LineChart
-          data={currentSpendingData}
+          data={data}
           width={screenWidth - 32}
           height={220}
           chartConfig={chartConfig}
@@ -161,18 +338,30 @@ export default function StatisticsScreen() {
     } else {
       return (
         <BarChart
-          data={currentSpendingData}
+          data={data}
           width={screenWidth - 32}
           height={220}
           yAxisLabel="$"
           yAxisSuffix=""
-          chartConfig={barChartConfig}
+          chartConfig={chartConfig}
           style={styles.chart}
           showValuesOnTopOfBars={true}
         />
       );
     }
   };
+
+  const currentStats = getCurrentTabStats();
+  const pieData = getCategoryPieData();
+
+  if (loading && !refreshing) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <ActivityIndicator size="large" color={colors.primary[400]} />
+        <Text style={styles.loadingText}>Loading statistics...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -248,7 +437,7 @@ export default function StatisticsScreen() {
                 activeTab === "savings" && styles.activeTabText,
               ]}
             >
-              Savings
+              Balance
             </Text>
           </TouchableOpacity>
         </View>
@@ -258,6 +447,9 @@ export default function StatisticsScreen() {
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 150 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       >
         {/* Time Range Selector */}
         <View style={styles.timeRangeContainer}>
@@ -266,15 +458,25 @@ export default function StatisticsScreen() {
             onPress={() => setTimeRangeModalVisible(true)}
           >
             <Feather name="calendar" size={24} color={colors.primary[400]} />
-            <Text style={styles.timeRangeText}>{selectedRange}</Text>
+            <Text style={styles.timeRangeText}>
+              {timeRanges.find((r) => r.value === selectedRange)?.label ||
+                "Month"}
+            </Text>
             <Entypo name="chevron-down" size={24} color={colors.primary[400]} />
           </TouchableOpacity>
         </View>
 
-        {/* Total Spending Overview */}
+        {/* Total Overview */}
         <View style={styles.overviewCard}>
           <View style={styles.overviewHeader}>
-            <Text style={styles.overviewTitle}>Total Spending</Text>
+            <Text style={styles.overviewTitle}>
+              Total{" "}
+              {activeTab === "spending"
+                ? "Spending"
+                : activeTab === "income"
+                ? "Income"
+                : "Balance"}
+            </Text>
             <View style={styles.chartTypeToggle}>
               <TouchableOpacity
                 style={[
@@ -309,144 +511,269 @@ export default function StatisticsScreen() {
           </View>
 
           <View style={styles.totalAmountContainer}>
-            <Text style={styles.totalAmountText}>${totalSpent}</Text>
-            <View
-              style={[
-                styles.changeIndicator,
-                {
-                  backgroundColor:
-                    changePercentage >= 0
-                      ? "rgba(16, 185, 129, 0.2)"
-                      : "rgba(220, 38, 38, 0.2)",
-                },
-              ]}
-            >
-              <Text
+            <Text style={styles.totalAmountText}>
+              ${currentStats.total?.toFixed(2) || "0.00"}
+            </Text>
+            {currentStats.change !== 0 && (
+              <View
                 style={[
-                  styles.changeText,
+                  styles.changeIndicator,
                   {
-                    color:
-                      changePercentage >= 0 ? colors.success : colors.error,
+                    backgroundColor:
+                      currentStats.change >= 0
+                        ? "rgba(16, 185, 129, 0.2)"
+                        : "rgba(220, 38, 38, 0.2)",
                   },
                 ]}
               >
-                {changePercentage >= 0 ? "+" : ""}
-                {changePercentage}% vs last {selectedRange.toLowerCase()}
-              </Text>
-            </View>
+                <Text
+                  style={[
+                    styles.changeText,
+                    {
+                      color:
+                        currentStats.change >= 0
+                          ? colors.success
+                          : colors.error,
+                    },
+                  ]}
+                >
+                  {currentStats.change >= 0 ? "+" : ""}
+                  {currentStats.change}% vs last period
+                </Text>
+              </View>
+            )}
           </View>
 
           {renderChart()}
         </View>
 
-        {/* Category Breakdown */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Category Breakdown</Text>
+        {/* Category Breakdown - Only show for spending */}
+        {activeTab === "spending" && pieData.length > 0 && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Category Breakdown</Text>
 
-          <View style={styles.pieChartContainer}>
-            <RNPieChart
-              data={categoryData}
-              width={screenWidth - 32}
-              height={180}
-              chartConfig={chartConfig}
-              accessor="amount"
-              backgroundColor="transparent"
-              paddingLeft="15"
-              absolute={false}
-            />
-          </View>
+            <View style={styles.pieChartContainer}>
+              <RNPieChart
+                data={pieData}
+                width={screenWidth - 32}
+                height={180}
+                chartConfig={chartConfig}
+                accessor="amount"
+                backgroundColor="transparent"
+                paddingLeft="15"
+                absolute={false}
+              />
+            </View>
 
-          {/* Category List */}
-          <View style={styles.categoryList}>
-            {categoryData.map((category, index) => (
-              <View key={index} style={styles.categoryItem}>
-                <View style={styles.categoryNameContainer}>
-                  <View
-                    style={[
-                      styles.categoryColor,
-                      { backgroundColor: category.color },
-                    ]}
-                  />
-                  <Text style={styles.categoryName}>{category.name}</Text>
+            {/* Category List */}
+            <View style={styles.categoryList}>
+              {pieData.map((category, index) => (
+                <View key={index} style={styles.categoryItem}>
+                  <View style={styles.categoryNameContainer}>
+                    <View
+                      style={[
+                        styles.categoryColor,
+                        { backgroundColor: category.color },
+                      ]}
+                    />
+                    <Text style={styles.categoryName}>{category.name}</Text>
+                  </View>
+                  <View style={styles.categoryAmountContainer}>
+                    <Text style={styles.categoryAmount}>
+                      ${category.amount?.toFixed(2)}
+                    </Text>
+                    <Text style={styles.categoryPercentage}>
+                      {category.percentage}%
+                    </Text>
+                  </View>
                 </View>
-                <View style={styles.categoryAmountContainer}>
-                  <Text style={styles.categoryAmount}>${category.amount}</Text>
-                  <Text style={styles.categoryPercentage}>
-                    {category.percentage}%
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Top Expenses */}
+        {activeTab === "spending" && topExpenses.length > 0 && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Top Expenses</Text>
+
+            <View style={styles.merchantsList}>
+              {topExpenses.map((expense, index) => (
+                <View key={expense.id} style={styles.merchantItem}>
+                  <View style={styles.merchantIconContainer}>
+                    <Text style={styles.merchantIconText}>
+                      {expense.category === "food"
+                        ? "🍔"
+                        : expense.category === "transport"
+                        ? "🚗"
+                        : expense.category === "shopping"
+                        ? "🛒"
+                        : "💰"}
+                    </Text>
+                  </View>
+                  <View style={styles.merchantInfo}>
+                    <Text style={styles.merchantName}>
+                      {expense.merchant || expense.description || "Unknown"}
+                    </Text>
+                    <Text style={styles.merchantTransactions}>
+                      {expense.category} •{" "}
+                      {new Date(expense.date).toLocaleDateString()}
+                    </Text>
+                  </View>
+                  <Text style={styles.merchantAmount}>
+                    ${expense.amount?.toFixed(2)}
                   </Text>
                 </View>
-              </View>
-            ))}
-          </View>
-        </View>
-
-        {/* Top Merchants */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Top Merchants</Text>
-
-          <View style={styles.merchantsList}>
-            <View style={styles.merchantItem}>
-              <View style={styles.merchantIconContainer}>
-                <Text style={styles.merchantIconText}>🛒</Text>
-              </View>
-              <View style={styles.merchantInfo}>
-                <Text style={styles.merchantName}>Amazon</Text>
-                <Text style={styles.merchantTransactions}>12 transactions</Text>
-              </View>
-              <Text style={styles.merchantAmount}>$245</Text>
-            </View>
-
-            <View style={styles.merchantItem}>
-              <View style={styles.merchantIconContainer}>
-                <Text style={styles.merchantIconText}>🍔</Text>
-              </View>
-              <View style={styles.merchantInfo}>
-                <Text style={styles.merchantName}>UberEats</Text>
-                <Text style={styles.merchantTransactions}>8 transactions</Text>
-              </View>
-              <Text style={styles.merchantAmount}>$172</Text>
-            </View>
-
-            <View style={styles.merchantItem}>
-              <View style={styles.merchantIconContainer}>
-                <Text style={styles.merchantIconText}>⛽</Text>
-              </View>
-              <View style={styles.merchantInfo}>
-                <Text style={styles.merchantName}>Shell</Text>
-                <Text style={styles.merchantTransactions}>4 transactions</Text>
-              </View>
-              <Text style={styles.merchantAmount}>$120</Text>
+              ))}
             </View>
           </View>
-        </View>
+        )}
 
-        {/* Spending Insights */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Insights</Text>
+        {/* Transfer Stats */}
+        {activeTab === "income" && transferStats && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Transfer Overview</Text>
 
-          <View style={styles.insightItem}>
-            <View style={styles.insightIconContainer}>
-              <Feather name="trending-up" size={24} color={colors.text} />
+            <View style={styles.transferStatsContainer}>
+              <View style={styles.transferStatItem}>
+                <Text style={styles.transferStatLabel}>Received</Text>
+                <Text
+                  style={[styles.transferStatAmount, { color: colors.success }]}
+                >
+                  ${transferStats.total_received?.toFixed(2)}
+                </Text>
+                <Text style={styles.transferStatCount}>
+                  {transferStats.received_count} transactions
+                </Text>
+              </View>
+
+              <View style={styles.transferStatItem}>
+                <Text style={styles.transferStatLabel}>Sent</Text>
+                <Text
+                  style={[styles.transferStatAmount, { color: colors.error }]}
+                >
+                  ${transferStats.total_sent?.toFixed(2)}
+                </Text>
+                <Text style={styles.transferStatCount}>
+                  {transferStats.sent_count} transactions
+                </Text>
+              </View>
+
+              <View style={styles.transferStatItem}>
+                <Text style={styles.transferStatLabel}>Net Flow</Text>
+                <Text
+                  style={[
+                    styles.transferStatAmount,
+                    {
+                      color:
+                        transferStats.net_flow >= 0
+                          ? colors.success
+                          : colors.error,
+                    },
+                  ]}
+                >
+                  ${transferStats.net_flow?.toFixed(2)}
+                </Text>
+              </View>
             </View>
-            <View style={styles.insightTextContainer}>
-              <Text style={styles.insightText}>
-                Your restaurant spending increased by 23% compared to last
-                month.
-              </Text>
+
+            {/* Top Transfer Recipients */}
+            {topTransferReceivers.length > 0 && (
+              <>
+                <Text
+                  style={[
+                    styles.cardTitle,
+                    { marginTop: 20, marginBottom: 10 },
+                  ]}
+                >
+                  Top Recipients
+                </Text>
+                {topTransferReceivers.map((receiver, index) => (
+                  <View key={index} style={styles.merchantItem}>
+                    <View style={styles.merchantIconContainer}>
+                      <Text style={styles.merchantIconText}>👤</Text>
+                    </View>
+                    <View style={styles.merchantInfo}>
+                      <Text style={styles.merchantName}>
+                        {receiver.receiver}
+                      </Text>
+                      <Text style={styles.merchantTransactions}>
+                        {receiver.transaction_count} transfers
+                      </Text>
+                    </View>
+                    <Text style={styles.merchantAmount}>
+                      ${receiver.total_amount?.toFixed(2)}
+                    </Text>
+                  </View>
+                ))}
+              </>
+            )}
+          </View>
+        )}
+
+        {/* Cash Flow Insights */}
+        {activeTab === "savings" && overviewStats && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Financial Summary</Text>
+
+            <View style={styles.summaryGrid}>
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryLabel}>Total Income</Text>
+                <Text style={[styles.summaryValue, { color: colors.success }]}>
+                  ${overviewStats.total_income?.toFixed(2)}
+                </Text>
+              </View>
+
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryLabel}>Total Expenses</Text>
+                <Text style={[styles.summaryValue, { color: colors.error }]}>
+                  ${overviewStats.total_expenses?.toFixed(2)}
+                </Text>
+              </View>
+
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryLabel}>Deposits</Text>
+                <Text
+                  style={[styles.summaryValue, { color: colors.primary[400] }]}
+                >
+                  ${overviewStats.total_deposits?.toFixed(2)}
+                </Text>
+              </View>
+
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryLabel}>Net Balance</Text>
+                <Text
+                  style={[
+                    styles.summaryValue,
+                    {
+                      color:
+                        overviewStats.net_balance >= 0
+                          ? colors.success
+                          : colors.error,
+                    },
+                  ]}
+                >
+                  ${overviewStats.net_balance?.toFixed(2)}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.insightItem}>
+              <View style={styles.insightIconContainer}>
+                <Feather name="trending-up" size={24} color={colors.text} />
+              </View>
+              <View style={styles.insightTextContainer}>
+                <Text style={styles.insightText}>
+                  {overviewStats.transaction_count} total transactions in this
+                  period.
+                  {overviewStats.net_balance >= 0
+                    ? " You're maintaining a positive balance!"
+                    : " Consider reviewing your spending patterns."}
+                </Text>
+              </View>
             </View>
           </View>
-
-          <View style={styles.insightItem}>
-            <View style={styles.insightIconContainer}>
-              <AntDesign name="piechart" size={24} color={colors.text} />
-            </View>
-            <View style={styles.insightTextContainer}>
-              <Text style={styles.insightText}>
-                You've stayed under your shopping budget this month. Great job!
-              </Text>
-            </View>
-          </View>
-        </View>
+        )}
       </ScrollView>
 
       {/* Time Range Modal */}
@@ -469,20 +796,20 @@ export default function StatisticsScreen() {
                 key={index}
                 style={[
                   styles.modalOption,
-                  selectedRange === range && styles.selectedOption,
+                  selectedRange === range.value && styles.selectedOption,
                 ]}
                 onPress={() => {
-                  setSelectedRange(range);
+                  setSelectedRange(range.value);
                   setTimeRangeModalVisible(false);
                 }}
               >
                 <Text
                   style={[
                     styles.modalOptionText,
-                    selectedRange === range && styles.selectedOptionText,
+                    selectedRange === range.value && styles.selectedOptionText,
                   ]}
                 >
-                  {range}
+                  {range.label}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -493,11 +820,19 @@ export default function StatisticsScreen() {
     </View>
   );
 }
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  centered: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    color: colors.text,
+    marginTop: 16,
+    fontSize: 16,
   },
   header: {
     paddingBottom: 16,
@@ -588,7 +923,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
-    paddingHorizontal: 16,
   },
   overviewHeader: {
     flexDirection: "row",
@@ -737,18 +1071,75 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
+  // Transfer Stats Styles (Missing)
+  transferStatsContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 16,
+  },
+  transferStatItem: {
+    flex: 1,
+    backgroundColor: `${colors.backgroundDark}40`,
+    borderRadius: 12,
+    padding: 12,
+    marginHorizontal: 4,
+    alignItems: "center",
+  },
+  transferStatLabel: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    fontWeight: "500",
+    marginBottom: 4,
+  },
+  transferStatAmount: {
+    fontSize: 18,
+    fontWeight: "700",
+    marginBottom: 2,
+  },
+  transferStatCount: {
+    color: colors.textSecondary,
+    fontSize: 10,
+  },
+  // Summary Grid Styles (Missing)
+  summaryGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    marginBottom: 16,
+  },
+  summaryItem: {
+    width: "48%",
+    backgroundColor: `${colors.backgroundDark}40`,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+  },
+  summaryLabel: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    fontWeight: "500",
+    marginBottom: 4,
+  },
+  summaryValue: {
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  // Insight Item Styles
   insightItem: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: `${colors.backgroundDark}80`,
+    paddingHorizontal: 12,
+    backgroundColor: `${colors.primary[500]}10`,
+    borderRadius: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.primary[400],
   },
   insightIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: `${colors.backgroundDark}80`,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.primary[400],
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
@@ -761,6 +1152,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
+  // Modal Styles
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
@@ -772,6 +1164,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
     padding: 20,
     paddingBottom: Platform.OS === "ios" ? 40 : 20,
+    maxHeight: "70%",
   },
   modalTitle: {
     color: colors.text,
@@ -782,8 +1175,9 @@ const styles = StyleSheet.create({
   },
   modalOption: {
     paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: `${colors.backgroundDark}80`,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginBottom: 2,
   },
   selectedOption: {
     backgroundColor: `${colors.primary[500]}20`,

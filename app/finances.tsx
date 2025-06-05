@@ -226,7 +226,7 @@ export default function Finances() {
         title="Transaction History"
         leftButton={{
           icon: "home",
-          onPress: () => router.replace("/"),
+          onPress: () => router.replace("/home"),
           accessibilityLabel: "Home",
         }}
         rightButton={{
