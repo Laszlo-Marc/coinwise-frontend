@@ -1,4 +1,5 @@
 import { colors } from "@/constants/colors";
+import { TransactionType } from "@/models/transactionType";
 import { Feather } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
 import {
@@ -14,14 +15,14 @@ import DateRangeSelector from "./DateRangeComponent";
 
 interface TransactionFiltersProps {
   onFilterChange: (filters: {
-    transactionClass: string;
+    transactionClass: TransactionType;
     category?: string;
-    sortBy?: string;
+    sortBy?: "amount" | "date";
     sortOrder?: "asc" | "desc";
     startDate?: Date;
     endDate?: Date;
   }) => void;
-  selectedClass: string | null;
+  selectedClass: TransactionType | null;
   categories?: string[];
 }
 
@@ -34,7 +35,7 @@ export const TransactionFilters: React.FC<TransactionFiltersProps> = ({
     selectedClass || "all"
   );
   const [selectedCategory, setSelectedCategory] = useState("");
-  const [sortBy, setSortBy] = useState("date");
+  const [sortBy, setSortBy] = useState<"amount" | "date">("date");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [startDate, setStartDate] = useState(
     new Date(new Date().setMonth(new Date().getMonth() - 1))
@@ -47,15 +48,15 @@ export const TransactionFilters: React.FC<TransactionFiltersProps> = ({
   const [customDateRangeVisible, setCustomDateRangeVisible] = useState(false);
 
   const filters: {
-    key: string;
+    key: TransactionType | "all";
     label: string;
-    icon: "list" | "arrow-down" | "arrow-up" | "refresh-cw" | "dollar-sign";
+    icon: React.ComponentProps<typeof Feather>["name"];
   }[] = [
     { key: "all", label: "All", icon: "list" },
-    { key: "expenses", label: "Expenses", icon: "arrow-down" },
-    { key: "incomes", label: "Income", icon: "arrow-up" },
-    { key: "transfers", label: "Transfers", icon: "refresh-cw" },
-    { key: "deposits", label: "Deposits", icon: "dollar-sign" },
+    { key: "expense", label: "Expenses", icon: "arrow-down" },
+    { key: "income", label: "Income", icon: "arrow-up" },
+    { key: "transfer", label: "Transfers", icon: "refresh-cw" },
+    { key: "deposit", label: "Deposits", icon: "dollar-sign" },
   ];
 
   const dateRangePresets = [
@@ -85,10 +86,10 @@ export const TransactionFilters: React.FC<TransactionFiltersProps> = ({
     }
   }, [selectedClass]);
 
-  const handleTransactionClassChange = (newClass: string) => {
+  const handleTransactionClassChange = (newClass: TransactionType) => {
     setTransactionClass(newClass);
 
-    if (newClass !== "expenses") {
+    if (newClass !== "expense") {
       setSelectedCategory("");
     }
   };
@@ -115,7 +116,7 @@ export const TransactionFilters: React.FC<TransactionFiltersProps> = ({
   const applyFilters = () => {
     onFilterChange({
       transactionClass,
-      ...(transactionClass === "expenses" && selectedCategory
+      ...(transactionClass === "expense" && selectedCategory
         ? { category: selectedCategory }
         : {}),
       sortBy,
@@ -184,7 +185,9 @@ export const TransactionFilters: React.FC<TransactionFiltersProps> = ({
               styles.filterButton,
               transactionClass === filter.key && styles.selectedFilterButton,
             ]}
-            onPress={() => handleTransactionClassChange(filter.key)}
+            onPress={() =>
+              handleTransactionClassChange(filter.key as TransactionType)
+            }
           >
             <Feather
               name={filter.icon}
@@ -265,7 +268,7 @@ export const TransactionFilters: React.FC<TransactionFiltersProps> = ({
         </View>
 
         {/* Category Filter - Only for Expenses */}
-        {transactionClass === "expenses" && categories.length > 0 && (
+        {transactionClass === "expense" && categories.length > 0 && (
           <View style={styles.categoryContainer}>
             <TouchableOpacity
               style={styles.categoryButton}

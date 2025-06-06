@@ -23,6 +23,7 @@ interface TransactionContextType {
     id: string,
     updates: Partial<TransactionModel>
   ) => Promise<any>;
+  transactionsCleanup: () => void;
 }
 
 const TransactionContext = createContext<TransactionContextType | undefined>(
@@ -46,6 +47,15 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({
   const pageSize = 100;
   const hasMore = currentPage < totalPages;
 
+  const transactionsCleanup = () => {
+    setTransactions([]);
+    setIsLoading(false);
+    setIsLoadingMore(false);
+    setError(null);
+    setCurrentPage(1);
+    setTotalPages(1);
+    setCurrentFilter(undefined);
+  };
   const handleApiError = (error: any) => {
     console.error("API Error:", error);
     setError("Something went wrong. Please try again.");
@@ -248,7 +258,7 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({
     () => ({
       transactions,
       isLoading,
-      isLoadingMore, // Include in the context value
+      isLoadingMore,
       error,
       currentPage,
       totalPages,
@@ -260,16 +270,17 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({
       deleteTransaction,
       updateTransaction,
       uploadBankStatement,
+      transactionsCleanup,
     }),
     [
       transactions,
       isLoading,
-      isLoadingMore, // Include in the dependency array
+      isLoadingMore,
       error,
       currentPage,
       totalPages,
       hasMore,
-      currentFilter, // Add as dependency
+      currentFilter,
     ]
   );
 

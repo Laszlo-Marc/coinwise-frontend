@@ -1,3 +1,4 @@
+import GoalsList from "@/components/goalsComponents/GoalsList";
 import BottomBar from "@/components/mainComponents/BottomBar";
 import DeleteConfirmModal from "@/components/mainComponents/DeleteModal";
 import { colors } from "@/constants/colors";
@@ -6,25 +7,24 @@ import { GoalModel } from "@/models/goal";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
-  FlatList,
+  Animated,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import { Swipeable } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { calculatePercentage, formatCurrency } from "../utils/formatting";
+import { formatCurrency } from "../utils/formatting";
 
 const FinancialGoalsScreen = () => {
   const insets = useSafeAreaInsets();
   const { goals, deleteGoal } = useGoals();
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
-
+  const fabAnimation = useRef(new Animated.Value(1)).current;
   const totalGoals = goals.length;
   const totalSaved = goals.reduce((acc, goal) => acc + goal.current_amount, 0);
 
@@ -75,33 +75,24 @@ const FinancialGoalsScreen = () => {
     setSelectedGoalId(null);
   };
 
-  const renderRightActions = (goal: GoalModel) => (
-    <View style={styles.swipeActions}>
-      <TouchableOpacity
-        onPress={() => handleDeleteGoal(goal.id || "")}
-        style={[styles.swipeBtn, { backgroundColor: "red" }]}
-      >
-        <Feather name="trash" size={20} color="#fff" />
-      </TouchableOpacity>
-    </View>
-  );
+  const animateFAB = (scale: number) => {
+    Animated.spring(fabAnimation, {
+      toValue: scale,
+      useNativeDriver: true,
+      tension: 300,
+      friction: 20,
+    }).start();
+  };
 
-  const renderLeftActions = (goal: GoalModel) => (
-    <View style={styles.swipeActions}>
-      <TouchableOpacity
-        onPress={() => router.push(`./goals/edit-goal/${goal.id}`)}
-        style={[styles.swipeBtn, { backgroundColor: "orange" }]}
-      >
-        <Feather name="edit-2" size={20} color="#fff" />
-      </TouchableOpacity>
-    </View>
-  );
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
         <Text style={styles.headerTitle}>Goals</Text>
-        <TouchableOpacity onPress={handleAddGoal}>
-          <Feather name="plus" size={26} color={colors.primary[500]} />
+        <TouchableOpacity
+          onPress={() => router.push("./profile")}
+          style={styles.iconButton}
+        >
+          <Feather name="user" size={22} color={colors.text} />
         </TouchableOpacity>
       </View>
 
@@ -130,82 +121,34 @@ const FinancialGoalsScreen = () => {
       </View>
 
       {/* Goals List */}
-      <FlatList
-        data={goals}
-        keyExtractor={(item) => item.id ?? ""}
-        contentContainerStyle={styles.goalsList}
-        renderItem={({ item }) => {
-          const progressPercentage = calculatePercentage(
-            item.current_amount,
-            item.target_amount
-          );
-          const progressColor = getProgressColor(progressPercentage);
-
-          return (
-            <Swipeable
-              renderLeftActions={() => renderLeftActions(item)}
-              renderRightActions={() => renderRightActions(item)}
-            >
-              <TouchableOpacity
-                style={styles.goalCard}
-                onPress={() => handleSelectGoal(item)}
-              >
-                <View style={styles.goalHeader}>
-                  <Text style={styles.goalTitle}>{item.title}</Text>
-                  <View style={styles.goalActions}>
-                    <TouchableOpacity
-                      style={styles.actionButton}
-                      onPress={() =>
-                        router.push(`./goals/edit-goal/${item.id}`)
-                      }
-                    >
-                      <Feather
-                        name="edit-2"
-                        size={18}
-                        color={colors.textSecondary}
-                      />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.actionButton}
-                      onPress={() => handleDeleteGoal(item.id ?? "")}
-                    >
-                      <Feather
-                        name="trash"
-                        size={18}
-                        color={colors.textSecondary}
-                      />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-
-                {/* Progress bar */}
-                <View style={styles.progressBarContainer}>
-                  <View
-                    style={[
-                      styles.progressBar,
-                      {
-                        width: `${progressPercentage}%`,
-                        backgroundColor: progressColor,
-                      },
-                    ]}
-                  />
-                </View>
-
-                <View style={styles.goalDetails}>
-                  <Text style={styles.goalAmount}>
-                    {formatCurrency(item.current_amount)} /{" "}
-                    {formatCurrency(item.target_amount)}
-                  </Text>
-
-                  <Text style={styles.goalDate}>
-                    Target: {new Date(item.end_date).toLocaleDateString()}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            </Swipeable>
-          );
-        }}
+      <GoalsList
+        goals={goals}
+        onEdit={(id) => router.push(`./goals/edit-goal/${id}`)}
+        onDelete={handleDeleteGoal}
+        onSelect={handleSelectGoal}
       />
+
+      <Animated.View
+        style={[
+          styles.fabContainer,
+          {
+            transform: [{ scale: fabAnimation }],
+            bottom: insets.bottom + 100,
+          },
+        ]}
+      >
+        <TouchableOpacity
+          style={styles.fab}
+          onPress={() => {
+            handleAddGoal();
+          }}
+          onPressIn={() => animateFAB(0.9)}
+          onPressOut={() => animateFAB(1)}
+          activeOpacity={0.9}
+        >
+          <Feather name="plus" size={24} color="#FFFFFF" />
+        </TouchableOpacity>
+      </Animated.View>
       <BottomBar />
       <DeleteConfirmModal
         visible={modalVisible}
@@ -225,18 +168,26 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  iconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 50,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 30,
     paddingBottom: 20,
-    backgroundColor: colors.background, // flat, clean
+    backgroundColor: colors.background,
     borderBottomWidth: 0.5,
-    borderBottomColor: "rgba(0,0,0,0.1)", // subtle divider
+    borderBottomColor: "rgba(0,0,0,0.1)",
   },
   headerTitle: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: "600",
     color: colors.text,
     fontFamily: "Montserrat",
@@ -249,6 +200,27 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255, 255, 255, 0.2)",
     justifyContent: "center",
     alignItems: "center",
+  },
+  fabContainer: {
+    position: "absolute",
+    right: 20,
+    zIndex: 1000,
+  },
+  fab: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.primary[500],
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: colors.primary[500],
+    shadowOffset: {
+      width: 0,
+      height: 8,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
   },
   summaryContainer: {
     paddingVertical: 15,
@@ -273,80 +245,6 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "bold",
     color: colors.text,
-    fontFamily: "Montserrat",
-  },
-  goalsList: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 150,
-  },
-  swipeActions: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  swipeBtn: {
-    width: 70,
-    justifyContent: "center",
-    alignItems: "center",
-    height: "100%",
-  },
-
-  goalCard: {
-    backgroundColor: colors.backgroundLight,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.05)",
-  },
-
-  goalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-
-  goalActions: {
-    flexDirection: "row",
-  },
-  actionButton: {
-    padding: 5,
-    marginLeft: 10,
-  },
-  progressBarContainer: {
-    height: 8,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
-    borderRadius: 4,
-    overflow: "hidden",
-    marginBottom: 10,
-  },
-  progressBar: {
-    height: "100%",
-    borderRadius: 4,
-  },
-  goalDetails: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: 8,
-  },
-  goalTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: colors.text,
-    flex: 1,
-    fontFamily: "Montserrat",
-  },
-  goalAmount: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: colors.primary[500],
-    fontFamily: "Montserrat",
-  },
-  goalDate: {
-    fontSize: 13,
-    color: colors.textSecondary,
     fontFamily: "Montserrat",
   },
 });

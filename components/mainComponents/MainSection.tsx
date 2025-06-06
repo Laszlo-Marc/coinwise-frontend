@@ -1,15 +1,15 @@
 import { colors } from "@/constants/colors";
+import { useTransactionContext } from "@/contexts/AppContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { useSummaryData } from "@/hooks/home-page/useSummaryData";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { useState } from "react";
 import {
-  Animated,
   Keyboard,
   Platform,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   TouchableWithoutFeedback,
   View,
@@ -21,38 +21,13 @@ export default function MainSection({
 }: {
   actionButtons?: React.ReactNode;
 }) {
-  const [focusAnim] = useState(new Animated.Value(0));
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const [isFocused, setIsFocused] = useState(false);
-  const [searchText, setSearchText] = useState("");
+  const { state } = useAuth();
 
-  const handleFocus = () => {
-    setIsFocused(true);
-    Animated.timing(focusAnim, {
-      toValue: 1,
-      duration: 200,
-      useNativeDriver: false,
-    }).start();
-  };
-  const handleBlur = () => {
-    setIsFocused(false);
-    Animated.timing(focusAnim, {
-      toValue: 0,
-      duration: 200,
-      useNativeDriver: false,
-    }).start();
-  };
-
-  const searchBarBorderColor = focusAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [`${colors.backgroundLight}80`, colors.primary[400]],
-  });
-
-  const searchBarBackgroundColor = focusAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [`${colors.backgroundLight}40`, `${colors.backgroundLight}60`],
-  });
+  const { transactions } = useTransactionContext();
+  const summaryData = useSummaryData(transactions, state.user);
+  const balance = summaryData.allTime.income - summaryData.allTime.expenses;
   return (
     <LinearGradient
       colors={["rgba(252, 255, 158, 1)", "rgba(198, 119, 0, 1)"]}
@@ -65,56 +40,7 @@ export default function MainSection({
           <View style={styles.headerContainer}>
             <TouchableOpacity
               style={styles.iconButton}
-              onPress={() => router.replace("/settings")}
-              activeOpacity={0.7}
-            >
-              <Feather name="settings" size={24} color={colors.text} />
-            </TouchableOpacity>
-
-            <Animated.View
-              style={[
-                styles.searchContainer,
-                {
-                  borderColor: searchBarBorderColor,
-                  backgroundColor: searchBarBackgroundColor,
-                },
-              ]}
-            >
-              <Feather
-                name="search"
-                color={isFocused ? colors.primary[400] : colors.textSecondary}
-                size={20}
-                style={styles.searchIcon}
-              />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search..."
-                placeholderTextColor={colors.textMuted}
-                value={searchText}
-                onChangeText={setSearchText}
-                onFocus={handleFocus}
-                onBlur={handleBlur}
-                selectionColor={colors.primary[300]}
-                returnKeyType="search"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-              {searchText !== "" && isFocused && (
-                <TouchableOpacity
-                  onPress={() => setSearchText("")}
-                  style={styles.clearButton}
-                >
-                  <View style={styles.clearIcon}>
-                    <View style={styles.clearIconLine1} />
-                    <View style={styles.clearIconLine2} />
-                  </View>
-                </TouchableOpacity>
-              )}
-            </Animated.View>
-
-            <TouchableOpacity
-              style={styles.iconButton}
-              onPress={() => router.replace("./profile")}
+              onPress={() => router.push("./profile")}
               activeOpacity={0.7}
             >
               <Feather name="user" size={24} color={colors.text} />
@@ -123,8 +49,7 @@ export default function MainSection({
         </View>
       </TouchableWithoutFeedback>
       <View style={styles.balanceContainer}>
-        <Text style={styles.balanceLabel}>Main · USD</Text>
-        <Text style={styles.balanceAmount}>$0</Text>
+        <Text style={styles.balanceAmount}>{balance.toFixed(2)} RON</Text>
       </View>
       <View style={styles.quickActions}>{actionButtons}</View>
     </LinearGradient>
@@ -149,38 +74,20 @@ const styles = StyleSheet.create({
   },
   headerContainer: {
     flexDirection: "row",
+    justifyContent: "flex-end",
     alignItems: "center",
-    justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
   iconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: "center",
+    width: 50,
+    height: 50,
+    borderRadius: 50,
+    backgroundColor: "rgba(208, 208, 208, 0.4)",
     justifyContent: "center",
-    backgroundColor: `${colors.backgroundLight}40`,
-  },
-  searchContainer: {
-    flex: 1,
-    flexDirection: "row",
     alignItems: "center",
-    height: 40,
-    marginHorizontal: 10,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    borderWidth: 1,
   },
-  searchIcon: {
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
-    height: 40,
-    padding: 0,
-    fontSize: 16,
-  },
+
   clearButton: {
     width: 20,
     height: 20,

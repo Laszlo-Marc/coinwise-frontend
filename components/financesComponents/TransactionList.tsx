@@ -114,17 +114,6 @@ export const TransactionList: React.FC<TransactionListProps> = ({
     );
   }, []);
 
-  const renderSectionHeader = useCallback(
-    ({ section }: { section: { title: string } }) => {
-      return (
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionHeaderText}>{section.title}</Text>
-        </View>
-      );
-    },
-    []
-  );
-
   return (
     <SwipeListView
       data={transactions}

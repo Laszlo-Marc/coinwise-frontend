@@ -35,7 +35,6 @@ export default function SignUp() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
-
   const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
   const [emailValid, setEmailValid] = useState(true);
   const { signUp, checkUserExists } = useAuth();

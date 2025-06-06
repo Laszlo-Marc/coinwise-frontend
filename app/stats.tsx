@@ -375,19 +375,7 @@ export default function StatisticsScreen() {
         style={[styles.header, { paddingTop: insets.top + 10 }]}
       >
         <View style={styles.headerContent}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-          >
-            <Feather name="arrow-left" size={16} color={colors.text} />
-          </TouchableOpacity>
           <Text style={styles.headerTitle}>Statistics</Text>
-          <TouchableOpacity
-            style={styles.exportButton}
-            onPress={() => console.log("Export statistics")}
-          >
-            <Feather name="download" size={16} color={colors.text} />
-          </TouchableOpacity>
         </View>
 
         {/* Tab Navigation */}
@@ -856,8 +844,9 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     color: colors.text,
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: "600",
+    fontFamily: "Montserrat",
   },
   exportButton: {
     width: 40,

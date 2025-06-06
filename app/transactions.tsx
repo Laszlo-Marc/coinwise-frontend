@@ -1,4 +1,6 @@
+import ProcessingModal from "@/components/financesComponents/ProcessingModal";
 import TransactionClassModal from "@/components/financesComponents/TransactionClasssModal";
+import { TransactionList } from "@/components/financesComponents/TransactionList";
 import { TransactionFilters } from "@/components/financesComponents/TransactionsFilters";
 import {
   DepositForm,
@@ -7,18 +9,16 @@ import {
   TransferForm,
 } from "@/components/financesComponents/TransactionsForms";
 import BottomBar from "@/components/mainComponents/BottomBar";
+import DeleteConfirmModal from "@/components/mainComponents/DeleteModal";
 import MainSection from "@/components/mainComponents/MainSection";
-
-import ProcessingModal from "@/components/financesComponents/ProcessingModal";
-import { TransactionList } from "@/components/financesComponents/TransactionList";
 import { useTransactionContext } from "@/contexts/AppContext";
+import { useTransactionFilters } from "@/hooks/finances-page/handleFilterChange";
+import { useDocumentUpload } from "@/hooks/transactions-page/useDocumentUpload";
 import { TransactionModel } from "@/models/transaction";
 import { AntDesign, Feather } from "@expo/vector-icons";
 import Ionicons from "@expo/vector-icons/build/Ionicons";
-import * as DocumentPicker from "expo-document-picker";
-import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { colors } from "../constants/colors";
 
 export default function TransactionsListScreen() {
@@ -27,175 +27,34 @@ export default function TransactionsListScreen() {
     addTransaction,
     uploadBankStatement,
     deleteTransaction,
-    loadMore,
     refreshTransactions,
-    fetchTransactions,
     updateTransaction,
   } = useTransactionContext();
-  const [processingStage, setProcessingStage] = useState<
-    | "anonymizing"
-    | "extracting_sections"
-    | "normalizing"
-    | "extracting_transactions"
-    | "done"
-    | ""
-  >("");
-
-  const [displayedTransactions, setDisplayedTransactions] = useState<
-    TransactionModel[]
-  >([]);
   const [refreshing, setRefreshing] = useState(false);
   const [classModalVisible, setClassModalVisible] = useState(false);
-  const router = useRouter();
-  type TransactionType = "expense" | "income" | "transfer" | "deposit";
+  type TransactionType = "expense" | "income" | "transfer" | "deposit" | "all";
   const [selectedTransaction, setSelectedTransaction] =
     useState<TransactionModel | null>(null);
   const [formType, setFormType] = useState<TransactionType | null>(null);
-  const [selectedClass, setSelectedClass] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [uploadStatus, setUploadStatus] = useState("");
-  const [formOpen, setFormOpen] = useState(false);
+  const [selectedClass, setSelectedClass] = useState<TransactionType | null>(
+    null
+  );
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedTransactionId, setSelectedTransactionId] = useState<
+    string | null
+  >(null);
+  const { uploadDocument, isLoading, processingStage } =
+    useDocumentUpload(uploadBankStatement);
+  const { displayedTransactions, handleFilterChange, filters } =
+    useTransactionFilters(transactions);
 
   useEffect(() => {
     if (transactions.length > 0) {
-      handleFilterChange({ transactionClass: "expenses" });
-    } else {
-      fetchTransactions();
+      handleFilterChange({ transactionClass: "expense" });
     }
   }, [transactions]);
-  const handleDocumentUpload = useCallback(async () => {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: "application/pdf",
-        copyToCacheDirectory: true,
-      });
-
-      if (result.canceled) return;
-
-      const document = result.assets[0];
-      setIsLoading(true);
-      setProcessingStage("anonymizing");
-
-      await new Promise((res) => setTimeout(res, 1000));
-      setProcessingStage("extracting_sections");
-
-      await new Promise((res) => setTimeout(res, 1000));
-      setProcessingStage("normalizing");
-
-      await new Promise((res) => setTimeout(res, 1000));
-      setProcessingStage("extracting_transactions");
-
-      const formData = new FormData();
-      formData.append("file", {
-        uri: document.uri,
-        name: document.name || "upload.pdf",
-        type: document.mimeType || "application/pdf",
-      } as any);
-
-      const response = await uploadBankStatement(formData);
-      console.log("Upload response:", response);
-
-      setProcessingStage("done");
-      setTimeout(() => {
-        setIsLoading(false);
-        setProcessingStage("");
-      }, 1000);
-    } catch (err) {
-      console.error("Upload failed:", err);
-      setIsLoading(false);
-      setProcessingStage("");
-      Alert.alert(
-        "Upload Failed",
-        "There was a problem uploading your document."
-      );
-    }
-  }, []);
-
-  const handleFilterChange = useCallback(
-    (filters: {
-      transactionClass: string;
-      category?: string;
-      sortBy?: string;
-      sortOrder?: "asc" | "desc";
-      startDate?: Date;
-      endDate?: Date;
-    }) => {
-      setSelectedClass(filters.transactionClass);
-
-      // Filter by transaction type first
-      let filteredTransactions = transactions;
-
-      // Filter by transaction class
-      switch (filters.transactionClass) {
-        case "expenses":
-          filteredTransactions = transactions.filter(
-            (t) => t.type === "expense"
-          );
-          break;
-        case "incomes":
-          filteredTransactions = transactions.filter(
-            (t) => t.type === "income"
-          );
-          break;
-        case "deposits":
-          filteredTransactions = transactions.filter(
-            (t) => t.type === "deposit"
-          );
-          break;
-        case "transfers":
-          filteredTransactions = transactions.filter(
-            (t) => t.type === "transfer"
-          );
-          break;
-        case "all":
-          filteredTransactions = transactions;
-          break;
-        default:
-          filteredTransactions = transactions.filter(
-            (t) => t.type === "expense"
-          );
-      }
-
-      // Filter by category if provided
-      if (filters.category) {
-        filteredTransactions = filteredTransactions.filter(
-          (t) => t.category === filters.category
-        );
-      }
-
-      // Filter by date range if provided
-      if (filters.startDate && filters.endDate) {
-        const startTime = filters.startDate.getTime();
-        const endTime = filters.endDate.getTime();
-
-        filteredTransactions = filteredTransactions.filter((t) => {
-          const transactionDate = new Date(t.date).getTime();
-          return transactionDate >= startTime && transactionDate <= endTime;
-        });
-      }
-
-      // Sort the transactions
-      if (filters.sortBy) {
-        filteredTransactions = [...filteredTransactions].sort((a, b) => {
-          if (filters.sortBy === "date") {
-            const dateA = new Date(a.date).getTime();
-            const dateB = new Date(b.date).getTime();
-            return filters.sortOrder === "asc" ? dateA - dateB : dateB - dateA;
-          } else if (filters.sortBy === "amount") {
-            return filters.sortOrder === "asc"
-              ? a.amount - b.amount
-              : b.amount - a.amount;
-          }
-          return 0;
-        });
-      }
-
-      setDisplayedTransactions(filteredTransactions);
-    },
-    [transactions]
-  );
 
   const handleOpenModal = useCallback(() => {
     setClassModalVisible(true);
@@ -215,28 +74,25 @@ export default function TransactionsListScreen() {
   const toggleFilters = () => {
     setShowFilters(!showFilters);
   };
-  const handleDeleteTransaction = useCallback(
-    (id: string, type: TransactionType) => {
-      Alert.alert(
-        "Delete Transaction",
-        "Are you sure you want to delete this transaction?",
-        [
-          {
-            text: "Cancel",
-            style: "cancel",
-          },
-          {
-            text: "Delete",
-            onPress: () => {
-              deleteTransaction(id);
-            },
-          },
-        ]
-      );
-    },
-    []
-  );
-
+  const handleDeleteConfirm = async () => {
+    if (!selectedTransactionId) return;
+    try {
+      await deleteTransaction(selectedTransactionId);
+    } catch (error) {
+      console.error("Error deleting transaction:", error);
+    } finally {
+      setModalVisible(false);
+      setSelectedTransactionId(null);
+    }
+  };
+  const handleDeleteCancel = () => {
+    setModalVisible(false);
+    setSelectedTransactionId(null);
+  };
+  const handleDeleteTransaction = (transactionId: string) => {
+    setSelectedTransactionId(transactionId);
+    setModalVisible(true);
+  };
   const handleCloseForm = useCallback(() => {
     setIsFormVisible(false);
   }, []);
@@ -304,7 +160,7 @@ export default function TransactionsListScreen() {
 
               <TouchableOpacity
                 style={styles.actionButton}
-                onPress={handleDocumentUpload}
+                onPress={uploadDocument}
               >
                 <View style={styles.actionIconContainer}>
                   <Feather name="upload" size={24} color={colors.text} />
@@ -365,7 +221,13 @@ export default function TransactionsListScreen() {
         </View>
       )}
       <ProcessingModal visible={isLoading} currentStage={processingStage} />
-
+      <DeleteConfirmModal
+        visible={modalVisible}
+        title="Delete Transaction"
+        message="Are you sure you want to delete this transaction?"
+        onCancel={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+      />
       <BottomBar />
     </View>
   );

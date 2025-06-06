@@ -96,7 +96,7 @@ export default function BottomBar() {
               activeOpacity={0.7}
               onPress={() => {
                 if (pathname !== tab.href) {
-                  router.replace(tab.href);
+                  router.replace(tab.href as any);
                 }
               }}
             >

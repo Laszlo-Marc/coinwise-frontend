@@ -38,6 +38,7 @@ type AuthContextType = {
   ) => Promise<void>;
   clearError: () => void;
   getStoredUserData: () => Promise<User | null>;
+  deleteAccount: () => Promise<void>;
 };
 
 type JwtPayload = {
@@ -69,6 +70,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   );
   const userTokenRef = useRef<string | null>(null);
 
+  const deleteAccount = async () => {
+    try {
+      const userToken = await SecureStore.getItemAsync(TOKEN_KEY);
+      if (!userToken) {
+        throw new Error("User is not authenticated");
+      }
+      await api.delete(`${API_URL}/account`, {
+        headers: {
+          Authorization: `Bearer ${userToken}`,
+        },
+      });
+    } catch (error) {
+      console.error("Error deleting account:", error);
+    }
+  };
+
   const storeTokens = async (accessToken: string, refreshToken: string) => {
     try {
       userTokenRef.current = accessToken;
@@ -89,6 +106,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const storeUserData = async (user: User) => {
     try {
+      console.log("Storing user data:", user);
       await AsyncStorage.setItem(USER_KEY, JSON.stringify(user));
       setState((prev) => ({
         ...prev,
@@ -520,6 +538,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     updatePassword,
     clearError,
     getStoredUserData,
+    deleteAccount,
   };
 
   return (

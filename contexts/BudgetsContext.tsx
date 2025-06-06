@@ -10,6 +10,7 @@ interface BudgetContextType {
   fetchBudgets: () => Promise<void>;
   deleteBudget: (id: string) => Promise<void>;
   updateBudget: (id: string, updates: Partial<BudgetModel>) => Promise<any>;
+  budgetCleanup: () => void;
 }
 
 const BudgetContext = createContext<BudgetContextType | undefined>(undefined);
@@ -21,6 +22,11 @@ export const BudgetsProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const [budgets, setBudgets] = useState<BudgetModel[]>([]);
   const [error, setError] = useState<string | null>(null);
+ 
+  const budgetCleanup = () => {
+    setBudgets([]);
+    setError(null);
+  }
 
   const handleApiError = (error: any) => {
     console.error("API Error:", error);
@@ -118,6 +124,7 @@ export const BudgetsProvider: React.FC<{ children: React.ReactNode }> = ({
       fetchBudgets,
       deleteBudget,
       updateBudget,
+      budgetCleanup,
     }),
     [budgets, error]
   );

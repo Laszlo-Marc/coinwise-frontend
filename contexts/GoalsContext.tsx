@@ -14,6 +14,7 @@ interface GoalContextType {
   updateGoal: (id: string, updates: Partial<GoalModel>) => Promise<any>;
   addContribution: (contribution: ContributionModel) => Promise<void>;
   fetchContributions: () => Promise<ContributionModel[]>;
+  goalsCleanup: () => void;
 }
 
 const GoalsContext = createContext<GoalContextType | undefined>(undefined);
@@ -28,6 +29,11 @@ export const GoalsProvider: React.FC<{ children: React.ReactNode }> = ({
   const [contributions, setContributions] = useState<ContributionModel[]>([]);
   const [error, setError] = useState<string | null>(null);
 
+  const goalsCleanup = () => {
+    setGoals([]);
+    setContributions([]);
+    setError(null);
+  };
   const handleApiError = (error: any) => {
     console.error("API Error:", error);
     setError("Something went wrong. Please try again.");
@@ -174,6 +180,7 @@ export const GoalsProvider: React.FC<{ children: React.ReactNode }> = ({
       updateGoal,
       addContribution,
       fetchContributions,
+      goalsCleanup,
     }),
     [goals, error, contributions]
   );

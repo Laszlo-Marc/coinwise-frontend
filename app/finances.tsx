@@ -1,15 +1,16 @@
 import { TransactionList } from "@/components/financesComponents/TransactionList";
 import { TransactionFilters } from "@/components/financesComponents/TransactionsFilters";
 import ActionBar from "@/components/mainComponents/ActionBar";
+import DeleteConfirmModal from "@/components/mainComponents/DeleteModal";
 import { colors } from "@/constants/colors";
 import { useTransactionContext } from "@/contexts/AppContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTransactionFilters } from "@/hooks/finances-page/handleFilterChange";
 import { TransactionModel } from "@/models/transaction";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  Alert,
   Animated,
   StyleSheet,
   Text,
@@ -25,15 +26,12 @@ export default function Finances() {
     hasMore,
     loadMore,
     isLoadingMore,
-    fetchTransactions,
   } = useTransactionContext();
   const { getStoredUserData } = useAuth();
-  const [selectedClass, setSelectedClass] = useState<string | null>("expenses");
+  const [selectedClass, setSelectedClass] =
+    useState<TransactionType>("expense");
   const [focusAnim] = useState(new Animated.Value(0));
   const router = useRouter();
-  const [displayedTransactions, setDisplayedTransactions] = useState<
-    TransactionModel[]
-  >([]);
   const [selectedTransaction, setSelectedTransaction] =
     useState<TransactionModel | null>(null);
   type TransactionType = "expense" | "income" | "transfer" | "deposit";
@@ -46,133 +44,17 @@ export default function Finances() {
     totalIncome: 0,
     balance: 0,
   });
-
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedTransactionId, setSelectedTransactionId] = useState<
+    string | null
+  >(null);
+  const { displayedTransactions, handleFilterChange, filters } =
+    useTransactionFilters(transactions);
   useEffect(() => {
     if (transactions.length > 0) {
-      (async () => {
-        const currentUser = await getStoredUserData();
-        handleFilterChange({ transactionClass: "expenses" });
-        calculateSummary(transactions, currentUser?.full_name ?? null);
-      })();
-    } else {
-      fetchTransactions();
+      handleFilterChange({ transactionClass: "expense" });
     }
   }, [transactions]);
-
-  const calculateSummary = (
-    transactionList: any[],
-    currentUser: string | null
-  ) => {
-    let totalExpenses = 0;
-    let totalIncome = 0;
-
-    transactionList.forEach((transaction) => {
-      const { type, amount, sender, receiver } = transaction;
-
-      if (
-        type === "expense" ||
-        (type === "transfer" && sender === currentUser)
-      ) {
-        totalExpenses += amount;
-      } else if (
-        type === "income" ||
-        type === "deposit" ||
-        (type === "transfer" && receiver === currentUser)
-      ) {
-        totalIncome += amount;
-      }
-    });
-
-    setSummary({
-      totalExpenses,
-      totalIncome,
-      balance: totalIncome - totalExpenses,
-    });
-  };
-
-  const handleFilterChange = useCallback(
-    (filters: {
-      transactionClass: string;
-      category?: string;
-      sortBy?: string;
-      sortOrder?: "asc" | "desc";
-      startDate?: Date;
-      endDate?: Date;
-    }) => {
-      setSelectedClass(filters.transactionClass);
-
-      // Filter by transaction type first
-      let filteredTransactions = transactions;
-
-      // Filter by transaction class
-      switch (filters.transactionClass) {
-        case "expenses":
-          filteredTransactions = transactions.filter(
-            (t) => t.type === "expense"
-          );
-          break;
-        case "incomes":
-          filteredTransactions = transactions.filter(
-            (t) => t.type === "income"
-          );
-          break;
-        case "deposits":
-          filteredTransactions = transactions.filter(
-            (t) => t.type === "deposit"
-          );
-          break;
-        case "transfers":
-          filteredTransactions = transactions.filter(
-            (t) => t.type === "transfer"
-          );
-          break;
-        case "all":
-          filteredTransactions = transactions;
-          break;
-        default:
-          filteredTransactions = transactions.filter(
-            (t) => t.type === "expense"
-          );
-      }
-
-      // Filter by category if provided
-      if (filters.category) {
-        filteredTransactions = filteredTransactions.filter(
-          (t) => t.category === filters.category
-        );
-      }
-
-      // Filter by date range if provided
-      if (filters.startDate && filters.endDate) {
-        const startTime = filters.startDate.getTime();
-        const endTime = filters.endDate.getTime();
-
-        filteredTransactions = filteredTransactions.filter((t) => {
-          const transactionDate = new Date(t.date).getTime();
-          return transactionDate >= startTime && transactionDate <= endTime;
-        });
-      }
-
-      // Sort the transactions
-      if (filters.sortBy) {
-        filteredTransactions = [...filteredTransactions].sort((a, b) => {
-          if (filters.sortBy === "date") {
-            const dateA = new Date(a.date).getTime();
-            const dateB = new Date(b.date).getTime();
-            return filters.sortOrder === "asc" ? dateA - dateB : dateB - dateA;
-          } else if (filters.sortBy === "amount") {
-            return filters.sortOrder === "asc"
-              ? a.amount - b.amount
-              : b.amount - a.amount;
-          }
-          return 0;
-        });
-      }
-
-      setDisplayedTransactions(filteredTransactions);
-    },
-    [transactions]
-  );
 
   const handleEditTransaction = useCallback(
     (id: string, type: string) => {
@@ -194,27 +76,25 @@ export default function Finances() {
     }, 2000);
   }, []);
 
-  const handleDeleteTransaction = useCallback(
-    (id: string, type: TransactionType) => {
-      Alert.alert(
-        "Delete Transaction",
-        "Are you sure you want to delete this transaction?",
-        [
-          {
-            text: "Cancel",
-            style: "cancel",
-          },
-          {
-            text: "Delete",
-            onPress: () => {
-              deleteTransaction(id);
-            },
-          },
-        ]
-      );
-    },
-    []
-  );
+  const handleDeleteConfirm = async () => {
+    if (!selectedTransactionId) return;
+    try {
+      await deleteTransaction(selectedTransactionId);
+    } catch (error) {
+      console.error("Error deleting transaction:", error);
+    } finally {
+      setModalVisible(false);
+      setSelectedTransactionId(null);
+    }
+  };
+  const handleDeleteCancel = () => {
+    setModalVisible(false);
+    setSelectedTransactionId(null);
+  };
+  const handleDeleteTransaction = (transactionId: string) => {
+    setSelectedTransactionId(transactionId);
+    setModalVisible(true);
+  };
 
   const toggleFilters = () => {
     setShowFilters(!showFilters);
@@ -319,6 +199,13 @@ export default function Finances() {
           </TouchableOpacity>
         </View>
       </View>
+      <DeleteConfirmModal
+        visible={modalVisible}
+        title="Delete Transaction"
+        message="Are you sure you want to delete this transaction?"
+        onCancel={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+      />
     </View>
   );
 }

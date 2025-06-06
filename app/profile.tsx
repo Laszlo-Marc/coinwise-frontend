@@ -1,9 +1,13 @@
 import { colors } from "@/constants/colors";
+import { useTransactionContext } from "@/contexts/AppContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useBudgets } from "@/contexts/BudgetsContext";
+import { useGoals } from "@/contexts/GoalsContext";
 import { Feather, Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React from "react";
+import React, { useEffect } from "react";
 import {
+  Alert,
   SafeAreaView,
   ScrollView,
   StatusBar,
@@ -14,7 +18,11 @@ import {
 } from "react-native";
 
 const ProfileScreen = () => {
-  const { signOut } = useAuth();
+  const { signOut, deleteAccount, state } = useAuth();
+  const { transactionsCleanup } = useTransactionContext();
+  const { budgetCleanup } = useBudgets();
+  const { goalsCleanup } = useGoals();
+
   const menuItems = [
     {
       icon: "help-circle-outline",
@@ -74,22 +82,55 @@ const ProfileScreen = () => {
 
   const bottomItems = [
     {
-      icon: "information-circle-outline",
-      iconLib: "Ionicons",
-      label: "About us",
-      badge: null,
-    },
-    {
       icon: "log-out-outline",
       iconLib: "Ionicons",
       label: "Log out",
       badge: null,
       onPress: () => {
+        transactionsCleanup();
+        budgetCleanup();
+        goalsCleanup();
         signOut();
         router.push("/auth/sign-in");
       },
     },
+    {
+      icon: "delete",
+      iconLib: "Feather",
+      label: "Delete account",
+      badge: null,
+      onPress: () => {
+        Alert.alert(
+          "Delete Account",
+          "Are you sure you want to permanently delete your account? This action cannot be undone.",
+          [
+            {
+              text: "Cancel",
+              style: "cancel",
+            },
+            {
+              text: "Delete",
+              style: "destructive",
+              onPress: async () => {
+                try {
+                  await deleteAccount();
+                  router.push("/auth/sign-up");
+                } catch (err) {
+                  console.error("Failed to delete account:", err);
+                  Alert.alert(
+                    "Error",
+                    "Something went wrong while deleting your account."
+                  );
+                }
+              },
+            },
+          ],
+          { cancelable: false }
+        );
+      },
+    },
   ];
+  useEffect(() => {}, []);
 
   const renderIcon = (
     iconName: string,
@@ -118,7 +159,7 @@ const ProfileScreen = () => {
         <Feather
           name={iconName as React.ComponentProps<typeof Feather>["name"]}
           size={size}
-          color={color}
+          color={colors.error}
         />
       );
     }
@@ -157,7 +198,14 @@ const ProfileScreen = () => {
       )}
     </TouchableOpacity>
   );
-
+  const getInitials = (name: string) => {
+    const names = name.split(" ");
+    if (names.length === 0) return "";
+    if (names.length === 1) return names[0].charAt(0).toUpperCase();
+    const initials = names.map((n) => n.charAt(0).toUpperCase());
+    return initials.slice(0, 2).join("");
+  };
+  const avatarInitials = getInitials(state.user?.full_name || "User");
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={colors.background} />
@@ -185,11 +233,11 @@ const ProfileScreen = () => {
         {/* Profile Section */}
         <View style={styles.profileSection}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>JD</Text>
+            <Text style={styles.avatarText}>{avatarInitials}</Text>
           </View>
-          <Text style={styles.profileName}>John Doe</Text>
+          <Text style={styles.profileName}>{state.user?.full_name}</Text>
           <View style={styles.profileHandle}>
-            <Text style={styles.handleText}>@johndoe123</Text>
+            <Text style={styles.handleText}>{state.user?.email}</Text>
             <View style={styles.verifiedBadge}>
               <Ionicons name="checkmark" size={12} color={colors.text} />
             </View>

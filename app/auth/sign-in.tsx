@@ -1,5 +1,6 @@
 import { useTransactionContext } from "@/contexts/AppContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useBudgets } from "@/contexts/BudgetsContext";
 import { useGoals } from "@/contexts/GoalsContext";
 import { FontAwesome } from "@expo/vector-icons";
 import { Link, router } from "expo-router";
@@ -21,6 +22,7 @@ export default function SignIn() {
   const { fetchGoals } = useGoals();
   const { fetchContributions } = useGoals();
   const { fetchTransactions } = useTransactionContext();
+  const { fetchBudgets } = useBudgets();
   const { signIn } = useAuth();
   const handleSignIn = async () => {
     if (!email || !password) {
@@ -33,6 +35,13 @@ export default function SignIn() {
       const user = await signIn(email, password);
 
       if (user) {
+        await Promise.all([
+          fetchGoals(),
+          fetchContributions(),
+          fetchTransactions(),
+          fetchBudgets(),
+        ]);
+
         router.replace("/home");
       } else {
         Alert.alert("Error", "Sign in failed. Please try again.");

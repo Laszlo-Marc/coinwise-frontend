@@ -3,22 +3,17 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useBudgets } from "@/contexts/BudgetsContext";
 import { useGoals } from "@/contexts/GoalsContext";
 
+import ProgressCardSection from "@/components/homePageComponents/GoalsBudgetsCard";
+import StatsOverviewSection from "@/components/homePageComponents/StatsCard";
+import SummaryOverviewSection from "@/components/homePageComponents/SummaryCard";
 import { formatCurrency, formatDate } from "@/hooks/home-page/formatHooks";
 import { useClosestGoals } from "@/hooks/home-page/useClosestGoals";
 import { useCurrentBalance } from "@/hooks/home-page/useCurrentBalance";
 import { useRecentTransactions } from "@/hooks/home-page/useRecentTransactions";
 import { useRiskiestBudgets } from "@/hooks/home-page/useRiskiestBudgets";
 import { useSummaryData } from "@/hooks/home-page/useSummaryData";
-import { BudgetModel } from "@/models/budget";
-import { GoalModel } from "@/models/goal";
 import { TransactionModel } from "@/models/transaction";
-import {
-  AntDesign,
-  Entypo,
-  Feather,
-  Ionicons,
-  MaterialIcons,
-} from "@expo/vector-icons";
+import { Entypo, Feather, FontAwesome, Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React from "react";
@@ -51,48 +46,44 @@ export default function HomePage() {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
 
+      {/* Main Balance Section with Gradient */}
+      <LinearGradient
+        colors={["rgb(251, 193, 105)", "rgb(198, 119, 0)"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.balanceSection}
+      >
+        {/* Quick Action Buttons */}
+        <View style={styles.quickActions}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => router.replace("./transactions")}
+          >
+            <View style={styles.actionIconContainer}>
+              <FontAwesome name="bank" size={24} color={colors.text} />
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => router.push("./profile")}
+          >
+            <View style={styles.actionIconContainer}>
+              <Feather name="user" size={24} color={colors.text} />
+            </View>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.balanceContainer}>
+          <Text style={styles.balanceLabel}>Main · RON</Text>
+          <Text style={styles.balanceAmount}>
+            {formatCurrency(currentBalance)}
+          </Text>
+        </View>
+      </LinearGradient>
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 150 }}
+        contentContainerStyle={styles.scrollViewContent}
       >
-        {/* Main Balance Section with Gradient */}
-        <LinearGradient
-          colors={["rgb(251, 193, 105)", "rgb(198, 119, 0)"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.balanceSection}
-        >
-          <View style={styles.balanceContainer}>
-            <Text style={styles.balanceLabel}>Main · RON</Text>
-            <Text style={styles.balanceAmount}>
-              {formatCurrency(currentBalance)}
-            </Text>
-          </View>
-
-          {/* Quick Action Buttons */}
-          <View style={styles.quickActions}>
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => router.replace("./transactions")}
-            >
-              <View style={styles.actionIconContainer}>
-                <Ionicons name="wallet-outline" size={24} color={colors.text} />
-              </View>
-              <Text style={styles.actionText}>Transactions</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => router.replace("./profile")}
-            >
-              <View style={styles.actionIconContainer}>
-                <Feather name="user" size={24} color={colors.text} />
-              </View>
-              <Text style={styles.actionText}>Profile</Text>
-            </TouchableOpacity>
-          </View>
-        </LinearGradient>
-
         {/* Recent Transactions Card */}
         <View style={styles.card}>
           <TouchableOpacity
@@ -169,231 +160,27 @@ export default function HomePage() {
             </View>
           )}
         </View>
+        <SummaryOverviewSection summaryData={summaryData} />
+        <StatsOverviewSection
+          summaryData={summaryData}
+          transactions={transactions}
+        />
 
-        {/* Summary Card */}
-        <View style={styles.card}>
-          <TouchableOpacity style={styles.sectionHeaderButton}>
-            <Text style={styles.sectionHeaderText}>Summary</Text>
-          </TouchableOpacity>
+        <ProgressCardSection
+          title="Financial Goals"
+          items={closestGoals}
+          type="goal"
+          navigateTo="./financial-goals"
+          onCreatePress={() => router.push("/goals/add-goal")}
+        />
 
-          <View style={styles.summaryContainer}>
-            <View style={styles.summaryPeriod}>
-              <Text style={styles.summaryPeriodTitle}>All Time</Text>
-              <View style={styles.summaryAmounts}>
-                <View style={styles.summaryItem}>
-                  <Text style={styles.summaryLabel}>Income</Text>
-                  <Text style={[styles.summaryAmount, { color: "#4CAF50" }]}>
-                    {formatCurrency(summaryData.allTime.income)}
-                  </Text>
-                </View>
-                <View style={styles.summaryItem}>
-                  <Text style={styles.summaryLabel}>Expenses</Text>
-                  <Text style={[styles.summaryAmount, { color: "#F44336" }]}>
-                    {formatCurrency(summaryData.allTime.expenses)}
-                  </Text>
-                </View>
-              </View>
-            </View>
-
-            <View style={styles.summaryPeriod}>
-              <Text style={styles.summaryPeriodTitle}>Last Month</Text>
-              <View style={styles.summaryAmounts}>
-                <View style={styles.summaryItem}>
-                  <Text style={styles.summaryLabel}>Income</Text>
-                  <Text style={[styles.summaryAmount, { color: "#4CAF50" }]}>
-                    {formatCurrency(summaryData.lastMonth.income)}
-                  </Text>
-                </View>
-                <View style={styles.summaryItem}>
-                  <Text style={styles.summaryLabel}>Expenses</Text>
-                  <Text style={[styles.summaryAmount, { color: "#F44336" }]}>
-                    {formatCurrency(summaryData.lastMonth.expenses)}
-                  </Text>
-                </View>
-              </View>
-            </View>
-
-            <View style={styles.summaryPeriod}>
-              <Text style={styles.summaryPeriodTitle}>Last 3 Months</Text>
-              <View style={styles.summaryAmounts}>
-                <View style={styles.summaryItem}>
-                  <Text style={styles.summaryLabel}>Income</Text>
-                  <Text style={[styles.summaryAmount, { color: "#4CAF50" }]}>
-                    {formatCurrency(summaryData.last3Months.income)}
-                  </Text>
-                </View>
-                <View style={styles.summaryItem}>
-                  <Text style={styles.summaryLabel}>Expenses</Text>
-                  <Text style={[styles.summaryAmount, { color: "#F44336" }]}>
-                    {formatCurrency(summaryData.last3Months.expenses)}
-                  </Text>
-                </View>
-              </View>
-            </View>
-          </View>
-        </View>
-
-        {/* Stats Card */}
-        <View style={styles.card}>
-          <TouchableOpacity style={styles.sectionHeaderButton}>
-            <Text style={styles.sectionHeaderText}>Statistics</Text>
-            <Entypo name="chevron-right" size={24} color={colors.text} />
-          </TouchableOpacity>
-
-          <View style={styles.statsGrid}>
-            <View style={styles.statItem}>
-              <Feather name="trending-up" size={24} color="#4CAF50" />
-              <Text style={styles.statLabel}>Avg Monthly Income</Text>
-              <Text style={styles.statValue}>
-                {formatCurrency(summaryData.last3Months.income / 3)}
-              </Text>
-            </View>
-            <View style={styles.statItem}>
-              <Feather name="trending-down" size={24} color="#F44336" />
-              <Text style={styles.statLabel}>Avg Monthly Expenses</Text>
-              <Text style={styles.statValue}>
-                {formatCurrency(summaryData.last3Months.expenses / 3)}
-              </Text>
-            </View>
-            <View style={styles.statItem}>
-              <MaterialIcons name="savings" size={24} color="#2196F3" />
-              <Text style={styles.statLabel}>Savings Rate</Text>
-              <Text style={styles.statValue}>
-                {summaryData.allTime.income > 0
-                  ? Math.round(
-                      ((summaryData.allTime.income -
-                        summaryData.allTime.expenses) /
-                        summaryData.allTime.income) *
-                        100
-                    )
-                  : 0}
-                %
-              </Text>
-            </View>
-            <View style={styles.statItem}>
-              <Feather name="calendar" size={24} color="#FF9800" />
-              <Text style={styles.statLabel}>Total Transactions</Text>
-              <Text style={styles.statValue}>{transactions.length}</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Goals Card */}
-        <View style={styles.card}>
-          <TouchableOpacity
-            style={styles.sectionHeaderButton}
-            onPress={() => router.replace("./financial-goals")}
-          >
-            <Text style={styles.sectionHeaderText}>Financial Goals</Text>
-            <Entypo name="chevron-right" size={24} color={colors.text} />
-          </TouchableOpacity>
-
-          {closestGoals.length > 0 ? (
-            <View>
-              {closestGoals.map((goal: GoalModel, index: any) => {
-                const progress =
-                  (goal.current_amount / goal.target_amount) * 100;
-                return (
-                  <View key={goal.id || index} style={styles.goalItem}>
-                    <View style={styles.goalInfo}>
-                      <Text style={styles.goalTitle}>{goal.title}</Text>
-                      <Text style={styles.goalProgress}>
-                        {formatCurrency(goal.current_amount)} of{" "}
-                        {formatCurrency(goal.target_amount)}
-                      </Text>
-                    </View>
-                    <View style={styles.goalProgressContainer}>
-                      <View style={styles.goalProgressBar}>
-                        <View
-                          style={[
-                            styles.goalProgressFill,
-                            { width: `${Math.min(progress, 100)}%` },
-                          ]}
-                        />
-                      </View>
-                      <Text style={styles.goalPercentage}>
-                        {Math.round(progress)}%
-                      </Text>
-                    </View>
-                  </View>
-                );
-              })}
-            </View>
-          ) : (
-            <View style={styles.goalPlaceholder}>
-              <Feather name="target" size={40} color={colors.textSecondary} />
-              <Text style={styles.statPlaceholderText}>
-                Set your first savings goal
-              </Text>
-              <TouchableOpacity style={styles.createButton}>
-                <Text style={styles.createButtonText}>Create Goal</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-
-        {/* Budgets Card */}
-        <View style={styles.card}>
-          <TouchableOpacity style={styles.sectionHeaderButton}>
-            <Text style={styles.sectionHeaderText}>Budgets</Text>
-            <Entypo name="chevron-right" size={24} color={colors.text} />
-          </TouchableOpacity>
-
-          {riskiestBudgets.length > 0 ? (
-            <View>
-              {riskiestBudgets.map((budget: BudgetModel, index: any) => {
-                const percentage = (budget.spent / budget.amount) * 100;
-                const isAtRisk = percentage > 80;
-                return (
-                  <View key={budget.id || index} style={styles.budgetItem}>
-                    <View style={styles.budgetInfo}>
-                      <Text style={styles.budgetTitle}>{budget.category}</Text>
-                      <Text style={styles.budgetAmount}>
-                        {formatCurrency(budget.spent)} of{" "}
-                        {formatCurrency(budget.amount)}
-                      </Text>
-                    </View>
-                    <View style={styles.budgetProgressContainer}>
-                      <View style={styles.budgetProgressBar}>
-                        <View
-                          style={[
-                            styles.budgetProgressFill,
-                            {
-                              width: `${Math.min(percentage, 100)}%`,
-                              backgroundColor: isAtRisk ? "#F44336" : "#4CAF50",
-                            },
-                          ]}
-                        />
-                      </View>
-                      <Text
-                        style={[
-                          styles.budgetPercentage,
-                          { color: isAtRisk ? "#F44336" : colors.text },
-                        ]}
-                      >
-                        {Math.round(percentage)}%
-                      </Text>
-                    </View>
-                  </View>
-                );
-              })}
-            </View>
-          ) : (
-            <View style={styles.goalPlaceholder}>
-              <AntDesign
-                name="creditcard"
-                size={24}
-                color={colors.textSecondary}
-              />
-              <Text style={styles.statPlaceholderText}>
-                Create a budget to manage expenses
-              </Text>
-              <TouchableOpacity style={styles.createButton}>
-                <Text style={styles.createButtonText}>Create Budget</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
+        <ProgressCardSection
+          title="Budgets"
+          items={riskiestBudgets}
+          type="budget"
+          navigateTo="./budgets"
+          onCreatePress={() => router.push("/budgets/add-budget")}
+        />
 
         {/* Bottom spacing for scrolling past the bottom bar */}
         <View style={styles.bottomPadding} />
@@ -411,6 +198,11 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+  },
+  scrollViewContent: {
+    paddingBottom: 100,
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === "ios" ? 30 : 20, // Adjust for status bar height
   },
   balanceSection: {
     paddingTop: Platform.OS === "ios" ? 100 : 80,
@@ -441,15 +233,17 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   quickActions: {
+    position: "absolute",
+    top: Platform.OS === "ios" ? 60 : 40,
+    left: 20,
+    right: 20,
     flexDirection: "row",
-    paddingHorizontal: 10,
-    alignItems: "center",
-
-    justifyContent: "center",
+    justifyContent: "space-between",
+    zIndex: 10,
   },
+
   actionButton: {
     alignItems: "center",
-    marginHorizontal: 10,
   },
   actionIconContainer: {
     width: 50,
@@ -464,17 +258,38 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 14,
   },
+
+  bottomPadding: {
+    height: 100,
+  },
+  headerWrapper: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 100,
+    overflow: "hidden",
+  },
+  headerContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  iconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: `${colors.backgroundLight}40`,
+  },
   card: {
     backgroundColor: colors.backgroundLight,
     borderRadius: 16,
-    marginHorizontal: 16,
-    marginTop: 16,
     padding: 16,
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    marginBottom: 24,
   },
   sectionHeaderButton: {
     flexDirection: "row",
@@ -483,11 +298,10 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   sectionHeaderText: {
+    fontSize: 20,
+    fontWeight: "700",
     color: colors.text,
-    fontSize: 18,
-    fontWeight: "500",
   },
-  // Transaction styles
   transactionItem: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -540,195 +354,5 @@ const styles = StyleSheet.create({
   emptyStateText: {
     color: colors.textSecondary,
     fontSize: 16,
-  },
-  // Summary styles
-  summaryContainer: {
-    gap: 16,
-  },
-  summaryPeriod: {
-    borderBottomWidth: 1,
-    borderBottomColor: `${colors.backgroundDark}20`,
-    paddingBottom: 16,
-  },
-  summaryPeriodTitle: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 12,
-  },
-  summaryAmounts: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  summaryItem: {
-    flex: 1,
-  },
-  summaryLabel: {
-    color: colors.textSecondary,
-    fontSize: 14,
-    marginBottom: 4,
-  },
-  summaryAmount: {
-    fontSize: 18,
-    fontWeight: "600",
-  },
-  // Stats styles
-  statsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 16,
-  },
-  statItem: {
-    flex: 1,
-    minWidth: "45%",
-    alignItems: "center",
-    padding: 16,
-    backgroundColor: `${colors.backgroundDark}10`,
-    borderRadius: 12,
-  },
-  statLabel: {
-    color: colors.textSecondary,
-    fontSize: 12,
-    textAlign: "center",
-    marginTop: 8,
-    marginBottom: 4,
-  },
-  statValue: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  // Goal styles
-  goalItem: {
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: `${colors.backgroundDark}20`,
-  },
-  goalInfo: {
-    marginBottom: 8,
-  },
-  goalTitle: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: "500",
-  },
-  goalProgress: {
-    color: colors.textSecondary,
-    fontSize: 14,
-    marginTop: 2,
-  },
-  goalProgressContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  goalProgressBar: {
-    flex: 1,
-    height: 8,
-    backgroundColor: `${colors.backgroundDark}20`,
-    borderRadius: 4,
-    overflow: "hidden",
-  },
-  goalProgressFill: {
-    height: "100%",
-    backgroundColor: "#4CAF50",
-    borderRadius: 4,
-  },
-  goalPercentage: {
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: "500",
-    minWidth: 40,
-    textAlign: "right",
-  },
-  goalPlaceholder: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 20,
-  },
-  statPlaceholderText: {
-    color: colors.textSecondary,
-    fontSize: 14,
-    marginTop: 12,
-    textAlign: "center",
-  },
-  createButton: {
-    backgroundColor: colors.primary[500],
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 24,
-    marginTop: 16,
-  },
-  createButtonText: {
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  // Budget styles
-  budgetItem: {
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: `${colors.backgroundDark}20`,
-  },
-  budgetInfo: {
-    marginBottom: 8,
-  },
-  budgetTitle: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: "500",
-  },
-  budgetAmount: {
-    color: colors.textSecondary,
-    fontSize: 14,
-    marginTop: 2,
-  },
-  budgetProgressContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  budgetProgressBar: {
-    flex: 1,
-    height: 8,
-    backgroundColor: `${colors.backgroundDark}20`,
-    borderRadius: 4,
-    overflow: "hidden",
-  },
-  budgetProgressFill: {
-    height: "100%",
-    borderRadius: 4,
-  },
-  budgetPercentage: {
-    fontSize: 14,
-    fontWeight: "500",
-    minWidth: 40,
-    textAlign: "right",
-  },
-  bottomPadding: {
-    height: 100,
-  },
-  headerWrapper: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 100,
-    overflow: "hidden",
-  },
-  headerContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  iconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: `${colors.backgroundLight}40`,
   },
 });
