@@ -41,7 +41,37 @@ const AddGoalScreen = () => {
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [showTargetDatePicker, setShowTargetDatePicker] = useState(false);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
   const { addGoal } = useGoals();
+  const validateGoalForm = (data: typeof formData) => {
+    const errors: Record<string, string> = {};
+
+    if (!data.title.trim()) {
+      errors.title = "Title is required.";
+    }
+    if (!data.description.trim()) {
+      errors.description = "Description is required.";
+    }
+
+    const amount = parseFloat(data.targetAmount);
+    if (isNaN(amount) || amount <= 0) {
+      errors.targetAmount = "Enter a valid target amount.";
+    }
+
+    if (data.targetDate <= data.startDate) {
+      errors.targetDate = "Target date must be after start date.";
+    }
+
+    if (data.autoContributions) {
+      const contribAmount = parseFloat(data.contributionAmount);
+      if (isNaN(contribAmount) || contribAmount <= 0) {
+        errors.contributionAmount = "Enter a valid contribution amount.";
+      }
+    }
+
+    return errors;
+  };
 
   const handleInputChange = (field: string, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -82,7 +112,14 @@ const AddGoalScreen = () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
     }
+    const validationErrors = validateGoalForm(formData);
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      return;
+    }
 
+    setErrors({});
     const goalData = {
       title: formData.title,
       description: formData.description,
@@ -155,6 +192,9 @@ const AddGoalScreen = () => {
                 placeholder="What are you saving for?"
                 placeholderTextColor={colors.textMuted}
               />
+              {errors.title && (
+                <Text style={styles.errorText}>{errors.title}</Text>
+              )}
             </View>
 
             {/* Description */}
@@ -171,6 +211,9 @@ const AddGoalScreen = () => {
                 multiline
                 numberOfLines={3}
               />
+              {errors.description && (
+                <Text style={styles.errorText}>{errors.description}</Text>
+              )}
             </View>
 
             {/* Target Amount */}
@@ -466,6 +509,13 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginBottom: 8,
   },
+  errorText: {
+    color: colors.error,
+    marginTop: 4,
+    fontSize: 13,
+    fontFamily: "Montserrat",
+  },
+
   input: {
     backgroundColor: colors.backgroundLight,
     borderRadius: 8,

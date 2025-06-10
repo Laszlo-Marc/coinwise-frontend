@@ -136,26 +136,31 @@ export default function Finances() {
       />
 
       <View style={styles.contentContainer}>
-        <View style={styles.inlineActions}>
-          <TouchableOpacity
-            onPress={() => router.replace("/transactions")}
-            style={styles.inlineButton}
-          >
-            <Feather name="plus" size={20} color={colors.text} />
-            <Text style={styles.inlineButtonText}>Add</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={toggleFilters} style={styles.inlineButton}>
-            <Feather name="filter" size={20} color={colors.text} />
-            <Text style={styles.inlineButtonText}>Filter</Text>
-          </TouchableOpacity>
-        </View>
+        <AnimatedCard delay={200}>
+          <View style={styles.inlineActions}>
+            <TouchableOpacity
+              onPress={() => router.replace("/transactions")}
+              style={styles.inlineButton}
+            >
+              <Feather name="plus" size={20} color={colors.text} />
+              <Text style={styles.inlineButtonText}>Add</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={toggleFilters}
+              style={styles.inlineButton}
+            >
+              <Feather name="filter" size={20} color={colors.text} />
+              <Text style={styles.inlineButtonText}>Filter</Text>
+            </TouchableOpacity>
+          </View>
+        </AnimatedCard>
         <TransactionsFiltersPanel
           visible={showFilters}
           onFilterChange={handleFilterChange}
           selectedClass={selectedClass}
         />
         <View style={styles.listContainer}>
-          <AnimatedCard delay={100}>
+          <AnimatedCard delay={300}>
             <TransactionList
               transactions={displayedTransactions}
               onEdit={handleEditTransaction}
@@ -189,6 +194,7 @@ const styles = StyleSheet.create({
   contentContainer: {
     flex: 1,
     paddingTop: 8,
+    marginTop: 8,
   },
   listContainer: {
     flex: 1,
@@ -222,70 +228,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.text,
     fontWeight: "500",
-  },
-
-  iconButton: {
-    width: 50,
-    height: 50,
-    borderRadius: 50,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    justifyContent: "center",
-    alignItems: "center",
-    marginHorizontal: 10,
-  },
-  actionButton: {
-    width: 50,
-    height: 50,
-    borderRadius: 50,
-    backgroundColor: colors.primary[500],
-    justifyContent: "center",
-    alignItems: "center",
-    marginHorizontal: 10,
-  },
-  actionsContainer: {
-    padding: 18,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0)",
-  },
-  summaryContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 12,
-  },
-  summaryItem: {
-    alignItems: "center",
-  },
-  summaryLabel: {
-    color: colors.text,
-    fontSize: 12,
-    marginBottom: 4,
-    opacity: 0.8,
-    fontFamily: "Montserrat",
-  },
-  summaryValue: {
-    fontSize: 16,
-    fontWeight: "600",
-    fontFamily: "Montserrat",
-  },
-  incomeText: {
-    color: colors.success,
-    fontFamily: "Montserrat",
-  },
-  expensesText: {
-    color: colors.error,
-    fontFamily: "Montserrat",
-  },
-  filtersContainer: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: colors.backgroundLight,
-    borderRadius: 12,
-    marginHorizontal: 16,
-    marginBottom: 8,
-    zIndex: 1,
   },
 });

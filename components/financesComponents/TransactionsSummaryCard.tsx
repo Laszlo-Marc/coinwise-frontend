@@ -55,7 +55,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.backgroundLight,
     borderRadius: 12,
     marginHorizontal: 16,
-    marginTop: 8,
+    marginTop: 10,
   },
   summaryItem: {
     alignItems: "center",

@@ -134,14 +134,12 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({
       setCurrentPage(returnedPage);
       setTotalPages(total_pages);
 
-      // Save the current filter
       if (filter) {
         setCurrentFilter(filter);
       }
     } catch (e) {
       handleApiError(e);
     } finally {
-      // Reset loading states based on which operation completed
       if (page === 1) {
         setIsLoading(false);
       } else {
@@ -247,8 +245,9 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const loadMore = async (transactionClass?: string) => {
-    if (hasMore && !isLoadingMore) {
-      const filterToUse = transactionClass || currentFilter;
+    const filterToUse = transactionClass || currentFilter;
+
+    if (hasMore && !isLoadingMore && transactions.length >= pageSize) {
       await fetchTransactions(currentPage + 1, filterToUse);
     }
   };

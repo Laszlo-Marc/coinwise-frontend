@@ -76,7 +76,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                 if (rowMap[itemId]) rowMap[itemId].closeRow();
               }}
             >
-              <Feather name="edit-2" size={20} color="#FFF" />
+              <Feather name="edit-2" size={20} color={colors.text} />
               <Text style={styles.hiddenText}>Edit</Text>
             </TouchableOpacity>
           </Animated.View>
@@ -113,7 +113,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
       </View>
     );
   }, []);
-
+  const pageSize = 100;
   return (
     <SwipeListView
       data={transactions}
@@ -138,11 +138,13 @@ export const TransactionList: React.FC<TransactionListProps> = ({
       ListEmptyComponent={renderEmpty}
       useNativeDriver={true}
       removeClippedSubviews={true}
-      friction={15}
-      tension={30}
-      swipeToOpenPercent={30}
-      onEndReached={onEndReached}
-      onEndReachedThreshold={0.4}
+      friction={25}
+      tension={50}
+      swipeToOpenPercent={50}
+      onEndReached={
+        hasMore && transactions.length >= pageSize ? onEndReached : undefined
+      }
+      onEndReachedThreshold={0.6}
       ListFooterComponent={renderFooter}
     />
   );
