@@ -1,24 +1,16 @@
 import { colors } from "@/constants/colors";
+import { formatCurrency, formatDate } from "@/hooks/home-page/formatHooks";
+import { TransactionModel } from "@/models/transaction";
 import { Entypo, Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React from "react";
-import {
-  FlatList,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
-import { formatCurrency } from "@/hooks/goals-helpers";
-import { formatDate } from "@/hooks/home-page/formatHooks";
-import { TransactionModel } from "@/models/transaction";
+interface Props {
+  transactions: TransactionModel[];
+}
 
-type Props = {
-  recentTransactions: TransactionModel[];
-};
-
-export default function RecentTransactionsCard({ recentTransactions }: Props) {
+const RecentTransactionsCard: React.FC<Props> = ({ transactions }) => {
   const router = useRouter();
 
   return (
@@ -31,14 +23,56 @@ export default function RecentTransactionsCard({ recentTransactions }: Props) {
         <Entypo name="chevron-right" size={24} color={colors.text} />
       </TouchableOpacity>
 
-      {recentTransactions.length > 0 ? (
-        <FlatList
-          data={recentTransactions}
-          keyExtractor={(item, index) =>
-            item.id?.toString() ?? index.toString()
-          }
-          renderItem={({ item }) => <TransactionItem transaction={item} />}
-        />
+      {transactions.length > 0 ? (
+        <View>
+          {transactions.map((transaction, index) => (
+            <View key={transaction.id || index} style={styles.transactionItem}>
+              <View style={styles.transactionLeft}>
+                <View
+                  style={[
+                    styles.transactionIcon,
+                    {
+                      backgroundColor:
+                        transaction.type === "income"
+                          ? colors.success || "#4CAF50"
+                          : colors.error || "#F44336",
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name={
+                      transaction.type === "income" ? "arrow-down" : "arrow-up"
+                    }
+                    size={16}
+                    color="white"
+                  />
+                </View>
+                <View style={styles.transactionInfo}>
+                  <Text style={styles.transactionTitle}>
+                    {transaction.description || transaction.category}
+                  </Text>
+                  <Text style={styles.transactionDate}>
+                    {formatDate(transaction.date)}
+                  </Text>
+                </View>
+              </View>
+              <Text
+                style={[
+                  styles.transactionAmount,
+                  {
+                    color:
+                      transaction.type === "income"
+                        ? colors.success || "#4CAF50"
+                        : colors.error || "#F44336",
+                  },
+                ]}
+              >
+                {transaction.type === "income" ? "+" : "-"}
+                {formatCurrency(transaction.amount)}
+              </Text>
+            </View>
+          ))}
+        </View>
       ) : (
         <View style={styles.transactionsEmptyState}>
           <View style={styles.emptyStateIcon}>
@@ -49,38 +83,7 @@ export default function RecentTransactionsCard({ recentTransactions }: Props) {
       )}
     </View>
   );
-}
-
-function TransactionItem({ transaction }: { transaction: TransactionModel }) {
-  const isIncome = transaction.type === "income";
-  const color = isIncome ? "#4CAF50" : "#F44336";
-
-  return (
-    <View style={styles.transactionItem}>
-      <View style={styles.transactionLeft}>
-        <View style={[styles.transactionIcon, { backgroundColor: color }]}>
-          <Ionicons
-            name={isIncome ? "arrow-down" : "arrow-up"}
-            size={16}
-            color="white"
-          />
-        </View>
-        <View style={styles.transactionInfo}>
-          <Text style={styles.transactionTitle}>
-            {transaction.description || transaction.category}
-          </Text>
-          <Text style={styles.transactionDate}>
-            {formatDate(transaction.date)}
-          </Text>
-        </View>
-      </View>
-      <Text style={[styles.transactionAmount, { color }]}>
-        {isIncome ? "+" : "-"}
-        {formatCurrency(transaction.amount)}
-      </Text>
-    </View>
-  );
-}
+};
 
 const styles = StyleSheet.create({
   card: {
@@ -154,3 +157,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
 });
+
+export default RecentTransactionsCard;

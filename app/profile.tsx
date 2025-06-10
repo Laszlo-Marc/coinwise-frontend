@@ -244,28 +244,6 @@ const ProfileScreen = () => {
           </View>
         </View>
 
-        {/* Menu Items */}
-        <View style={styles.menuSection}>
-          {menuItems.map((item, index) => (
-            <MenuItem
-              key={index}
-              {...item}
-              isLast={index === menuItems.length - 1}
-            />
-          ))}
-        </View>
-
-        {/* Settings Items */}
-        <View style={styles.menuSection}>
-          {settingsItems.map((item, index) => (
-            <MenuItem
-              key={index}
-              {...item}
-              isLast={index === settingsItems.length - 1}
-            />
-          ))}
-        </View>
-
         {/* Bottom Items */}
         <View style={styles.menuSection}>
           {bottomItems.map((item, index) => (
