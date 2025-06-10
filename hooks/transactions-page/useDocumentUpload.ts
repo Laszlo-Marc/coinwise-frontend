@@ -1,8 +1,9 @@
+// hooks/useDocumentUpload.ts
 import * as DocumentPicker from "expo-document-picker";
 import { useState } from "react";
 import { Alert } from "react-native";
 
-type ProcessingStage =
+export type ProcessingStage =
   | "anonymizing"
   | "extracting_sections"
   | "normalizing"
@@ -24,18 +25,23 @@ export function useDocumentUpload(
       });
 
       if (result.canceled) return;
+      if (!result.assets || result.assets.length === 0) {
+        throw new Error("No file was selected.");
+      }
 
       const document = result.assets[0];
+      if (!document.uri) throw new Error("File URI is missing.");
+
       setIsLoading(true);
       setProcessingStage("anonymizing");
-
       await delay(1000);
+
       setProcessingStage("extracting_sections");
-
       await delay(1000);
+
       setProcessingStage("normalizing");
-
       await delay(1000);
+
       setProcessingStage("extracting_transactions");
 
       const formData = new FormData();
@@ -57,10 +63,13 @@ export function useDocumentUpload(
       console.error("Upload failed:", err);
       setIsLoading(false);
       setProcessingStage("");
-      Alert.alert(
-        "Upload Failed",
-        "There was a problem uploading your document."
-      );
+
+      let message = "There was a problem uploading your document.";
+      if (err instanceof Error && err.message) {
+        message = err.message;
+      }
+
+      Alert.alert("Upload Failed", message);
     }
   };
 

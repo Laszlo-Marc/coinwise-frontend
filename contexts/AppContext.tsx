@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "@/constants/api";
 import axios from "axios";
 import * as SecureStore from "expo-secure-store";
 import React, { createContext, useContext, useMemo, useState } from "react";
@@ -29,7 +30,7 @@ interface TransactionContextType {
 const TransactionContext = createContext<TransactionContextType | undefined>(
   undefined
 );
-const API_BASE_URL = "http://192.168.1.156:5000/api";
+
 const TRANSACTIONS_API_URL = `${API_BASE_URL}/transactions`;
 const UPLOAD_API_URL = `${API_BASE_URL}/upload`;
 
@@ -157,8 +158,6 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({
     try {
       const token = await SecureStore.getItem("auth_token");
       const { id, ...dataToSend } = transaction;
-      console.log("Adding transaction:", dataToSend);
-      console.log(id);
       const response = await axios.post(
         `${TRANSACTIONS_API_URL}/add`,
         dataToSend,

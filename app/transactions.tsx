@@ -14,11 +14,12 @@ import MainSection from "@/components/mainComponents/MainSection";
 import { useTransactionContext } from "@/contexts/AppContext";
 import { useTransactionFilters } from "@/hooks/finances-page/handleFilterChange";
 import { useDocumentUpload } from "@/hooks/transactions-page/useDocumentUpload";
-import { TransactionModel } from "@/models/transaction";
+import { useTransactionFormHandler } from "@/hooks/transactions-page/useTransactionFormHandler";
+import { useTransactionUIState } from "@/hooks/transactions-page/useTransactionUIState";
 import { AntDesign, Feather } from "@expo/vector-icons";
 import Ionicons from "@expo/vector-icons/build/Ionicons";
-import React, { useCallback, useEffect, useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import React, { useCallback, useEffect } from "react";
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { colors } from "../constants/colors";
 
 export default function TransactionsListScreen() {
@@ -30,26 +31,55 @@ export default function TransactionsListScreen() {
     refreshTransactions,
     updateTransaction,
   } = useTransactionContext();
-  const [refreshing, setRefreshing] = useState(false);
-  const [classModalVisible, setClassModalVisible] = useState(false);
-  type TransactionType = "expense" | "income" | "transfer" | "deposit" | "all";
-  const [selectedTransaction, setSelectedTransaction] =
-    useState<TransactionModel | null>(null);
-  const [formType, setFormType] = useState<TransactionType | null>(null);
-  const [selectedClass, setSelectedClass] = useState<TransactionType | null>(
-    null
-  );
-  const [isFormVisible, setIsFormVisible] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [selectedTransactionId, setSelectedTransactionId] = useState<
-    string | null
-  >(null);
+  const {
+    refreshing,
+    setRefreshing,
+    classModalVisible,
+    setClassModalVisible,
+    formType,
+    setFormType,
+    selectedTransaction,
+    setSelectedTransaction,
+    isFormVisible,
+    setIsFormVisible,
+    modalVisible,
+    setModalVisible,
+    selectedTransactionId,
+    setSelectedTransactionId,
+    showFilters,
+    setShowFilters,
+    selectedClass,
+    setSelectedClass,
+  } = useTransactionUIState();
+
   const { uploadDocument, isLoading, processingStage } =
     useDocumentUpload(uploadBankStatement);
   const { displayedTransactions, handleFilterChange, filters } =
     useTransactionFilters(transactions);
-
+  const {
+    handleEditTransaction,
+    handleSubmitForm,
+    handleDeleteTransaction,
+    handleDeleteConfirm,
+    handleDeleteCancel,
+    handleCloseForm,
+  } = useTransactionFormHandler({
+    transactions,
+    updateTransaction,
+    addTransaction,
+    deleteTransaction,
+    formType,
+    selectedTransaction,
+    setFormType,
+    setSelectedTransaction,
+    setIsFormVisible,
+    setModalVisible,
+    setSelectedTransactionId,
+    selectedTransactionId,
+  });
+  const toggleFilters = () => {
+    setShowFilters(!showFilters);
+  };
   useEffect(() => {
     if (transactions.length > 0) {
       handleFilterChange({ transactionClass: "expense" });
@@ -60,66 +90,18 @@ export default function TransactionsListScreen() {
     setClassModalVisible(true);
   }, []);
 
-  const handleEditTransaction = useCallback(
-    (id: string, type: string) => {
-      const transaction = transactions.find((t) => t.id === id);
-      if (!transaction) return;
-      setSelectedTransaction(transaction);
-      setFormType(type as TransactionType);
-
-      setIsFormVisible(true);
-    },
-    [transactions]
-  );
-  const toggleFilters = () => {
-    setShowFilters(!showFilters);
-  };
-  const handleDeleteConfirm = async () => {
-    if (!selectedTransactionId) return;
-    try {
-      await deleteTransaction(selectedTransactionId);
-    } catch (error) {
-      console.error("Error deleting transaction:", error);
-    } finally {
-      setModalVisible(false);
-      setSelectedTransactionId(null);
-    }
-  };
-  const handleDeleteCancel = () => {
-    setModalVisible(false);
-    setSelectedTransactionId(null);
-  };
-  const handleDeleteTransaction = (transactionId: string) => {
-    setSelectedTransactionId(transactionId);
-    setModalVisible(true);
-  };
-  const handleCloseForm = useCallback(() => {
-    setIsFormVisible(false);
-  }, []);
-
-  const handleSubmitForm = useCallback(
-    (formData: any) => {
-      if (!formType) return;
-
-      if (selectedTransaction && selectedTransaction.id) {
-        updateTransaction(selectedTransaction.id, formData);
-      } else {
-        addTransaction(formData);
-      }
-
-      setIsFormVisible(false);
-      setSelectedTransaction(null);
-    },
-    [formType, addTransaction, updateTransaction, selectedTransaction]
-  );
-
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    refreshTransactions();
-    setTimeout(() => {
+    try {
+      await refreshTransactions();
+    } catch (error) {
+      Alert.alert("Error", "Failed to refresh transactions.");
+      console.error("Refresh failed:", error);
+    } finally {
       setRefreshing(false);
-    }, 3000);
+    }
   }, []);
+
   const renderForm = () => {
     const commonProps = {
       visible: isFormVisible,
@@ -238,44 +220,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  scrollView: {
-    flex: 1,
-  },
-  hiddenButton: {
-    width: 75,
-    height: "100%",
-    justifyContent: "center",
-    alignItems: "center",
-    borderRadius: 10,
-  },
-  hiddenTouchable: {
-    width: "100%",
-    height: "100%",
-    justifyContent: "center",
-    alignItems: "center",
-  },
 
-  hiddenContainer: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: colors.backgroundLight,
-    borderRadius: 10,
-    marginBottom: 10,
-    marginHorizontal: 17,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingTop: 50,
-  },
-  emptyText: {
-    color: colors.textSecondary,
-    fontSize: 16,
-    fontFamily: "Montserrat",
-  },
   actionButton: {
     alignItems: "center",
     width: 100,

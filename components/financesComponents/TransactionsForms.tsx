@@ -40,8 +40,8 @@ interface TransactionFormProps {
   onSubmit: (data: { [key: string]: any }) => void;
   transactionType: "expense" | "transfer" | "income" | "deposit";
   categories?: string[];
-  initialData?: any; // Changed type to any to accommodate TransactionModel
-  isEditing?: boolean; // New prop to distinguish between add and edit modes
+  initialData?: any;
+  isEditing?: boolean;
 }
 
 export const TransactionForm: React.FC<TransactionFormProps> = ({

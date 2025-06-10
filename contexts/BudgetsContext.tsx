@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "@/constants/api";
 import { BudgetModel } from "@/models/budget";
 import axios from "axios";
 import * as SecureStore from "expo-secure-store";
@@ -14,7 +15,7 @@ interface BudgetContextType {
 }
 
 const BudgetContext = createContext<BudgetContextType | undefined>(undefined);
-const API_BASE_URL = "http://192.168.1.156:5000/api";
+
 const BUDGET_API_URL = `${API_BASE_URL}/budgets`;
 
 export const BudgetsProvider: React.FC<{ children: React.ReactNode }> = ({
@@ -22,11 +23,11 @@ export const BudgetsProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const [budgets, setBudgets] = useState<BudgetModel[]>([]);
   const [error, setError] = useState<string | null>(null);
- 
+
   const budgetCleanup = () => {
     setBudgets([]);
     setError(null);
-  }
+  };
 
   const handleApiError = (error: any) => {
     console.error("API Error:", error);

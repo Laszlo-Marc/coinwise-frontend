@@ -19,7 +19,7 @@ type TransactionType = "expense" | "income" | "transfer" | "deposit";
 
 interface TransactionListProps {
   transactions: TransactionModel[];
-  onEdit: (id: string, type: string) => void;
+  onEdit: (id: string, type: TransactionType) => void;
   onDelete: (id: string, type: TransactionType) => void;
   onRefresh: () => void;
   refreshing: boolean;

@@ -1,8 +1,4 @@
-import { useTransactionContext } from "@/contexts/AppContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { useBudgets } from "@/contexts/BudgetsContext";
-import { useGoals } from "@/contexts/GoalsContext";
-import { FontAwesome } from "@expo/vector-icons";
 import { Link, router } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -19,10 +15,6 @@ export default function SignIn() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const { fetchGoals } = useGoals();
-  const { fetchContributions } = useGoals();
-  const { fetchTransactions } = useTransactionContext();
-  const { fetchBudgets } = useBudgets();
   const { signIn } = useAuth();
   const handleSignIn = async () => {
     if (!email || !password) {
@@ -35,14 +27,7 @@ export default function SignIn() {
       const user = await signIn(email, password);
 
       if (user) {
-        await Promise.all([
-          fetchGoals(),
-          fetchContributions(),
-          fetchTransactions(),
-          fetchBudgets(),
-        ]);
-
-        router.replace("/home");
+        router.replace("/loading");
       } else {
         Alert.alert("Error", "Sign in failed. Please try again.");
       }
@@ -55,8 +40,6 @@ export default function SignIn() {
       setLoading(false);
     }
   };
-
-  const handleGoogleSignIn = async () => {};
 
   return (
     <View style={styles.container}>
@@ -106,15 +89,6 @@ export default function SignIn() {
           <Text style={styles.buttonText}>
             {loading ? "Signing in..." : "Sign in"}
           </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.googleButton, loading && styles.disabledButton]}
-          onPress={handleGoogleSignIn}
-          disabled={loading}
-        >
-          <Text style={styles.buttonText}>Use Google</Text>
-          <FontAwesome name="google" size={24} color="white" />
         </TouchableOpacity>
       </View>
     </View>

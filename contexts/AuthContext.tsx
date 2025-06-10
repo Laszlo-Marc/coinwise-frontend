@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "@/constants/api";
 import { AuthState, User } from "@/models/auth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
@@ -16,8 +17,7 @@ const TOKEN_KEY = "auth_token";
 const REFRESH_TOKEN_KEY = "refresh_token";
 const USER_KEY = "user_data";
 
-const API_URL = "http://192.168.1.156:5000/api/auth";
-
+const API_URL = `${API_BASE_URL}/auth`;
 type AuthContextType = {
   state: AuthState;
   signIn: (email: string, password: string) => Promise<string | null>;

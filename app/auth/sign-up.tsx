@@ -1,8 +1,8 @@
 import { useAuth } from "@/contexts/AuthContext";
-import { Link, router } from "expo-router";
-import React, { useState } from "react";
+import { useSignUpForm } from "@/hooks/authHooks/useSignUpForm";
+import { router } from "expo-router";
+import React from "react";
 import {
-  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -12,117 +12,23 @@ import {
 } from "react-native";
 import { colors } from "../../constants/colors";
 
-const validatePassword = (password: string) => {
-  const errors = [];
-  if (password.length < 8) {
-    errors.push("Password must be at least 8 characters long");
-  }
-  if (!/[A-Z]/.test(password)) {
-    errors.push("Password must contain at least one uppercase letter");
-  }
-  if (!/[a-z]/.test(password)) {
-    errors.push("Password must contain at least one lowercase letter");
-  }
-  if (!/[0-9]/.test(password)) {
-    errors.push("Password must contain at least one number");
-  }
-  return errors;
-};
-
 export default function SignUp() {
-  const [email, setEmail] = useState("");
-  const [fullName, setFullName] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
-  const [emailValid, setEmailValid] = useState(true);
   const { signUp, checkUserExists } = useAuth();
-
-  const validateEmail = (email: string) => {
-    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return re.test(String(email).toLowerCase());
-  };
-
-  const handleEmailBlur = async () => {
-    if (!email) return;
-
-    const isValidFormat = validateEmail(email);
-    setEmailValid(isValidFormat);
-
-    if (isValidFormat) {
-      try {
-        const exists = await checkUserExists(email);
-        if (exists) {
-          Alert.alert(
-            "Email Already Registered",
-            "This email is already in use. Please use a different email or try signing in."
-          );
-        }
-      } catch (error) {
-        console.error("Error checking email:", error);
-      }
-    }
-  };
-
-  const handlePasswordChange = (text: string) => {
-    setPassword(text);
-    setPasswordErrors(validatePassword(text));
-  };
-
-  const handleSignUp = async () => {
-    if (!email || !password || !confirmPassword || !fullName) {
-      Alert.alert("Error", "Please fill in all fields");
-      return;
-    }
-
-    if (!validateEmail(email)) {
-      Alert.alert("Error", "Please enter a valid email address");
-      return;
-    }
-
-    const errors = validatePassword(password);
-    if (errors.length > 0) {
-      Alert.alert("Password Requirements", errors.join("\n"));
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      Alert.alert("Error", "Passwords do not match");
-      return;
-    }
-
-    try {
-      setLoading(true);
-      await signUp(email, password, fullName);
-      Alert.alert(
-        "Success",
-        "Please check your email to confirm your account",
-        [{ text: "OK", onPress: () => router.replace("./sign-in") }]
-      );
-    } catch (error) {
-      // Handle specific error cases
-      if (error instanceof Error && error.message?.includes("already exists")) {
-        Alert.alert(
-          "Account Already Exists",
-          "An account with this email already exists. Would you like to sign in instead?",
-          [
-            { text: "No", style: "cancel" },
-            { text: "Yes", onPress: () => router.replace("./sign-in") },
-          ]
-        );
-      } else {
-        Alert.alert(
-          "Sign Up Failed",
-          error instanceof Error
-            ? error.message
-            : "An error occurred during sign up"
-        );
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+  const {
+    email,
+    setEmail,
+    fullName,
+    setFullName,
+    password,
+    confirmPassword,
+    setConfirmPassword,
+    loading,
+    passwordErrors,
+    emailValid,
+    handleEmailBlur,
+    handlePasswordChange,
+    handleSignUp,
+  } = useSignUpForm({ checkUserExists, signUp });
 
   return (
     <ScrollView style={styles.container}>
@@ -269,13 +175,11 @@ export default function SignUp() {
             </Text>
           </TouchableOpacity>
 
-          <Link href="./sign-in" asChild>
-            <TouchableOpacity>
-              <Text style={styles.signInLink}>
-                Already have an account? Sign in
-              </Text>
-            </TouchableOpacity>
-          </Link>
+          <TouchableOpacity onPress={() => router.replace("./sign-in")}>
+            <Text style={styles.signInLink}>
+              Already have an account? Sign in
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
     </ScrollView>
@@ -334,7 +238,7 @@ const styles = StyleSheet.create({
   passwordIndicators: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    marginRight: 8,
     marginBottom: 16,
   },
   passwordIndicator: {

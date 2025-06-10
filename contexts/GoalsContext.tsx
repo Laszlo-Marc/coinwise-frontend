@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "@/constants/api";
 import { GoalModel } from "@/models/goal";
 import { ContributionModel } from "@/models/goal-contribution";
 import axios from "axios";
@@ -18,7 +19,7 @@ interface GoalContextType {
 }
 
 const GoalsContext = createContext<GoalContextType | undefined>(undefined);
-const API_BASE_URL = "http://192.168.1.156:5000/api";
+
 const GOALS_API_URL = `${API_BASE_URL}/goals`;
 const CONTRIBUTIONS_API_URL = `${API_BASE_URL}/contributions`;
 
