@@ -1,5 +1,7 @@
 import { TransactionList } from "@/components/financesComponents/TransactionList";
-import { TransactionFilters } from "@/components/financesComponents/TransactionsFilters";
+import TransactionsFiltersPanel from "@/components/financesComponents/TransactionsFilterPanel";
+import TransactionsSummaryCard from "@/components/financesComponents/TransactionsSummaryCard";
+import AnimatedCard from "@/components/homePageComponents/AnimatedCard";
 import ActionBar from "@/components/mainComponents/ActionBar";
 import DeleteConfirmModal from "@/components/mainComponents/DeleteModal";
 import { colors } from "@/constants/colors";
@@ -126,79 +128,48 @@ export default function Finances() {
             accessibilityLabel: "Filter transactions",
           },
         ]}
-      >
-        <View style={styles.summaryContainer}>
-          <View style={styles.summaryItem}>
-            <Text style={styles.summaryLabel}>Income</Text>
-            <Text style={[styles.summaryValue, styles.incomeText]}>
-              ${summary.totalIncome.toFixed(2)}
-            </Text>
-          </View>
-          <View style={styles.summaryItem}>
-            <Text style={styles.summaryLabel}>Expenses</Text>
-            <Text style={[styles.summaryValue, styles.expensesText]}>
-              ${summary.totalExpenses.toFixed(2)}
-            </Text>
-          </View>
-          <View style={styles.summaryItem}>
-            <Text style={styles.summaryLabel}>Balance</Text>
-            <Text
-              style={[
-                styles.summaryValue,
-                summary.balance >= 0 ? styles.incomeText : styles.expensesText,
-              ]}
-            >
-              ${summary.balance.toFixed(2)}
-            </Text>
-          </View>
-        </View>
-      </ActionBar>
+      />
+      <TransactionsSummaryCard
+        totalIncome={summary.totalIncome}
+        totalExpenses={summary.totalExpenses}
+        balance={summary.balance}
+      />
 
       <View style={styles.contentContainer}>
-        {showFilters && (
-          <View style={styles.filtersContainer}>
-            <TransactionFilters
-              onFilterChange={handleFilterChange}
-              selectedClass={selectedClass}
-            />
-          </View>
-        )}
-
-        <View style={styles.listContainer}>
-          <TransactionList
-            transactions={displayedTransactions}
-            onEdit={handleEditTransaction}
-            onDelete={handleDeleteTransaction}
-            onRefresh={onRefresh}
-            refreshing={refreshing}
-            onEndReached={loadMore}
-            hasMore={hasMore}
-            loadingMore={isLoadingMore}
-          />
-        </View>
-        <View style={styles.actionsContainer}>
+        <View style={styles.inlineActions}>
           <TouchableOpacity
             onPress={() => router.replace("/transactions")}
-            style={styles.actionButton}
-            accessibilityLabel="Add new transaction"
+            style={styles.inlineButton}
           >
-            <Feather
-              name="plus"
-              size={20}
-              color={colors.text}
-              style={{ opacity: 0.8 }}
-            />
+            <Feather name="plus" size={20} color={colors.text} />
+            <Text style={styles.inlineButtonText}>Add</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={toggleFilters} style={styles.actionButton}>
-            <Feather
-              name="filter"
-              size={20}
-              color={colors.text}
-              style={{ opacity: 0.8 }}
-            />
+          <TouchableOpacity onPress={toggleFilters} style={styles.inlineButton}>
+            <Feather name="filter" size={20} color={colors.text} />
+            <Text style={styles.inlineButtonText}>Filter</Text>
           </TouchableOpacity>
         </View>
+        <TransactionsFiltersPanel
+          visible={showFilters}
+          onFilterChange={handleFilterChange}
+          selectedClass={selectedClass}
+        />
+        <View style={styles.listContainer}>
+          <AnimatedCard delay={100}>
+            <TransactionList
+              transactions={displayedTransactions}
+              onEdit={handleEditTransaction}
+              onDelete={handleDeleteTransaction}
+              onRefresh={onRefresh}
+              refreshing={refreshing}
+              onEndReached={loadMore}
+              hasMore={hasMore}
+              loadingMore={isLoadingMore}
+            />
+          </AnimatedCard>
+        </View>
       </View>
+
       <DeleteConfirmModal
         visible={modalVisible}
         title="Delete Transaction"
@@ -223,6 +194,36 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingTop: 8,
   },
+  inlineActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    gap: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
+
+  inlineButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: colors.backgroundLight,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+
+  inlineButtonText: {
+    fontSize: 14,
+    color: colors.text,
+    fontWeight: "500",
+  },
+
   iconButton: {
     width: 50,
     height: 50,

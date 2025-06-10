@@ -40,7 +40,6 @@ export default function HomePage() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
-
       <HomeHeader />
       <ScrollView
         style={styles.scrollView}
@@ -59,7 +58,6 @@ export default function HomePage() {
             transactions={transactions}
           />
         </AnimatedCard>
-
         <AnimatedCard delay={400}>
           <ProgressCardSection
             title="Financial Goals"
@@ -69,7 +67,6 @@ export default function HomePage() {
             onCreatePress={() => router.push("/goals/add-goal")}
           />
         </AnimatedCard>
-
         <AnimatedCard delay={500}>
           <ProgressCardSection
             title="Budgets"
@@ -79,7 +76,6 @@ export default function HomePage() {
             onCreatePress={() => router.push("/budgets/add-budget")}
           />
         </AnimatedCard>
-
         {/* Bottom spacing for scrolling past the bottom bar */}
         <View style={styles.bottomPadding} />
       </ScrollView>

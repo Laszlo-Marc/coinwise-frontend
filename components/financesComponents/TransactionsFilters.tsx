@@ -22,7 +22,7 @@ interface TransactionFiltersProps {
     startDate?: Date;
     endDate?: Date;
   }) => void;
-  selectedClass: TransactionType | null;
+  selectedClass: TransactionType;
   categories?: string[];
 }
 
@@ -31,9 +31,7 @@ export const TransactionFilters: React.FC<TransactionFiltersProps> = ({
   selectedClass,
   categories = [],
 }) => {
-  const [transactionClass, setTransactionClass] = useState(
-    selectedClass || "all"
-  );
+  const [transactionClass, setTransactionClass] = useState(selectedClass);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [sortBy, setSortBy] = useState<"amount" | "date">("date");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
