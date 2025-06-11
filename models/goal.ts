@@ -5,14 +5,12 @@ export type GoalModel = {
   description: string;
   target_amount: number;
   current_amount: number;
-  is_recuring: boolean;
   start_date: string;
   end_date: string;
-  is_active?: boolean;
+  is_active: boolean;
   auto_contribution_enabled?: boolean;
   auto_contribution_amount?: number;
   contribution_frequency?: string;
-  created_at?: string;
-  updated_at?: string;
-  category?: string;
+
+  category: string;
 };
