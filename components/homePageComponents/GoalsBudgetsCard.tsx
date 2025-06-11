@@ -62,10 +62,10 @@ export default function ProgressCardSection({
               {
                 width: `${percentage}%`,
                 backgroundColor: isGoal
-                  ? "#3B82F6"
+                  ? colors.primary[500]
                   : isAtRisk
-                  ? "#EF4444"
-                  : "#22C55E",
+                  ? colors.error
+                  : colors.primary[400],
               },
             ]}
           />

@@ -1,6 +1,7 @@
 import { GoalModel } from "@/models/goal";
 import React from "react";
-import { FlatList, StyleSheet } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import GoalsItem from "./GoalsItem";
 
 interface GoalsListProps {
@@ -16,20 +17,28 @@ const GoalsList: React.FC<GoalsListProps> = ({
   onDelete,
   onSelect,
 }) => {
+  const insets = useSafeAreaInsets();
+
   return (
-    <FlatList
-      data={goals}
-      keyExtractor={(item) => item.id ?? ""}
-      contentContainerStyle={styles.container}
-      renderItem={({ item }) => (
-        <GoalsItem
-          goal={item}
-          onEdit={() => onEdit(item.id ?? "")}
-          onDelete={() => onDelete(item.id ?? "")}
-          onPress={() => onSelect(item)}
-        />
-      )}
-    />
+    <ScrollView
+      contentContainerStyle={[
+        styles.container,
+        { paddingBottom: insets.bottom + 180 },
+      ]}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+    >
+      {goals.map((item) => (
+        <View key={item.id}>
+          <GoalsItem
+            goal={item}
+            onEdit={() => onEdit(item.id ?? "")}
+            onDelete={() => onDelete(item.id ?? "")}
+            onPress={() => onSelect(item)}
+          />
+        </View>
+      ))}
+    </ScrollView>
   );
 };
 
@@ -37,7 +46,6 @@ const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 16,
     paddingTop: 16,
-    paddingBottom: 150,
   },
 });
 

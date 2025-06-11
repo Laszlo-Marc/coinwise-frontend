@@ -1,108 +1,58 @@
-import GoalsList from "@/components/goalsComponents/GoalsList";
-import GoalsSummaryCards from "@/components/goalsComponents/GoalSummaryCards";
-import AnimatedCard from "@/components/homePageComponents/AnimatedCard";
-
-import BottomBar from "@/components/mainComponents/BottomBar";
-import DeleteConfirmModal from "@/components/mainComponents/DeleteModal";
-import { colors } from "@/constants/colors";
-import { useGoals } from "@/contexts/GoalsContext";
-import { GoalModel } from "@/models/goal";
 import { Feather } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
-import { useRouter } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import React from "react";
 import {
   Animated,
+  ScrollView,
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
 } from "react-native";
+
+import { colors } from "@/constants/colors";
+import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import GoalsList from "@/components/goalsComponents/GoalsList";
+import GoalsSummaryCards from "@/components/goalsComponents/GoalSummaryCards";
+import AnimatedCard from "@/components/homePageComponents/AnimatedCard";
+import AnimatedHeader from "@/components/mainComponents/AnimatedHeader";
+import BottomBar from "@/components/mainComponents/BottomBar";
+import DeleteConfirmModal from "@/components/mainComponents/DeleteModal";
+import { useFinancialGoalsScreen } from "@/hooks/goals-hooks/useGoalsScreen";
 
 const FinancialGoalsScreen = () => {
   const insets = useSafeAreaInsets();
-  const { goals, deleteGoal } = useGoals();
-  const [modalVisible, setModalVisible] = useState(false);
-  const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
-  const fabAnimation = useRef(new Animated.Value(0)).current;
-  const totalGoals = goals.length;
-  const totalSaved = goals.reduce((acc, goal) => acc + goal.current_amount, 0);
   const router = useRouter();
+  const {
+    goals,
+    totalGoals,
+    totalSaved,
+    averageCompletionRate,
+    modalVisible,
+    handleAddGoal,
+    handleDeleteGoal,
+    handleDeleteCancel,
+    handleDeleteConfirm,
+    handleSelectGoal,
 
-  const averageCompletionRate =
-    goals.length > 0
-      ? (goals.reduce(
-          (acc, goal) => acc + goal.current_amount / goal.target_amount,
-          0
-        ) /
-          goals.length) *
-        100
-      : 0;
-
-  const handleAddGoal = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.replace("./goals/add-goal");
-  };
-
-  const handleSelectGoal = (goal: GoalModel) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.replace(`./goals/goal-details/${goal.id}`);
-  };
-
-  const handleDeleteGoal = (goalId: string) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setSelectedGoalId(goalId);
-    setModalVisible(true);
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!selectedGoalId) return;
-    try {
-      await deleteGoal(selectedGoalId);
-    } catch (error) {
-      console.error("Error deleting goal:", error);
-    } finally {
-      setModalVisible(false);
-      setSelectedGoalId(null);
-    }
-  };
-
-  const handleDeleteCancel = () => {
-    setModalVisible(false);
-    setSelectedGoalId(null);
-  };
-
-  const animateFAB = (scale: number) => {
-    Animated.spring(fabAnimation, {
-      toValue: scale,
-      useNativeDriver: true,
-      tension: 300,
-      friction: 20,
-    }).start();
-  };
-
-  useEffect(() => {
-    Animated.spring(fabAnimation, {
-      toValue: 1,
-      useNativeDriver: true,
-      delay: 400,
-    }).start();
-  }, []);
+    selectedGoalId,
+    fabAnimation,
+    headerAnimation,
+    animateFAB,
+  } = useFinancialGoalsScreen();
 
   return (
     <View style={styles.container}>
-      <AnimatedCard delay={100}>
-        <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
-          <Text style={styles.headerTitle}>Goals</Text>
-          <TouchableOpacity
-            onPress={() => router.push("./profile")}
-            style={styles.iconButton}
-          >
-            <Feather name="user" size={22} color={colors.text} />
-          </TouchableOpacity>
-        </View>
-      </AnimatedCard>
+      <AnimatedHeader
+        title="GOALS"
+        subtitle={`${goals.length} ${
+          goals.length === 1 ? "goal" : "goals"
+        } active`}
+        animatedValue={headerAnimation}
+        onBack={() => router.back()}
+        onProfilePress={() => router.push("/profile")}
+      />
+
       <AnimatedCard delay={150}>
         <GoalsSummaryCards
           totalGoals={totalGoals}
@@ -110,14 +60,21 @@ const FinancialGoalsScreen = () => {
           averageCompletionRate={averageCompletionRate}
         />
       </AnimatedCard>
-      <AnimatedCard delay={200}>
-        <GoalsList
-          goals={goals}
-          onEdit={(id) => router.push(`./goals/edit-goal/${id}`)}
-          onDelete={handleDeleteGoal}
-          onSelect={handleSelectGoal}
-        />
-      </AnimatedCard>
+
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: insets.bottom + 50 }}
+        showsVerticalScrollIndicator={false}
+      >
+        <AnimatedCard delay={200}>
+          <GoalsList
+            goals={goals}
+            onEdit={(id) => router.push(`./goals/edit-goal/${id}`)}
+            onDelete={handleDeleteGoal}
+            onSelect={handleSelectGoal}
+          />
+        </AnimatedCard>
+      </ScrollView>
+
       <Animated.View
         style={[
           styles.fabContainer,
@@ -156,30 +113,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  iconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 50,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 30,
-    paddingBottom: 20,
-    backgroundColor: colors.background,
-    borderBottomWidth: 0.5,
-    borderBottomColor: "rgba(0,0,0,0.1)",
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: "600",
-    color: colors.text,
-    fontFamily: "Montserrat",
   },
   fabContainer: {
     position: "absolute",

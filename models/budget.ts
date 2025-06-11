@@ -14,5 +14,4 @@ export type BudgetModel = {
   spent: number;
   remaining: number;
   description?: string;
-  transactions?: string[];
 };

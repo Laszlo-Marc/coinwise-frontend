@@ -1,5 +1,6 @@
 import { API_BASE_URL } from "@/constants/api";
 import { BudgetModel } from "@/models/budget";
+import { TransactionModel } from "@/models/transaction";
 import axios from "axios";
 import * as SecureStore from "expo-secure-store";
 import React, { createContext, useContext, useMemo, useState } from "react";
@@ -7,6 +8,8 @@ import React, { createContext, useContext, useMemo, useState } from "react";
 interface BudgetContextType {
   budgets: BudgetModel[];
   error: string | null;
+  budgetTransactions: Record<string, TransactionModel[]>;
+  fetchBudgetTransactions: (budgetId: string) => Promise<void>;
   addBudget: (budget: BudgetModel) => Promise<void>;
   fetchBudgets: () => Promise<void>;
   deleteBudget: (id: string) => Promise<void>;
@@ -23,6 +26,9 @@ export const BudgetsProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const [budgets, setBudgets] = useState<BudgetModel[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [budgetTransactions, setBudgetTransactions] = useState<
+    Record<string, TransactionModel[]>
+  >({});
 
   const budgetCleanup = () => {
     setBudgets([]);
@@ -32,6 +38,30 @@ export const BudgetsProvider: React.FC<{ children: React.ReactNode }> = ({
   const handleApiError = (error: any) => {
     console.error("API Error:", error);
     setError("Something went wrong. Please try again.");
+  };
+  const fetchBudgetTransactions = async (budgetId: string): Promise<void> => {
+    setError(null);
+    try {
+      const token = await SecureStore.getItem("auth_token");
+
+      const response = await axios.get(
+        `${BUDGET_API_URL}/${budgetId}/transactions`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      const { transactions } = response.data;
+      setBudgetTransactions((prev) => ({
+        ...prev,
+        [budgetId]: transactions,
+      }));
+    } catch (e) {
+      handleApiError(e);
+    }
   };
 
   const fetchBudgets = async (): Promise<void> => {
@@ -121,11 +151,13 @@ export const BudgetsProvider: React.FC<{ children: React.ReactNode }> = ({
     () => ({
       budgets,
       error,
+      budgetTransactions,
       addBudget,
       fetchBudgets,
       deleteBudget,
       updateBudget,
       budgetCleanup,
+      fetchBudgetTransactions,
     }),
     [budgets, error]
   );

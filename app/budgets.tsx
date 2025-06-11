@@ -1,82 +1,40 @@
-// screens/BudgetsScreen.tsx
-
 import { colors } from "@/constants/colors";
 import { Feather } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
-import { LinearGradient } from "expo-linear-gradient";
-import React, { useEffect, useRef } from "react";
+import React from "react";
 import {
-  Alert,
   Animated,
   StatusBar,
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import BudgetList from "@/components/budgetsComponents/BudgetList";
+import AnimatedHeader from "@/components/mainComponents/AnimatedHeader";
 import { useBudgets } from "@/contexts/BudgetsContext";
+import { useBudgetsScreen } from "@/hooks/budget-screen/useBudgetScreen";
 import { useRouter } from "expo-router";
 import BottomBar from "../components/mainComponents/BottomBar";
 
 const BudgetsScreen = () => {
   const insets = useSafeAreaInsets();
-  const { budgets, deleteBudget, fetchBudgets } = useBudgets();
+  const { deleteBudget } = useBudgets();
   const router = useRouter();
-  const headerAnimation = useRef(new Animated.Value(0)).current;
-  const fabAnimation = useRef(new Animated.Value(1)).current;
 
-  useEffect(() => {
-    
-    Animated.spring(headerAnimation, {
-      toValue: 1,
-      useNativeDriver: true,
-      tension: 80,
-      friction: 8,
-    }).start();
-  }, []);
-
-  const handleDeleteBudget = (budgetId: string) => {
-    const budget = budgets.find((b) => b.id === budgetId);
-
-    if (!budget) return;
-
-    Alert.alert(
-      "Delete Budget",
-      `Are you sure you want to delete "${budget.title}"? This action cannot be undone.`,
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: () => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            deleteBudget(budgetId);
-          },
-        },
-      ]
-    );
-  };
+  const {
+    budgets,
+    budgetCountLabel,
+    handleDeleteBudget,
+    handleEditBudget,
+    fetchBudgets,
+    animateFAB,
+    headerAnimation,
+    fabAnimation,
+  } = useBudgetsScreen();
 
   const handleRefresh = async () => {
     fetchBudgets();
-  };
-  const handleEditBudget = () => {
-    router.replace("/budgets/add-budget");
-  };
-
-  const animateFAB = (scale: number) => {
-    Animated.spring(fabAnimation, {
-      toValue: scale,
-      useNativeDriver: true,
-      tension: 300,
-      friction: 20,
-    }).start();
   };
 
   return (
@@ -86,76 +44,42 @@ const BudgetsScreen = () => {
         backgroundColor={colors.primary[500]}
       />
 
-      {/* Header */}
-      <Animated.View
-        style={[
-          styles.headerContainer,
-          {
-            opacity: headerAnimation,
-            transform: [
-              {
-                translateY: headerAnimation.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [-50, 0],
-                }),
-              },
-            ],
-          },
-        ]}
-      >
-        <LinearGradient
-          colors={[colors.primary[500], colors.secondary[500]]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.headerGradient, { paddingTop: insets.top + 16 }]}
-        >
-          <View style={styles.headerContent}>
-            <View style={styles.headerLeft}>
-              <Text style={styles.headerTitle}>BUDGETS</Text>
-              <Text style={styles.headerSubtitle}>
-                {budgets.length} {budgets.length === 1 ? "budget" : "budgets"}{" "}
-                active
-              </Text>
-            </View>
-          </View>
-        </LinearGradient>
-      </Animated.View>
+      <AnimatedHeader
+        title="BUDGETS"
+        subtitle={budgetCountLabel}
+        animatedValue={headerAnimation}
+        onBack={() => router.back()}
+        onProfilePress={() => router.push("/profile")}
+      />
 
       {/* Budget List */}
       <BudgetList
         budgets={budgets}
         onEditBudget={handleEditBudget}
         onDeleteBudget={handleDeleteBudget}
-        onAddBudget={() => {
-          router.replace("/budgets/add-budget");
-        }}
         onRefresh={handleRefresh}
       />
-
       {/* Floating Action Button */}
-      {budgets.length > 0 && (
-        <Animated.View
-          style={[
-            styles.fabContainer,
-            {
-              transform: [{ scale: fabAnimation }],
-              bottom: insets.bottom + 100,
-            },
-          ]}
+      <Animated.View
+        style={[
+          styles.fabContainer,
+          {
+            transform: [{ scale: fabAnimation }],
+            bottom: insets.bottom + 100,
+            opacity: fabAnimation,
+          },
+        ]}
+      >
+        <TouchableOpacity
+          style={styles.fab}
+          onPress={() => router.push("/budgets/add-budget")}
+          onPressIn={() => animateFAB(0.9)}
+          onPressOut={() => animateFAB(1)}
+          activeOpacity={0.9}
         >
-          <TouchableOpacity
-            style={styles.fab}
-            onPress={() => {
-              router.replace("/budgets/add-budget");
-            }}
-            onPressIn={() => animateFAB(0.9)}
-            onPressOut={() => animateFAB(1)}
-            activeOpacity={0.9}
-          >
-            <Feather name="plus" size={24} color="#FFFFFF" />
-          </TouchableOpacity>
-        </Animated.View>
-      )}
+          <Feather name="plus" size={24} color="#FFFFFF" />
+        </TouchableOpacity>
+      </Animated.View>
 
       {/* Bottom Bar */}
       <BottomBar />
