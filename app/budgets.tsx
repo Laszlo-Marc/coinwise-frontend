@@ -147,10 +147,10 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: colors.primary[500],
+    backgroundColor: colors.secondary[500],
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: colors.primary[500],
+    shadowColor: colors.secondaryLight,
     shadowOffset: {
       width: 0,
       height: 8,

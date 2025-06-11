@@ -1,120 +1,43 @@
+import BudgetDescriptionInput from "@/components/budgetsComponents/budget-form-components/BudgetDescriptionInput";
+import BudgetTitleInput from "@/components/budgetsComponents/budget-form-components/BudgetTitleInput";
+import AddBudgetHeader from "@/components/budgetsComponents/budget-form-components/Header";
+import RecurringFrequencySelector from "@/components/budgetsComponents/budget-form-components/RecurringFrequencyField";
 import BudgetCategoryDropdown from "@/components/budgetsComponents/BudgetCategoryDropdown";
 import ThresholdToggle from "@/components/budgetsComponents/ThresholdToggle";
+import { DatePickerField } from "@/components/goalsComponents/goalFormComponents/DatePickerInput";
+import { SwitchField } from "@/components/goalsComponents/goalFormComponents/SwitchField";
+import { TargetAmountInput } from "@/components/goalsComponents/goalFormComponents/TargetAmountInput";
+import { colors } from "@/constants/colors";
 import { useBudgets } from "@/contexts/BudgetsContext";
-import { Feather } from "@expo/vector-icons";
-import DateTimePicker from "@react-native-community/datetimepicker";
-import * as Haptics from "expo-haptics";
-import { LinearGradient } from "expo-linear-gradient";
+import { useAddBudgetForm } from "@/hooks/budget-screen/useAddBudgetForm";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+
 import {
   Keyboard,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
-  TextInput,
-  TouchableOpacity,
   TouchableWithoutFeedback,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors } from "../../constants/colors";
 
 const AddBudgetScreen = () => {
   const insets = useSafeAreaInsets();
-  const router = useRouter();
-  const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-    amount: "",
-    start_date: new Date(),
-    end_date: new Date(new Date().setMonth(new Date().getMonth() + 1)),
-    isRecurring: false,
-    category: "Groceries",
-    recurring_frequency: "monthly",
-    notificationsEnabled: false,
-    notificationThreshold: 80,
-  });
   const { addBudget } = useBudgets();
-  const [showStartDatePicker, setShowStartDatePicker] = useState(false);
-  const [showEndDatePicker, setShowEndDatePicker] = useState(false);
-
-  const handleInputChange = (
-    field: string,
-    value: string | boolean | number
-  ) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleStartDateChange = (event: any, selectedDate: any) => {
-    setShowStartDatePicker(false);
-    if (selectedDate) {
-      setFormData((prev) => ({
-        ...prev,
-        start_date: selectedDate,
-
-        end_date:
-          prev.end_date <= selectedDate
-            ? new Date(selectedDate.getTime() + 86400000)
-            : prev.end_date,
-      }));
-    }
-  };
-
-  const handleEndDateChange = (event: any, selectedDate: any) => {
-    setShowEndDatePicker(false);
-    if (selectedDate) {
-      setFormData((prev) => ({ ...prev, end_date: selectedDate }));
-    }
-  };
-
-  const validateForm = () => {
-    if (!formData.title.trim()) return false;
-
-    const amount = parseFloat(formData.amount);
-    if (isNaN(amount) || amount <= 0) return false;
-
-    if (formData.end_date <= formData.start_date) return false;
-
-    if (formData.notificationsEnabled) {
-      const threshold = formData.notificationThreshold;
-      if (isNaN(threshold) || threshold <= 0 || threshold > 100) return false;
-    }
-
-    return true;
-  };
-
-  const handleSave = () => {
-    if (!validateForm()) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      return;
-    }
-
-    const amount = parseFloat(formData.amount);
-    const budgetData = {
-      title: formData.title,
-      description: formData.description || "",
-      amount: amount,
-      spent: 0,
-      remaining: amount,
-      start_date: formData.start_date.toISOString().split("T")[0],
-      is_recurring: formData.isRecurring,
-      recurring_frequency: formData.recurring_frequency,
-      category: formData.category,
-      end_date: formData.end_date.toISOString().split("T")[0],
-      notificationsEnabled: formData.notificationsEnabled,
-      notificationsThreshold: formData.notificationThreshold,
-      transactions: [],
-    };
-
-    addBudget(budgetData);
-
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    router.replace("/budgets");
-  };
+  const router = useRouter();
+  const {
+    formData,
+    handleInputChange,
+    validateForm,
+    handleSave,
+    showStartDatePicker,
+    showTargetDatePicker,
+    setShowStartDatePicker,
+    setShowTargetDatePicker,
+  } = useAddBudgetForm(addBudget);
 
   return (
     <KeyboardAvoidingView
@@ -124,184 +47,64 @@ const AddBudgetScreen = () => {
     >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={styles.innerContainer}>
-          {/* Header with gradient */}
-          <LinearGradient
-            colors={[colors.secondary[500], colors.primary[500]]}
-            start={{ x: 1, y: 0 }}
-            end={{ x: 0, y: 1 }}
-            style={[styles.header, { paddingTop: insets.top + 10 }]}
-          >
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={() => router.replace("/budgets")}
-            >
-              <Feather name="x" size={24} color={colors.text} />
-            </TouchableOpacity>
-
-            <Text style={styles.headerTitle}>Create a new budget</Text>
-
-            <TouchableOpacity
-              style={[
-                styles.saveButton,
-                !validateForm() && styles.saveButtonDisabled,
-              ]}
-              onPress={handleSave}
-              disabled={!validateForm()}
-            >
-              <Text style={styles.saveButtonText}>Save</Text>
-            </TouchableOpacity>
-          </LinearGradient>
+          <AddBudgetHeader
+            onCancel={() => router.replace("/budgets")}
+            onSave={handleSave}
+            disabled={!validateForm()}
+          />
 
           <ScrollView style={styles.form}>
-            {/* Title */}
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Title *</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.title}
-                onChangeText={(value) => handleInputChange("title", value)}
-                placeholder="What is this budget for?"
-                placeholderTextColor={colors.textMuted}
-              />
-            </View>
+            <BudgetTitleInput
+              value={formData.title}
+              onChange={(value) => handleInputChange("title", value)}
+            />
+            <BudgetDescriptionInput
+              value={formData.description}
+              onChange={(value) => handleInputChange("description", value)}
+            />
 
-            {/* Description */}
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Description</Text>
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                value={formData.description}
-                onChangeText={(value) =>
-                  handleInputChange("description", value)
-                }
-                placeholder="Optional description..."
-                placeholderTextColor={colors.textMuted}
-                multiline
-                numberOfLines={3}
-              />
-            </View>
-
-            {/* Category */}
             <View style={styles.formGroup}>
               <BudgetCategoryDropdown
                 selectedCategory={formData.category}
-                onSelectCategory={(category) => {
-                  handleInputChange("category", category);
-
-                  Haptics.selectionAsync();
-                }}
+                onSelectCategory={(category) =>
+                  handleInputChange("category", category)
+                }
               />
             </View>
-            {/* Amount */}
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Amount *</Text>
-              <View style={styles.amountInputContainer}>
-                <Text style={styles.currencySymbol}>RON</Text>
-                <TextInput
-                  style={styles.amountInput}
-                  value={formData.amount}
-                  onChangeText={(value) => {
-                    const sanitized = value.replace(/[^0-9.]/g, "");
 
-                    const parts = sanitized.split(".");
-                    const cleanValue =
-                      parts.length > 2
-                        ? parts[0] + "." + parts.slice(1).join("")
-                        : sanitized;
-                    handleInputChange("amount", cleanValue);
-                  }}
-                  placeholder="0.00"
-                  placeholderTextColor={colors.textMuted}
-                  keyboardType="decimal-pad"
-                />
-              </View>
-            </View>
+            <TargetAmountInput
+              value={formData.amount}
+              onChange={(value) => handleInputChange("amount", value)}
+            />
 
-            {/* Start Date */}
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Start Date</Text>
-              <TouchableOpacity
-                style={styles.datePickerButton}
-                onPress={() => setShowStartDatePicker(true)}
-              >
-                <Text style={styles.dateText}>
-                  {formData.start_date.toLocaleDateString()}
-                </Text>
-                <Feather
-                  name="calendar"
-                  size={20}
-                  color={colors.textSecondary}
-                />
-              </TouchableOpacity>
+            <DatePickerField
+              label="Start Date"
+              date={formData.start_date}
+              onChange={(date) => handleInputChange("start_date", date)}
+              showPicker={showStartDatePicker}
+              setShowPicker={setShowStartDatePicker}
+            />
 
-              {showStartDatePicker && (
-                <DateTimePicker
-                  value={formData.start_date}
-                  mode="date"
-                  display="default"
-                  onChange={handleStartDateChange}
-                  minimumDate={new Date()}
-                />
-              )}
-            </View>
+            <DatePickerField
+              label="Target Date *"
+              date={formData.end_date}
+              onChange={(date) => handleInputChange("end_date", date)}
+              showPicker={showTargetDatePicker}
+              setShowPicker={setShowTargetDatePicker}
+              minDate={
+                new Date(new Date(formData.start_date).getTime() + 86400000)
+              }
+            />
 
-            {/* End Date */}
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>End Date *</Text>
-              <TouchableOpacity
-                style={styles.datePickerButton}
-                onPress={() => setShowEndDatePicker(true)}
-              >
-                <Text style={styles.dateText}>
-                  {formData.end_date.toLocaleDateString()}
-                </Text>
-                <Feather
-                  name="calendar"
-                  size={20}
-                  color={colors.textSecondary}
-                />
-              </TouchableOpacity>
+            <SwitchField
+              value={formData.notificationsEnabled}
+              onChange={(value) =>
+                handleInputChange("notificationsEnabled", value)
+              }
+              label="Enable Notifications"
+              helperText="Get notified when you reach a certain threshold of your budget"
+            />
 
-              {showEndDatePicker && (
-                <DateTimePicker
-                  value={formData.end_date}
-                  mode="date"
-                  display="default"
-                  onChange={handleEndDateChange}
-                  minimumDate={
-                    new Date(formData.start_date.getTime() + 86400000)
-                  } // Day after start date
-                />
-              )}
-            </View>
-
-            {/* Notifications Toggle */}
-            <View style={styles.formGroup}>
-              <View style={styles.switchContainer}>
-                <Text style={styles.label}>Notifications</Text>
-                <Switch
-                  value={formData.notificationsEnabled}
-                  onValueChange={(value) =>
-                    handleInputChange("notificationsEnabled", value)
-                  }
-                  trackColor={{
-                    false: colors.backgroundDark,
-                    true: colors.primary[600],
-                  }}
-                  thumbColor={
-                    formData.notificationsEnabled
-                      ? colors.primary[400]
-                      : colors.textSecondary
-                  }
-                />
-              </View>
-              <Text style={styles.helperText}>
-                Enable notifications for when a certain threshold is reached
-                (e.g. 70% of budget spent)
-              </Text>
-            </View>
-
-            {/* Notifications Threshold */}
             {formData.notificationsEnabled && (
               <View style={styles.formGroup}>
                 <Text style={styles.label}>Notification Threshold</Text>
@@ -321,64 +124,20 @@ const AddBudgetScreen = () => {
               </View>
             )}
 
-            {/* Is Recurring Toggle */}
-            <View style={styles.formGroup}>
-              <View style={styles.switchContainer}>
-                <Text style={styles.label}>Recurring</Text>
-                <Switch
-                  value={formData.isRecurring}
-                  onValueChange={(value) =>
-                    handleInputChange("isRecurring", value)
-                  }
-                  trackColor={{
-                    false: colors.backgroundDark,
-                    true: colors.primary[600],
-                  }}
-                  thumbColor={
-                    formData.isRecurring
-                      ? colors.primary[400]
-                      : colors.textSecondary
-                  }
-                />
-              </View>
-              <Text style={styles.helperText}>
-                Enable for recurring budgets (e.g. weekly groceries budget)
-              </Text>
-            </View>
+            <SwitchField
+              value={formData.isRecurring}
+              onChange={(value) => handleInputChange("isRecurring", value)}
+              label="Recurring Budget"
+              helperText="Enable for recurring budgets (e.g. weekly groceries budget)"
+            />
 
-            {/* Recurring Frequency */}
             {formData.isRecurring && (
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Frequency</Text>
-                <TouchableOpacity
-                  style={styles.selectButton}
-                  onPress={() => {
-                    const frequencies = ["monthly", "weekly", "daily"];
-                    const currentIndex = frequencies.indexOf(
-                      formData.recurring_frequency
-                    );
-                    const nextIndex = (currentIndex + 1) % frequencies.length;
-                    handleInputChange(
-                      "recurring_frequency",
-                      frequencies[nextIndex]
-                    );
-                    Haptics.selectionAsync();
-                  }}
-                >
-                  <Text style={styles.selectText}>
-                    {formData.recurring_frequency.charAt(0).toUpperCase() +
-                      formData.recurring_frequency.slice(1)}
-                  </Text>
-                  <Feather
-                    name="repeat"
-                    size={20}
-                    color={colors.textSecondary}
-                  />
-                </TouchableOpacity>
-                <Text style={styles.helperText}>
-                  Tap to cycle through: Monthly → Weekly → Daily
-                </Text>
-              </View>
+              <RecurringFrequencySelector
+                frequency={formData.recurring_frequency}
+                onChange={(value) =>
+                  handleInputChange("recurring_frequency", value)
+                }
+              />
             )}
           </ScrollView>
         </View>
@@ -388,7 +147,6 @@ const AddBudgetScreen = () => {
 };
 
 export default AddBudgetScreen;
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -396,40 +154,6 @@ const styles = StyleSheet.create({
   },
   innerContainer: {
     flex: 1,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(0, 0, 0, 0.2)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: colors.text,
-  },
-  saveButton: {
-    backgroundColor: colors.primary[400],
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  saveButtonDisabled: {
-    backgroundColor: colors.backgroundLight,
-    opacity: 0.6,
-  },
-  saveButtonText: {
-    color: colors.text,
-    fontWeight: "600",
   },
   form: {
     paddingHorizontal: 16,
@@ -443,92 +167,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.text,
     marginBottom: 8,
-  },
-  input: {
-    backgroundColor: colors.backgroundLight,
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    color: colors.text,
-    fontSize: 16,
-  },
-  textArea: {
-    minHeight: 80,
-    textAlignVertical: "top",
-  },
-  amountInputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: colors.backgroundLight,
-    borderRadius: 8,
-    paddingHorizontal: 16,
-  },
-  currencySymbol: {
-    fontSize: 16,
-    color: colors.text,
-    marginRight: 4,
-  },
-  amountInput: {
-    flex: 1,
-    paddingVertical: 12,
-    color: colors.text,
-    fontSize: 16,
-  },
-  datePickerButton: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: colors.backgroundLight,
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  dateText: {
-    color: colors.text,
-    fontSize: 16,
-  },
-  switchContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  helperText: {
-    color: colors.textSecondary,
-    fontSize: 14,
-    marginTop: 8,
-  },
-  selectButton: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: colors.backgroundLight,
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  selectText: {
-    color: colors.text,
-    fontSize: 16,
-  },
-  categoryPicker: {
-    backgroundColor: colors.backgroundLight,
-    borderRadius: 8,
-    marginTop: 8,
-    paddingVertical: 8,
-  },
-  categoryOption: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  categoryOptionSelected: {
-    backgroundColor: colors.secondary[800],
-  },
-  categoryOptionText: {
-    color: colors.text,
-    fontSize: 16,
-  },
-  categoryOptionTextSelected: {
-    color: colors.primary[300],
-    fontWeight: "600",
   },
 });

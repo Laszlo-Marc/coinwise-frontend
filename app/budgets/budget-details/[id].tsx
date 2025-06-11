@@ -25,7 +25,6 @@ const BudgetDetailsScreen = () => {
   const progressAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Ensure id is a string
     const budgetId = Array.isArray(id) ? id[0] : id;
     const foundBudget = budgets.find((b) => b.id === budgetId);
     if (foundBudget) {
