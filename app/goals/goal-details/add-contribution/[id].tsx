@@ -1,107 +1,53 @@
-import { Feather } from "@expo/vector-icons";
-import DateTimePicker, {
-  DateTimePickerEvent,
-} from "@react-native-community/datetimepicker";
-import * as Haptics from "expo-haptics";
-import { LinearGradient } from "expo-linear-gradient";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { useLocalSearchParams, useRouter } from "expo-router";
-
-import { useGoals } from "@/contexts/GoalsContext";
-import { GoalModel } from "@/models/goal";
-import React, { useEffect, useRef, useState } from "react";
+import React from "react";
 import {
-  Animated,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   TouchableWithoutFeedback,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors } from "../../../../constants/colors";
-type ProgressHistoryItem = {
-  date: string;
-  amountAdded: number;
-};
+
+import { AmountInput } from "@/components/goalsComponents/contribution-components/AmountInput";
+import { HeaderBarX } from "@/components/goalsComponents/contribution-components/HeaderBar";
+import { QuickAmountButtons } from "@/components/goalsComponents/contribution-components/QuickAmountButtons";
+import { SuccessOverlay } from "@/components/goalsComponents/contribution-components/SuccessOverlay";
+import { colors } from "@/constants/colors";
+import { useAddContribution } from "@/hooks/goals-hooks/useAddContribution";
+import { Feather } from "@expo/vector-icons";
 
 const AddContributionScreen = () => {
-  const router = useRouter();
   const { id } = useLocalSearchParams();
-  const insets = useSafeAreaInsets();
-  const { addContribution } = useGoals();
-  const { goals } = useGoals();
-  const [amount, setAmount] = useState("");
-  const [date, setDate] = useState(new Date());
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
-  const [goalData, setGoalData] = useState(null as GoalModel | null);
-  const successOpacity = useRef(new Animated.Value(0)).current;
+  const router = useRouter();
 
-  useEffect(() => {
-    const goal = goals.find((g) => g.id === id);
-    setGoalData(goal || null);
-  }, [id]);
+  const {
+    goalData,
+    amount,
+    setAmount,
+    date,
+    setShowDatePicker,
+    showDatePicker,
+    handleDateChange,
+    handleAddContribution,
+    validateAmount,
+    showSuccess,
+    successOpacity,
+  } = useAddContribution(String(id));
 
-  const handleDateChange = (
-    event: DateTimePickerEvent,
-    selectedDate?: Date
-  ) => {
-    setShowDatePicker(false);
-    if (selectedDate) {
-      setDate(selectedDate);
-    }
-  };
-
-  const validateAmount = () => {
-    const numAmount = parseFloat(amount);
-    return !isNaN(numAmount) && numAmount > 0;
-  };
-
-  const handleAddContribution = async () => {
-    if (!validateAmount()) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      return;
-    }
-
-    const numericAmount = parseFloat(amount);
-    const contributionDate = date.toISOString().split("T")[0];
-
-    const newContribution = {
-      goal_id: id as string,
-      amount: numericAmount,
-      date: contributionDate,
-    };
-    try {
-      await addContribution(newContribution);
-      setShowSuccess(true);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
-      Animated.sequence([
-        Animated.timing(successOpacity, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.delay(1000),
-        Animated.timing(successOpacity, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        router.replace(`../${id}`);
-      });
-    } catch (err) {
-      console.error("Failed to add contribution:", err);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-    }
-  };
-
-  const quickAmounts = [50, 100, 200, 500, 1000, 5000];
+  if (!goalData) {
+    return (
+      <View style={styles.centered}>
+        <Text style={styles.errorText}>Goal not found.</Text>
+        <TouchableOpacity onPress={() => router.replace("/financial-goals")}>
+          <Text style={styles.retryText}>Go Back</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
@@ -111,76 +57,23 @@ const AddContributionScreen = () => {
     >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={styles.innerContainer}>
-          {/* Header with gradient */}
-          <LinearGradient
-            colors={[colors.secondary[500], colors.primary[500]]}
-            start={{ x: 1, y: 0 }}
-            end={{ x: 0, y: 1 }}
-            style={[styles.header, { paddingTop: insets.top + 10 }]}
-          >
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={() => router.back()}
-            >
-              <Feather name="x" size={24} color={colors.text} />
-            </TouchableOpacity>
-
-            <Text style={styles.headerTitle}>Add Contribution</Text>
-
-            <View style={styles.placeholder}></View>
-          </LinearGradient>
+          <HeaderBarX title="Add Contribution" onClose={() => router.back()} />
 
           <View style={styles.content}>
-            {goalData && (
-              <View style={styles.goalInfo}>
-                <Text style={styles.goalTitle}>{goalData.title}</Text>
-                <Text style={styles.goalProgress}>
-                  Current:{" "}
-                  {new Intl.NumberFormat("en-US", {
-                    style: "currency",
-                    currency: "USD",
-                  }).format(goalData.current_amount)}
-                </Text>
-              </View>
-            )}
-
-            {/* Amount Input */}
-            <View style={styles.amountContainer}>
-              <Text style={styles.amountLabel}>Amount</Text>
-              <View style={styles.amountInputWrapper}>
-                <Text style={styles.currencySymbol}>$</Text>
-                <TextInput
-                  style={styles.amountInput}
-                  value={amount}
-                  onChangeText={setAmount}
-                  placeholder="0.00"
-                  placeholderTextColor={colors.textMuted}
-                  keyboardType="numeric"
-                  autoFocus
-                />
-              </View>
+            <View style={styles.goalInfo}>
+              <Text style={styles.goalTitle}>{goalData.title}</Text>
+              <Text style={styles.goalProgress}>
+                Current:{" "}
+                {new Intl.NumberFormat("ro-RO", {
+                  style: "currency",
+                  currency: "RON",
+                }).format(goalData.current_amount)}
+              </Text>
             </View>
 
-            {/* Quick amount buttons */}
-            <View style={styles.quickAmountContainer}>
-              <Text style={styles.quickLabel}>Quick Add:</Text>
-              <View style={styles.quickAmountButtons}>
-                {quickAmounts.map((amt) => (
-                  <TouchableOpacity
-                    key={amt}
-                    style={styles.quickAmountButton}
-                    onPress={() => {
-                      setAmount(amt.toString());
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    }}
-                  >
-                    <Text style={styles.quickAmountText}>${amt}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
+            <AmountInput amount={amount} onChange={setAmount} />
+            <QuickAmountButtons onSelect={(amt) => setAmount(amt.toString())} />
 
-            {/* Date Picker */}
             <View style={styles.dateContainer}>
               <Text style={styles.dateLabel}>Contribution Date</Text>
               <TouchableOpacity
@@ -206,7 +99,6 @@ const AddContributionScreen = () => {
               )}
             </View>
 
-            {/* Add Button */}
             <TouchableOpacity
               style={[
                 styles.addButton,
@@ -219,17 +111,7 @@ const AddContributionScreen = () => {
             </TouchableOpacity>
           </View>
 
-          {/* Success Animation Overlay */}
-          {showSuccess && (
-            <Animated.View
-              style={[styles.successOverlay, { opacity: successOpacity }]}
-            >
-              <View style={styles.successContent}>
-                <Feather name="check-circle" size={60} color={colors.success} />
-                <Text style={styles.successText}>Contribution Added!</Text>
-              </View>
-            </Animated.View>
-          )}
+          {showSuccess && <SuccessOverlay opacity={successOpacity} />}
         </View>
       </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
@@ -243,29 +125,6 @@ const styles = StyleSheet.create({
   },
   innerContainer: {
     flex: 1,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(0, 0, 0, 0.2)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: colors.text,
-  },
-  placeholder: {
-    width: 40,
   },
   content: {
     padding: 20,
@@ -285,60 +144,6 @@ const styles = StyleSheet.create({
   goalProgress: {
     fontSize: 16,
     color: colors.textSecondary,
-  },
-  amountContainer: {
-    marginBottom: 24,
-  },
-  amountLabel: {
-    fontSize: 16,
-    color: colors.text,
-    marginBottom: 8,
-  },
-  amountInputWrapper: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: colors.backgroundLight,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-  },
-  currencySymbol: {
-    fontSize: 24,
-    color: colors.text,
-    marginRight: 4,
-  },
-  amountInput: {
-    flex: 1,
-    fontSize: 24,
-    color: colors.text,
-    padding: 16,
-  },
-  quickAmountContainer: {
-    marginBottom: 24,
-  },
-  quickLabel: {
-    fontSize: 16,
-    color: colors.text,
-    marginBottom: 8,
-  },
-  quickAmountButtons: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    gap: 12,
-  },
-
-  quickAmountButton: {
-    backgroundColor: colors.backgroundLight,
-    borderRadius: 8,
-    paddingVertical: 12,
-    alignItems: "center",
-    width: "30%",
-    marginBottom: 12,
-  },
-
-  quickAmountText: {
-    color: colors.text,
-    fontSize: 16,
   },
   dateContainer: {
     marginBottom: 32,
@@ -376,23 +181,24 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "600",
   },
-  successOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0, 0, 0, 0.7)",
+  centered: {
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
-  },
-  successContent: {
-    backgroundColor: colors.backgroundLight,
-    borderRadius: 16,
     padding: 24,
-    alignItems: "center",
   },
-  successText: {
-    fontSize: 20,
+  errorText: {
+    color: colors.error,
+    fontSize: 16,
+    textAlign: "center",
+    marginBottom: 12,
+  },
+  retryText: {
+    color: colors.primary[400],
+    fontSize: 16,
     fontWeight: "600",
-    color: colors.text,
-    marginTop: 16,
+    textDecorationLine: "underline",
   },
 });
+
 export default AddContributionScreen;
