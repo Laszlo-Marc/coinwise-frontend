@@ -1,52 +1,80 @@
-import { categories } from "@/constants/categories";
+import { CategorySelector } from "@/components/goalsComponents/goalFormComponents/CategorySelector";
+import ContributionFields from "@/components/goalsComponents/goalFormComponents/ContributionFields";
+import { DatePickerField } from "@/components/goalsComponents/goalFormComponents/DatePickerInput";
+import { GoalDescriptionInput } from "@/components/goalsComponents/goalFormComponents/GoalDescritionInput";
+import GoalTitleInput from "@/components/goalsComponents/goalFormComponents/GoalTitleInput";
+import { SwitchField } from "@/components/goalsComponents/goalFormComponents/SwitchField";
+import { TargetAmountInput } from "@/components/goalsComponents/goalFormComponents/TargetAmountInput";
+import { colors } from "@/constants/colors";
 import { useGoals } from "@/contexts/GoalsContext";
 import { Feather } from "@expo/vector-icons";
-import DateTimePicker from "@react-native-community/datetimepicker";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Alert,
+  Animated,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
-  TextInput,
   TouchableOpacity,
   TouchableWithoutFeedback,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors } from "../../../constants/colors";
+
+type ContributionFrequency = "daily" | "weekly" | "monthly";
 
 const EditGoalScreen = () => {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const params = useLocalSearchParams();
-  const goalId = params.id as string; // Extract the actual ID from params
-  const insets = useSafeAreaInsets();
+  const goalId = params.id as string;
   const { goals, updateGoal } = useGoals();
 
   const [formData, setFormData] = useState({
     title: "",
     description: "",
-    targetAmount: "",
-    startDate: new Date(),
-    targetDate: new Date(),
-    isRecurring: false,
+    target_amount: "",
+    current_amount: 0,
+    start_date: "",
+    end_date: "",
     category: "Savings",
-    autoContributions: false,
-    contributionAmount: "",
-    contributionFrequency: "monthly",
+    auto_contribution_enabled: false,
+    auto_contribution_amount: "",
+    contribution_frequency: "monthly" as ContributionFrequency,
+    is_active: true,
   });
 
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [showTargetDatePicker, setShowTargetDatePicker] = useState(false);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const successOpacity = useRef(new Animated.Value(0)).current;
+
+  const formatDateForInput = useCallback((dateString: string): string => {
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        return new Date().toISOString().split("T")[0];
+      }
+      return date.toISOString().split("T")[0];
+    } catch {
+      return new Date().toISOString().split("T")[0];
+    }
+  }, []);
 
   useEffect(() => {
     if (goalId && goals.length > 0) {
@@ -55,112 +83,149 @@ const EditGoalScreen = () => {
         setFormData({
           title: goal.title || "",
           description: goal.description || "",
-          targetAmount: goal.target_amount ? goal.target_amount.toString() : "",
-          startDate: goal.start_date ? new Date(goal.start_date) : new Date(),
-          targetDate: goal.end_date ? new Date(goal.end_date) : new Date(),
-          isRecurring: goal.is_recuring || false,
+          target_amount: goal.target_amount
+            ? goal.target_amount.toString()
+            : "",
+          current_amount: goal.current_amount || 0,
+          start_date: goal.start_date
+            ? formatDateForInput(goal.start_date)
+            : formatDateForInput(new Date().toISOString()),
+          end_date: goal.end_date
+            ? formatDateForInput(goal.end_date)
+            : formatDateForInput(new Date().toISOString()),
           category: goal.category || "Savings",
-          autoContributions: goal.auto_contribution_enabled || false,
-          contributionAmount: goal.auto_contribution_amount
+          auto_contribution_enabled: goal.auto_contribution_enabled || false,
+          auto_contribution_amount: goal.auto_contribution_amount
             ? goal.auto_contribution_amount.toString()
             : "",
-          contributionFrequency: goal.contribution_frequency || "monthly",
+          contribution_frequency: (["daily", "weekly", "monthly"].includes(
+            goal.contribution_frequency ?? ""
+          )
+            ? goal.contribution_frequency
+            : "monthly") as ContributionFrequency,
+          is_active: goal.is_active ?? true,
         });
         setIsLoading(false);
       } else {
-        // Goal not found
         Alert.alert("Error", "Goal not found", [
           { text: "OK", onPress: () => router.back() },
         ]);
       }
     }
-  }, [goalId, goals]);
+  }, [goalId, goals, formatDateForInput]);
 
-  const handleInputChange = (field: string, value: string | boolean) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-  };
+  const validationErrors = useMemo(() => {
+    const errs: Record<string, string> = {};
 
-  const handleStartDateChange = (event: any, selectedDate?: Date) => {
-    setShowStartDatePicker(false);
-    if (selectedDate) {
-      setFormData((prev) => ({
-        ...prev,
-        startDate: selectedDate,
-
-        targetDate:
-          selectedDate >= prev.targetDate
-            ? new Date(selectedDate.getTime() + 86400000)
-            : prev.targetDate,
-      }));
+    if (!formData.title.trim()) {
+      errs.title = "Title is required.";
     }
-  };
 
-  const handleTargetDateChange = (event: any, selectedDate?: Date) => {
-    setShowTargetDatePicker(false);
-    if (selectedDate) {
-      setFormData((prev) => ({ ...prev, targetDate: selectedDate }));
+    if (!formData.description.trim()) {
+      errs.description = "Description is required.";
     }
-  };
 
-  const validateForm = () => {
-    if (!formData.title.trim()) return false;
-    if (
-      isNaN(parseFloat(formData.targetAmount)) ||
-      parseFloat(formData.targetAmount) <= 0
-    )
-      return false;
-    if (formData.targetDate <= formData.startDate) return false;
-    if (formData.autoContributions) {
-      const amount = parseFloat(formData.contributionAmount);
-      if (isNaN(amount) || amount <= 0) return false;
+    const amount = parseFloat(formData.target_amount);
+    if (isNaN(amount) || amount <= 0) {
+      errs.targetAmount = "Enter a valid target amount.";
     }
-    return true;
-  };
 
-  const handleSave = async () => {
-    if (!validateForm()) {
+    if (formData.end_date <= formData.start_date) {
+      errs.end_date = "Target date must be after start date.";
+    }
+
+    if (formData.auto_contribution_enabled) {
+      const contributionAmount = parseFloat(formData.auto_contribution_amount);
+      if (isNaN(contributionAmount) || contributionAmount <= 0) {
+        errs.contributionAmount = "Enter a valid contribution amount.";
+      }
+    }
+
+    return errs;
+  }, [
+    formData.title,
+    formData.description,
+    formData.target_amount,
+    formData.start_date,
+    formData.end_date,
+    formData.auto_contribution_enabled,
+    formData.auto_contribution_amount,
+  ]);
+
+  const isFormValid = useMemo(() => {
+    return Object.keys(validationErrors).length === 0;
+  }, [validationErrors]);
+
+  useEffect(() => {
+    setErrors(validationErrors);
+  }, [validationErrors]);
+
+  const handleInputChange = useCallback(
+    (field: string, value: string | boolean | Date | number) => {
+      setFormData((prev) => ({ ...prev, [field]: value }));
+    },
+    []
+  );
+
+  const handleSave = useCallback(async () => {
+    if (!isFormValid) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert(
-        "Validation Error",
-        "Please check all required fields and ensure the target date is after the start date."
-      );
       return;
     }
 
+    const updatedGoal = {
+      title: formData.title,
+      description: formData.description,
+      target_amount: parseFloat(formData.target_amount),
+      current_amount: formData.current_amount,
+      start_date: formData.start_date,
+      end_date: formData.end_date,
+      category: formData.category,
+      is_active: formData.is_active,
+      auto_contribution_enabled: formData.auto_contribution_enabled,
+      auto_contribution_amount: formData.auto_contribution_enabled
+        ? parseFloat(formData.auto_contribution_amount)
+        : undefined,
+      contribution_frequency: formData.auto_contribution_enabled
+        ? formData.contribution_frequency
+        : undefined,
+    };
+
     try {
-      const updatedGoal = {
-        title: formData.title.trim(),
-        description: formData.description.trim(),
-        target_amount: parseFloat(formData.targetAmount),
-        start_date: formData.startDate.toISOString().split("T")[0],
-        end_date: formData.targetDate.toISOString().split("T")[0],
-        is_recuring: formData.isRecurring,
-        category: formData.category,
-        auto_contribution_enabled: formData.autoContributions,
-        auto_contribution_amount: formData.autoContributions
-          ? parseFloat(formData.contributionAmount || "0.0")
-          : 0.0,
-
-        contribution_frequency: formData.autoContributions
-          ? formData.contributionFrequency
-          : "",
-      };
-
-      console.log("Updating goal with data:", updatedGoal);
       await updateGoal(goalId, updatedGoal);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      router.replace("/financial-goals");
-    } catch (error) {
-      console.error("Error updating goal:", error);
+      setShowSuccess(true);
+      Animated.sequence([
+        Animated.timing(successOpacity, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.delay(1000),
+        Animated.timing(successOpacity, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setShowSuccess(false);
+        router.replace("/financial-goals");
+      });
+    } catch (err) {
+      console.error("Update failed", err);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert("Error", "Failed to update goal. Please try again.");
     }
-  };
+  }, [isFormValid, formData, goalId, updateGoal, successOpacity, router]);
+
+  const toggleCategoryPicker = useCallback(() => {
+    setShowCategoryPicker((prev) => !prev);
+    Haptics.selectionAsync();
+  }, []);
 
   if (isLoading) {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
-        <Text style={styles.loadingText}>Loading...</Text>
+        <Text>Loading...</Text>
       </View>
     );
   }
@@ -173,9 +238,8 @@ const EditGoalScreen = () => {
     >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={styles.innerContainer}>
-          {/* Header with gradient */}
           <LinearGradient
-            colors={[colors.secondary[500], colors.primary[500]]}
+            colors={["rgb(251, 193, 105)", "rgb(198, 119, 0)"]}
             start={{ x: 1, y: 0 }}
             end={{ x: 0, y: 1 }}
             style={[styles.header, { paddingTop: insets.top + 10 }]}
@@ -192,296 +256,104 @@ const EditGoalScreen = () => {
             <TouchableOpacity
               style={[
                 styles.saveButton,
-                !validateForm() && styles.saveButtonDisabled,
+                !isFormValid && styles.saveButtonDisabled,
               ]}
               onPress={handleSave}
-              disabled={!validateForm()}
+              disabled={!isFormValid}
             >
               <Text style={styles.saveButtonText}>Save</Text>
             </TouchableOpacity>
           </LinearGradient>
 
           <ScrollView style={styles.form} showsVerticalScrollIndicator={false}>
-            {/* Title */}
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Goal Title *</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.title}
-                onChangeText={(value) => handleInputChange("title", value)}
-                placeholder="What are you saving for?"
-                placeholderTextColor={colors.textMuted}
-                maxLength={50}
-              />
-            </View>
+            <GoalTitleInput
+              value={formData.title}
+              onChange={(val) => handleInputChange("title", val)}
+              error={errors.title}
+            />
 
-            {/* Description */}
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Description</Text>
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                value={formData.description}
-                onChangeText={(value) =>
-                  handleInputChange("description", value)
+            <GoalDescriptionInput
+              value={formData.description}
+              onChange={(val) => handleInputChange("description", val)}
+              error={errors.description}
+            />
+
+            <TargetAmountInput
+              value={formData.target_amount}
+              onChange={(val) =>
+                handleInputChange("target_amount", val.toString())
+              }
+              error={errors.targetAmount}
+            />
+
+            <DatePickerField
+              label="Start Date"
+              date={formData.start_date}
+              onChange={(date) => handleInputChange("start_date", date)}
+              showPicker={showStartDatePicker}
+              setShowPicker={setShowStartDatePicker}
+            />
+
+            <DatePickerField
+              label="Target Date *"
+              date={formData.end_date}
+              onChange={(date) => handleInputChange("end_date", date)}
+              showPicker={showTargetDatePicker}
+              setShowPicker={setShowTargetDatePicker}
+              minDate={
+                new Date(new Date(formData.start_date).getTime() + 86400000)
+              }
+              error={errors.end_date}
+            />
+
+            <CategorySelector
+              selected={formData.category}
+              onChange={(category) => handleInputChange("category", category)}
+              isExpanded={showCategoryPicker}
+              toggleExpand={toggleCategoryPicker}
+            />
+
+            <SwitchField
+              label="Auto Contributions"
+              value={formData.auto_contribution_enabled}
+              onChange={(val) =>
+                handleInputChange("auto_contribution_enabled", val)
+              }
+              helperText="Enable to contribute automatically on a schedule"
+            />
+
+            {formData.auto_contribution_enabled && (
+              <ContributionFields
+                contributionAmount={formData.auto_contribution_amount}
+                contributionFrequency={formData.contribution_frequency}
+                onAmountChange={(val) =>
+                  handleInputChange("auto_contribution_amount", val.toString())
                 }
-                placeholder="Add some details about your goal"
-                placeholderTextColor={colors.textMuted}
-                multiline
-                numberOfLines={3}
-                maxLength={200}
+                onFrequencyChange={(val) =>
+                  handleInputChange("contribution_frequency", val)
+                }
+                error={errors.contributionAmount}
               />
-            </View>
-
-            {/* Target Amount */}
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Target Amount *</Text>
-              <View style={styles.amountInputContainer}>
-                <Text style={styles.currencySymbol}>$</Text>
-                <TextInput
-                  style={styles.amountInput}
-                  value={formData.targetAmount}
-                  onChangeText={(value) => {
-                    const cleanedValue = value.replace(/[^0-9.]/g, "");
-                    const parts = cleanedValue.split(".");
-                    if (parts.length > 2) {
-                      return;
-                    }
-                    if (parts[1] && parts[1].length > 2) {
-                      return;
-                    }
-                    handleInputChange("targetAmount", cleanedValue);
-                  }}
-                  placeholder="0.00"
-                  placeholderTextColor={colors.textMuted}
-                  keyboardType="decimal-pad"
-                />
-              </View>
-            </View>
-
-            {/* Start Date */}
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Start Date</Text>
-              <TouchableOpacity
-                style={styles.datePickerButton}
-                onPress={() => setShowStartDatePicker(true)}
-              >
-                <Text style={styles.dateText}>
-                  {formData.startDate.toLocaleDateString()}
-                </Text>
-                <Feather
-                  name="calendar"
-                  size={20}
-                  color={colors.textSecondary}
-                />
-              </TouchableOpacity>
-
-              {showStartDatePicker && (
-                <DateTimePicker
-                  value={formData.startDate}
-                  mode="date"
-                  display="default"
-                  onChange={handleStartDateChange}
-                  minimumDate={new Date()}
-                />
-              )}
-            </View>
-
-            {/* Target Date */}
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Target Date *</Text>
-              <TouchableOpacity
-                style={styles.datePickerButton}
-                onPress={() => setShowTargetDatePicker(true)}
-              >
-                <Text style={styles.dateText}>
-                  {formData.targetDate.toLocaleDateString()}
-                </Text>
-                <Feather
-                  name="calendar"
-                  size={20}
-                  color={colors.textSecondary}
-                />
-              </TouchableOpacity>
-
-              {showTargetDatePicker && (
-                <DateTimePicker
-                  value={formData.targetDate}
-                  mode="date"
-                  display="default"
-                  onChange={handleTargetDateChange}
-                  minimumDate={
-                    new Date(formData.startDate.getTime() + 86400000)
-                  }
-                />
-              )}
-            </View>
-
-            {/* Is Recurring */}
-            <View style={styles.formGroup}>
-              <View style={styles.switchContainer}>
-                <Text style={styles.label}>Recurring Goal</Text>
-                <Switch
-                  value={formData.isRecurring}
-                  onValueChange={(value) =>
-                    handleInputChange("isRecurring", value)
-                  }
-                  trackColor={{
-                    false: colors.backgroundDark,
-                    true: colors.primary[600],
-                  }}
-                  thumbColor={
-                    formData.isRecurring
-                      ? colors.primary[400]
-                      : colors.textSecondary
-                  }
-                />
-              </View>
-              <Text style={styles.helperText}>
-                Enable for goals with regular contributions (e.g., save $100
-                monthly)
-              </Text>
-            </View>
-
-            {/* Category */}
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Category</Text>
-              <TouchableOpacity
-                style={styles.selectButton}
-                onPress={() => setShowCategoryPicker(!showCategoryPicker)}
-              >
-                <Text style={styles.selectText}>{formData.category}</Text>
-                <Feather
-                  name={showCategoryPicker ? "chevron-up" : "chevron-down"}
-                  size={20}
-                  color={colors.textSecondary}
-                />
-              </TouchableOpacity>
-
-              {showCategoryPicker && (
-                <View style={styles.categoryPicker}>
-                  {categories.map((category) => (
-                    <TouchableOpacity
-                      key={category}
-                      style={[
-                        styles.categoryOption,
-                        formData.category === category &&
-                          styles.categoryOptionSelected,
-                      ]}
-                      onPress={() => {
-                        handleInputChange("category", category);
-                        setShowCategoryPicker(false);
-                        Haptics.selectionAsync();
-                      }}
-                    >
-                      <Text
-                        style={[
-                          styles.categoryOptionText,
-                          formData.category === category &&
-                            styles.categoryOptionTextSelected,
-                        ]}
-                      >
-                        {category}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              )}
-            </View>
-
-            {/* Auto Contributions Toggle */}
-            <View style={styles.formGroup}>
-              <View style={styles.switchContainer}>
-                <Text style={styles.label}>Auto Contributions</Text>
-                <Switch
-                  value={formData.autoContributions}
-                  onValueChange={(value) =>
-                    handleInputChange("autoContributions", value)
-                  }
-                  trackColor={{
-                    false: colors.backgroundDark,
-                    true: colors.primary[600],
-                  }}
-                  thumbColor={
-                    formData.autoContributions
-                      ? colors.primary[400]
-                      : colors.textSecondary
-                  }
-                />
-              </View>
-              <Text style={styles.helperText}>
-                Enable to contribute automatically on a schedule
-              </Text>
-            </View>
-
-            {/* Contribution Amount Input */}
-            {formData.autoContributions && (
-              <>
-                <View style={styles.formGroup}>
-                  <Text style={styles.label}>Contribution Amount</Text>
-                  <View style={styles.amountInputContainer}>
-                    <Text style={styles.currencySymbol}>$</Text>
-                    <TextInput
-                      style={styles.amountInput}
-                      value={formData.contributionAmount}
-                      onChangeText={(value) => {
-                        const cleanedValue = value.replace(/[^0-9.]/g, "");
-                        const parts = cleanedValue.split(".");
-                        if (parts.length > 2) {
-                          return;
-                        }
-                        if (parts[1] && parts[1].length > 2) {
-                          return;
-                        }
-                        handleInputChange("contributionAmount", cleanedValue);
-                      }}
-                      placeholder="0.00"
-                      placeholderTextColor={colors.textMuted}
-                      keyboardType="decimal-pad"
-                    />
-                  </View>
-                </View>
-
-                {/* Contribution Frequency Selector */}
-                <View style={styles.formGroup}>
-                  <Text style={styles.label}>Contribution Frequency</Text>
-                  <TouchableOpacity
-                    style={styles.selectButton}
-                    onPress={() =>
-                      handleInputChange(
-                        "contributionFrequency",
-                        formData.contributionFrequency === "monthly"
-                          ? "weekly"
-                          : formData.contributionFrequency === "weekly"
-                          ? "daily"
-                          : "monthly"
-                      )
-                    }
-                  >
-                    <Text style={styles.selectText}>
-                      {formData.contributionFrequency.charAt(0).toUpperCase() +
-                        formData.contributionFrequency.slice(1)}
-                    </Text>
-                    <Feather
-                      name="repeat"
-                      size={20}
-                      color={colors.textSecondary}
-                    />
-                  </TouchableOpacity>
-                  <Text style={styles.helperText}>
-                    Tap to cycle through: Monthly → Weekly → Daily
-                  </Text>
-                </View>
-              </>
             )}
-
-            {/* Add some bottom padding for scroll */}
-            <View style={{ height: 50 }} />
           </ScrollView>
+
+          {showSuccess && (
+            <Animated.View
+              style={[styles.successOverlay, { opacity: successOpacity }]}
+            >
+              <View style={styles.successContent}>
+                <Feather name="check-circle" size={60} color={colors.success} />
+                <Text style={styles.successText}>Goal Updated!</Text>
+              </View>
+            </Animated.View>
+          )}
         </View>
       </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
   );
 };
+
+export default EditGoalScreen;
 
 const styles = StyleSheet.create({
   container: {
@@ -494,10 +366,6 @@ const styles = StyleSheet.create({
   loadingContainer: {
     justifyContent: "center",
     alignItems: "center",
-  },
-  loadingText: {
-    color: colors.text,
-    fontSize: 16,
   },
   header: {
     flexDirection: "row",
@@ -537,114 +405,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 16,
   },
-  formGroup: {
-    marginBottom: 24,
-  },
-  label: {
-    fontSize: 16,
-    color: colors.text,
-    marginBottom: 8,
-    fontWeight: "500",
-  },
-  input: {
-    backgroundColor: colors.backgroundLight,
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    color: colors.text,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: "transparent",
-  },
-  textArea: {
-    minHeight: 80,
-    textAlignVertical: "top",
-  },
-  amountInputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: colors.backgroundLight,
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    borderWidth: 1,
-    borderColor: "transparent",
-  },
-  currencySymbol: {
-    fontSize: 16,
-    color: colors.text,
-    marginRight: 4,
-    fontWeight: "500",
-  },
-  amountInput: {
-    flex: 1,
-    paddingVertical: 12,
-    color: colors.text,
-    fontSize: 16,
-  },
-  datePickerButton: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: colors.backgroundLight,
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: "transparent",
-  },
-  dateText: {
-    color: colors.text,
-    fontSize: 16,
-  },
-  switchContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+  successOverlay: {
+    position: "absolute",
+    top: "40%",
+    left: 0,
+    right: 0,
     alignItems: "center",
   },
-  helperText: {
-    color: colors.textSecondary,
-    fontSize: 14,
-    marginTop: 8,
-    lineHeight: 20,
-  },
-  selectButton: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+  successContent: {
+    backgroundColor: colors.backgroundLight,
+    borderRadius: 16,
+    padding: 24,
     alignItems: "center",
-    backgroundColor: colors.backgroundLight,
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: "transparent",
+    elevation: 10,
   },
-  selectText: {
-    color: colors.text,
-    fontSize: 16,
-  },
-  categoryPicker: {
-    backgroundColor: colors.backgroundLight,
-    borderRadius: 8,
-    marginTop: 8,
-    paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: colors.backgroundDark,
-  },
-  categoryOption: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  categoryOptionSelected: {
-    backgroundColor: colors.secondary[800],
-  },
-  categoryOptionText: {
-    color: colors.text,
-    fontSize: 16,
-  },
-  categoryOptionTextSelected: {
-    color: colors.primary[300],
+  successText: {
+    fontSize: 18,
     fontWeight: "600",
+    marginTop: 12,
+    color: colors.success,
   },
 });
-
-export default EditGoalScreen;

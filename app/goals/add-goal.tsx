@@ -10,8 +10,9 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import {
+  Animated,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -49,6 +50,8 @@ const AddGoalScreen = () => {
   const [showTargetDatePicker, setShowTargetDatePicker] = useState(false);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [showSuccess, setShowSuccess] = useState(false);
+  const successOpacity = useRef(new Animated.Value(0)).current;
 
   const { addGoal } = useGoals();
   const validateGoalForm = (data: typeof formData) => {
@@ -87,20 +90,6 @@ const AddGoalScreen = () => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleStartDateChange = (event: any, selectedDate: any) => {
-    setShowStartDatePicker(false);
-    if (selectedDate) {
-      setFormData((prev) => ({ ...prev, startDate: selectedDate }));
-    }
-  };
-
-  const handleTargetDateChange = (event: any, selectedDate: any) => {
-    setShowTargetDatePicker(false);
-    if (selectedDate) {
-      setFormData((prev) => ({ ...prev, targetDate: selectedDate }));
-    }
-  };
-
   const validateForm = () => {
     if (!formData.title.trim()) return false;
     if (
@@ -117,7 +106,7 @@ const AddGoalScreen = () => {
     return true;
   };
 
-  const handleSave = () => {
+  const handleSave = useCallback(async () => {
     if (!validateForm()) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
@@ -148,11 +137,40 @@ const AddGoalScreen = () => {
         : undefined,
     };
 
-    addGoal(goalData);
-    console.log("Saving new goal:", goalData);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    router.replace("/financial-goals");
-  };
+    try {
+      await addGoal(goalData);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setShowSuccess(true);
+      Animated.sequence([
+        Animated.timing(successOpacity, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.delay(1000),
+        Animated.timing(successOpacity, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setShowSuccess(false);
+
+        router.replace("/financial-goals");
+      });
+    } catch (error) {
+      console.error("Error saving goal:", error);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      return;
+    }
+  }, [
+    formData,
+    addGoal,
+    router,
+    successOpacity,
+    validateForm,
+    validateGoalForm,
+  ]);
 
   return (
     <KeyboardAvoidingView
@@ -266,6 +284,16 @@ const AddGoalScreen = () => {
               />
             )}
           </ScrollView>
+          {showSuccess && (
+            <Animated.View
+              style={[styles.successOverlay, { opacity: successOpacity }]}
+            >
+              <View style={styles.successContent}>
+                <Feather name="check-circle" size={60} color={colors.success} />
+                <Text style={styles.successText}>Goal Created!</Text>
+              </View>
+            </Animated.View>
+          )}
         </View>
       </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
@@ -288,6 +316,26 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingBottom: 16,
+  },
+  successOverlay: {
+    position: "absolute",
+    top: "40%",
+    left: 0,
+    right: 0,
+    alignItems: "center",
+  },
+  successContent: {
+    backgroundColor: colors.backgroundLight,
+    borderRadius: 16,
+    padding: 24,
+    alignItems: "center",
+    elevation: 10,
+  },
+  successText: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginTop: 12,
+    color: colors.success,
   },
   backButton: {
     width: 40,
