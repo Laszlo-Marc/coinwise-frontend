@@ -232,8 +232,28 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({
       });
       console.log("Upload response:", response.data);
       await fetchTransactions();
-    } catch (e) {
-      handleApiError(e);
+    } catch (e: any) {
+      if (e.response) {
+        const status = e.response.status;
+        const detail = e.response.data?.detail || "An unknown error occurred";
+
+        if (
+          status === 400 &&
+          detail.includes("not appear to be a bank statement")
+        ) {
+          alert(
+            "⚠️ The uploaded file does not seem to be a valid bank statement. Please try again."
+          );
+        } else {
+          alert(`Upload failed (${status}): ${detail}`);
+        }
+
+        console.warn("Upload error:", status, detail);
+      } else {
+        alert("Upload failed. Please check your internet connection.");
+        console.error("Upload failed:", e.message);
+      }
+
       return null;
     }
   };

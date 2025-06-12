@@ -1,4 +1,3 @@
-// BudgetOverviewCard.tsx
 import { colors } from "@/constants/colors";
 import { formatCurrency } from "@/hooks/goals-helpers";
 import { BudgetModel } from "@/models/budget";

@@ -1,5 +1,3 @@
-// components/budgets/CategoryDropdown.tsx
-
 import { categories } from "@/constants/categories";
 import { colors } from "@/constants/colors";
 import { Feather } from "@expo/vector-icons";

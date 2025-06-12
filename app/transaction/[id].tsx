@@ -1,3 +1,4 @@
+import TransactionQuickActionsCard from "@/components/financesComponents/TransactionDetailsActions";
 import { colors } from "@/constants/colors";
 import { useTransactionContext } from "@/contexts/AppContext";
 import { TransactionModel } from "@/models/transaction";
@@ -22,7 +23,7 @@ export default function TransactionDetailsScreen() {
   const { id } = useLocalSearchParams();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { transactions } = useTransactionContext();
+  const { transactions, deleteTransaction } = useTransactionContext();
   const [transaction, setTransaction] = useState<TransactionModel | null>(null);
   const [loading, setLoading] = useState(true);
   const isExpense = transaction?.type === "expense";
@@ -41,7 +42,16 @@ export default function TransactionDetailsScreen() {
       </View>
     );
   }
+  const handleEdit = () => {
+    router.push(`./edit-transaction/${id}`);
+  };
 
+  const handleDelete = () => {
+    if (transaction) {
+      deleteTransaction(id as string);
+      router.back();
+    }
+  };
   if (!transaction) {
     return <Text style={styles.notFound}>Transaction not found.</Text>;
   }
@@ -124,6 +134,13 @@ export default function TransactionDetailsScreen() {
             </>
           )}
         </Animated.View>
+        <View style={styles.quickActionsContainer}>
+          <TransactionQuickActionsCard
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            transactionDescription={transaction.description}
+          />
+        </View>
       </ScrollView>
     </View>
   );
@@ -133,6 +150,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  quickActionsContainer: {
+    marginTop: 20,
   },
   loadingContainer: {
     flex: 1,

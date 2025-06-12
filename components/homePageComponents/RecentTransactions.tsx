@@ -1,4 +1,5 @@
 import { colors } from "@/constants/colors";
+import { useAuth } from "@/contexts/AuthContext";
 import { formatCurrency, formatDate } from "@/hooks/home-page/formatHooks";
 import { TransactionModel } from "@/models/transaction";
 import { Entypo, Ionicons } from "@expo/vector-icons";
@@ -12,6 +13,47 @@ interface Props {
 
 const RecentTransactionsCard: React.FC<Props> = ({ transactions }) => {
   const router = useRouter();
+  const { state } = useAuth();
+  const getDayDifference = (txDate: Date, today: Date): number => {
+    const tx = new Date(
+      today.getFullYear(),
+      txDate.getMonth(),
+      txDate.getDate()
+    );
+    const diff = Math.abs(tx.getTime() - today.getTime());
+    return diff;
+  };
+
+  const today = new Date();
+
+  const processedTransactions = [...transactions]
+    .map((tx) => ({
+      ...tx,
+      dayDiff: getDayDifference(new Date(tx.date), today),
+    }))
+    .sort((a, b) => a.dayDiff - b.dayDiff)
+    .slice(0, 5);
+
+  const getIsPositive = (tx: TransactionModel) => {
+    if (tx.type === "income") return true;
+    if (
+      tx.type === "transfer" &&
+      typeof tx.receiver === "string" &&
+      typeof state?.user?.full_name === "string" &&
+      tx.receiver.toLowerCase().includes(state.user.full_name.toLowerCase())
+    )
+      return true;
+    return false;
+  };
+
+  const getIconColor = (tx: TransactionModel) =>
+    getIsPositive(tx) ? colors.success || "#4CAF50" : colors.error || "#F44336";
+
+  const getIconName = (tx: TransactionModel) =>
+    getIsPositive(tx) ? "arrow-down" : "arrow-up";
+
+  const getAmountPrefix = (tx: TransactionModel) =>
+    getIsPositive(tx) ? "+" : "-";
 
   return (
     <View style={styles.card}>
@@ -23,26 +65,23 @@ const RecentTransactionsCard: React.FC<Props> = ({ transactions }) => {
         <Entypo name="chevron-right" size={24} color={colors.text} />
       </TouchableOpacity>
 
-      {transactions.length > 0 ? (
+      {processedTransactions.length > 0 ? (
         <View>
-          {transactions.map((transaction, index) => (
-            <View key={transaction.id || index} style={styles.transactionItem}>
+          {processedTransactions.map((transaction, index) => (
+            <TouchableOpacity
+              key={transaction.id || index}
+              style={styles.transactionItem}
+              onPress={() => router.push(`/transaction/${transaction.id}`)}
+            >
               <View style={styles.transactionLeft}>
                 <View
                   style={[
                     styles.transactionIcon,
-                    {
-                      backgroundColor:
-                        transaction.type === "income"
-                          ? colors.success || "#4CAF50"
-                          : colors.error || "#F44336",
-                    },
+                    { backgroundColor: getIconColor(transaction) },
                   ]}
                 >
                   <Ionicons
-                    name={
-                      transaction.type === "income" ? "arrow-down" : "arrow-up"
-                    }
+                    name={getIconName(transaction)}
                     size={16}
                     color="white"
                   />
@@ -59,18 +98,13 @@ const RecentTransactionsCard: React.FC<Props> = ({ transactions }) => {
               <Text
                 style={[
                   styles.transactionAmount,
-                  {
-                    color:
-                      transaction.type === "income"
-                        ? colors.success || "#4CAF50"
-                        : colors.error || "#F44336",
-                  },
+                  { color: getIconColor(transaction) },
                 ]}
               >
-                {transaction.type === "income" ? "+" : "-"}
+                {getAmountPrefix(transaction)}
                 {formatCurrency(transaction.amount)}
               </Text>
-            </View>
+            </TouchableOpacity>
           ))}
         </View>
       ) : (

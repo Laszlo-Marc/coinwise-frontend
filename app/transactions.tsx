@@ -2,46 +2,34 @@ import ProcessingModal from "@/components/financesComponents/ProcessingModal";
 import TransactionClassModal from "@/components/financesComponents/TransactionClasssModal";
 import { TransactionList } from "@/components/financesComponents/TransactionList";
 import { TransactionFilters } from "@/components/financesComponents/TransactionsFilters";
-import {
-  DepositForm,
-  ExpenseForm,
-  IncomeForm,
-  TransferForm,
-} from "@/components/financesComponents/TransactionsForms";
 import BottomBar from "@/components/mainComponents/BottomBar";
 import DeleteConfirmModal from "@/components/mainComponents/DeleteModal";
 import MainSection from "@/components/mainComponents/MainSection";
 import { useTransactionContext } from "@/contexts/AppContext";
 import { useTransactionFilters } from "@/hooks/finances-page/handleFilterChange";
 import { useDocumentUpload } from "@/hooks/transactions-page/useDocumentUpload";
-import { useTransactionFormHandler } from "@/hooks/transactions-page/useTransactionFormHandler";
 import { useTransactionUIState } from "@/hooks/transactions-page/useTransactionUIState";
 import { AntDesign, Feather } from "@expo/vector-icons";
 import Ionicons from "@expo/vector-icons/build/Ionicons";
+import { useRouter } from "expo-router";
 import React, { useCallback, useEffect } from "react";
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { colors } from "../constants/colors";
 
 export default function TransactionsListScreen() {
+  const router = useRouter();
   const {
     transactions,
-    addTransaction,
     uploadBankStatement,
     deleteTransaction,
     refreshTransactions,
-    updateTransaction,
   } = useTransactionContext();
+
   const {
     refreshing,
     setRefreshing,
     classModalVisible,
     setClassModalVisible,
-    formType,
-    setFormType,
-    selectedTransaction,
-    setSelectedTransaction,
-    isFormVisible,
-    setIsFormVisible,
     modalVisible,
     setModalVisible,
     selectedTransactionId,
@@ -49,37 +37,16 @@ export default function TransactionsListScreen() {
     showFilters,
     setShowFilters,
     selectedClass,
-    setSelectedClass,
   } = useTransactionUIState();
 
   const { uploadDocument, isLoading, processingStage } =
     useDocumentUpload(uploadBankStatement);
-  const { displayedTransactions, handleFilterChange, filters } =
+
+  const { displayedTransactions, handleFilterChange } =
     useTransactionFilters(transactions);
-  const {
-    handleEditTransaction,
-    handleSubmitForm,
-    handleDeleteTransaction,
-    handleDeleteConfirm,
-    handleDeleteCancel,
-    handleCloseForm,
-  } = useTransactionFormHandler({
-    transactions,
-    updateTransaction,
-    addTransaction,
-    deleteTransaction,
-    formType,
-    selectedTransaction,
-    setFormType,
-    setSelectedTransaction,
-    setIsFormVisible,
-    setModalVisible,
-    setSelectedTransactionId,
-    selectedTransactionId,
-  });
-  const toggleFilters = () => {
-    setShowFilters(!showFilters);
-  };
+
+  const toggleFilters = () => setShowFilters(!showFilters);
+
   useEffect(() => {
     if (transactions.length > 0) {
       handleFilterChange({ transactionClass: "expense" });
@@ -101,28 +68,6 @@ export default function TransactionsListScreen() {
       setRefreshing(false);
     }
   }, []);
-
-  const renderForm = () => {
-    const commonProps = {
-      visible: isFormVisible,
-      onClose: handleCloseForm,
-      onSubmit: handleSubmitForm,
-      initialData: selectedTransaction,
-    };
-    console.log(selectedTransaction);
-    switch (formType) {
-      case "expense":
-        return <ExpenseForm {...commonProps} />;
-      case "income":
-        return <IncomeForm {...commonProps} />;
-      case "transfer":
-        return <TransferForm {...commonProps} />;
-      case "deposit":
-        return <DepositForm {...commonProps} />;
-      default:
-        return null;
-    }
-  };
 
   return (
     <View style={styles.container}>
@@ -172,44 +117,40 @@ export default function TransactionsListScreen() {
           </View>
         )}
       </View>
+
       <TransactionList
         transactions={displayedTransactions}
-        onEdit={handleEditTransaction}
-        onDelete={handleDeleteTransaction}
+        onEdit={(id) => router.push(`/transaction/edit-transaction/${id}`)}
+        onDelete={(id) => {
+          setSelectedTransactionId(id);
+          setModalVisible(true);
+        }}
         onRefresh={onRefresh}
         refreshing={refreshing}
       />
+
       <TransactionClassModal
         visible={classModalVisible}
         onClose={() => setClassModalVisible(false)}
         onSelect={(type) => {
-          setFormType(type);
-          setIsFormVisible(true);
           setClassModalVisible(false);
+          router.push(`/transaction/add-transaction/${type}`);
         }}
       />
-      {formType && isFormVisible && (
-        <View
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 100,
-          }}
-        >
-          {renderForm()}
-        </View>
-      )}
+
       <ProcessingModal visible={isLoading} currentStage={processingStage} />
+
       <DeleteConfirmModal
         visible={modalVisible}
         title="Delete Transaction"
         message="Are you sure you want to delete this transaction?"
-        onCancel={handleDeleteCancel}
-        onConfirm={handleDeleteConfirm}
+        onCancel={() => setModalVisible(false)}
+        onConfirm={() => {
+          deleteTransaction(selectedTransactionId);
+          setModalVisible(false);
+        }}
       />
+
       <BottomBar />
     </View>
   );
@@ -220,7 +161,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-
   actionButton: {
     alignItems: "center",
     width: 100,

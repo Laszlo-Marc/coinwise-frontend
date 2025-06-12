@@ -10,9 +10,8 @@ export function useTransactionUIState() {
     useState<TransactionModel | null>(null);
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
-  const [selectedTransactionId, setSelectedTransactionId] = useState<
-    string | null
-  >(null);
+  const [selectedTransactionId, setSelectedTransactionId] =
+    useState<string>("");
   const [showFilters, setShowFilters] = useState(false);
   const [selectedClass, setSelectedClass] = useState<TransactionType>(null);
 

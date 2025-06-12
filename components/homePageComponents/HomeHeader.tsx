@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { formatCurrency } from "@/hooks/home-page/formatHooks";
 import { useCurrentBalance } from "@/hooks/home-page/useCurrentBalance";
 import { Feather, FontAwesome } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React from "react";
 import {
@@ -13,7 +14,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import GdSVG from "../../assets/images/bg-gradient.svg";
 const HomeHeader = () => {
   const router = useRouter();
   const { state } = useAuth();
@@ -21,15 +21,12 @@ const HomeHeader = () => {
   const currentBalance = useCurrentBalance(transactions, state.user);
 
   return (
-    <View style={styles.balanceSection}>
-      <View style={styles.svgContainer}>
-        <GdSVG
-          width="100%"
-          height="100%"
-          preserveAspectRatio="xMidYMid slice"
-        />
-      </View>
-
+    <LinearGradient
+      colors={["rgb(251, 193, 105)", "rgb(198, 119, 0)"]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles.balanceSection}
+    >
       {/* Quick Action Buttons */}
       <View style={styles.quickActions}>
         <TouchableOpacity
@@ -59,7 +56,7 @@ const HomeHeader = () => {
           {formatCurrency(currentBalance)}
         </Text>
       </View>
-    </View>
+    </LinearGradient>
   );
 };
 
