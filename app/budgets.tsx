@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import BudgetList from "@/components/budgetsComponents/BudgetList";
 import EnhancedBudgetOverviewCard from "@/components/budgetsComponents/BudgetOverviewCard";
+import AnimatedCard from "@/components/homePageComponents/AnimatedCard";
 import AnimatedHeader from "@/components/mainComponents/AnimatedHeader";
 import { useBudgets } from "@/contexts/BudgetsContext";
 import { useBudgetsScreen } from "@/hooks/budget-screen/useBudgetScreen";
@@ -55,18 +56,22 @@ const BudgetsScreen = () => {
       />
 
       {/* Budget List */}
+
       <BudgetList
         budgets={budgets}
         onEditBudget={handleEditBudget}
         onDeleteBudget={handleDeleteBudget}
         onRefresh={handleRefresh}
         headerComponent={
-          <EnhancedBudgetOverviewCard
-            budgets={budgets}
-            progressAnim={new Animated.Value(0)}
-          />
+          <AnimatedCard delay={100}>
+            <EnhancedBudgetOverviewCard
+              budgets={budgets}
+              progressAnim={new Animated.Value(0)}
+            />
+          </AnimatedCard>
         }
       />
+
       {/* Floating Action Button */}
       <Animated.View
         style={[

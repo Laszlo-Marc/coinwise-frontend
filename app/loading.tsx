@@ -12,7 +12,7 @@ const Loading = () => {
   const router = useRouter();
 
   const { checkSessionValidity, state: authState } = useAuth();
-  const { fetchBudgets } = useBudgets();
+  const { fetchBudgets, fetchBudgetTransactions } = useBudgets();
   const { fetchGoals, fetchContributions } = useGoals();
   const { fetchTransactions } = useTransactionContext();
 
@@ -26,12 +26,12 @@ const Loading = () => {
         return;
       }
 
-    
       await Promise.all([
         fetchGoals(),
         fetchContributions(),
         fetchBudgets(),
         fetchTransactions(),
+        fetchBudgetTransactions(),
       ]);
 
       setLoading(false);

@@ -1,3 +1,4 @@
+import AddExpenseModal from "@/components/budgetsComponents/AddExpenseModal";
 import BudgetDetailsHeader from "@/components/budgetsComponents/BudgetDetailsHeader";
 import BudgetDetailsOverviewCard from "@/components/budgetsComponents/BudgetDetailsOverview";
 import BudgetTransactionsChart from "@/components/budgetsComponents/BudgetTransactionsChart";
@@ -16,6 +17,7 @@ import { Alert, Animated, StyleSheet, Text, View } from "react-native";
 
 const BudgetDetailsScreen = () => {
   const { id } = useLocalSearchParams();
+  const { addTransactionForBudget } = useBudgets();
   const router = useRouter();
   const { budgets, budgetTransactions } = useBudgets();
   const [budgetTxn, setBudgetTxn] = useState<TransactionModel[]>([]);
@@ -40,6 +42,7 @@ const BudgetDetailsScreen = () => {
     if (foundBudget) {
       setBudget(foundBudget);
       setBudgetTxn(budgetTransactions[budgetId] || []);
+      console.log("Budget Transactions:", budgetTransactions[budgetId]);
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
@@ -66,7 +69,29 @@ const BudgetDetailsScreen = () => {
       </View>
     );
   }
-
+  const handleAddExpense = async (data: {
+    merchant: string;
+    description: string;
+    amount: number;
+  }) => {
+    const newTransaction: TransactionModel = {
+      merchant: data.merchant,
+      description: data.description,
+      amount: data.amount,
+      date: new Date().toISOString(),
+      category: budget.category,
+      currency: "RON",
+      type: "expense",
+    };
+    try {
+      await addTransactionForBudget(newTransaction, id as string);
+      setShowAddExpenseModal(false);
+      Alert.alert("Success", "Transaction added successfully");
+    } catch (error) {
+      console.error("Error adding transaction:", error);
+    }
+    setBudgetTxn((prev) => [...prev, newTransaction]);
+  };
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <LinearGradient
@@ -109,6 +134,14 @@ const BudgetDetailsScreen = () => {
           </AnimatedCard>
         </Animated.ScrollView>
       </LinearGradient>
+      <AddExpenseModal
+        visible={showAddExpenseModal}
+        onClose={() => setShowAddExpenseModal(false)}
+        onSave={(data) => {
+          handleAddExpense(data);
+        }}
+        category={budget.category}
+      />
     </View>
   );
 };

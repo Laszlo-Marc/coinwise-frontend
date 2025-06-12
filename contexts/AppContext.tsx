@@ -147,7 +147,6 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     }
   };
-
   const addTransaction = async (
     transaction: TransactionModel
   ): Promise<string | undefined> => {

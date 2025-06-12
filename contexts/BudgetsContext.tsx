@@ -9,12 +9,16 @@ interface BudgetContextType {
   budgets: BudgetModel[];
   error: string | null;
   budgetTransactions: Record<string, TransactionModel[]>;
-  fetchBudgetTransactions: (budgetId: string) => Promise<void>;
+  fetchBudgetTransactions: () => Promise<void>;
   addBudget: (budget: BudgetModel) => Promise<void>;
   fetchBudgets: () => Promise<void>;
   deleteBudget: (id: string) => Promise<void>;
   updateBudget: (id: string, updates: Partial<BudgetModel>) => Promise<any>;
   budgetCleanup: () => void;
+  addTransactionForBudget: (
+    transaction: Partial<TransactionModel>,
+    budgetId: string
+  ) => Promise<string | undefined>;
 }
 
 const BudgetContext = createContext<BudgetContextType | undefined>(undefined);
@@ -39,13 +43,53 @@ export const BudgetsProvider: React.FC<{ children: React.ReactNode }> = ({
     console.error("API Error:", error);
     setError("Something went wrong. Please try again.");
   };
-  const fetchBudgetTransactions = async (budgetId: string): Promise<void> => {
+
+  const addTransactionForBudget = async (
+    transaction: Partial<TransactionModel>,
+    budgetId: string
+  ): Promise<string | undefined> => {
+    setError(null);
+    try {
+      const token = await SecureStore.getItem("auth_token");
+
+      const response = await axios.post(
+        `${BUDGET_API_URL}/add-for-budget`,
+        transaction,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          params: {
+            budget_id: budgetId,
+          },
+        }
+      );
+
+      const addedTx = response.data;
+
+      setBudgetTransactions((prev) => ({
+        ...prev,
+        [budgetId]: [addedTx, ...(prev[budgetId] || [])],
+      }));
+      await fetchBudgets();
+
+      await fetchBudgetTransactions();
+
+      return addedTx.id;
+    } catch (e) {
+      handleApiError(e);
+      return undefined;
+    }
+  };
+
+  const fetchBudgetTransactions = async (): Promise<void> => {
     setError(null);
     try {
       const token = await SecureStore.getItem("auth_token");
 
       const response = await axios.get(
-        `${BUDGET_API_URL}/${budgetId}/transactions`,
+        `${BUDGET_API_URL}/all/budget-transactions`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -54,11 +98,10 @@ export const BudgetsProvider: React.FC<{ children: React.ReactNode }> = ({
         }
       );
 
-      const { transactions } = response.data;
-      setBudgetTransactions((prev) => ({
-        ...prev,
-        [budgetId]: transactions,
-      }));
+      const data = response.data;
+      console.log("Fetched budget transactions:", data);
+
+      setBudgetTransactions(data);
     } catch (e) {
       handleApiError(e);
     }
@@ -158,6 +201,7 @@ export const BudgetsProvider: React.FC<{ children: React.ReactNode }> = ({
       updateBudget,
       budgetCleanup,
       fetchBudgetTransactions,
+      addTransactionForBudget,
     }),
     [budgets, error]
   );
