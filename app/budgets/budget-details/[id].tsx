@@ -1,5 +1,4 @@
 import BudgetDetailsHeader from "@/components/budgetsComponents/BudgetDetailsHeader";
-import BudgetOverviewCard from "@/components/budgetsComponents/BudgetOverviewCard";
 import BudgetTransactionsList from "@/components/budgetsComponents/BudgetTransactionsList";
 import QuickActionsCard from "@/components/budgetsComponents/QuickActionsCard";
 import { colors } from "@/constants/colors";
@@ -70,14 +69,6 @@ const BudgetDetailsScreen = () => {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          <BudgetOverviewCard
-            budget={budget}
-            progressAnim={progressAnim}
-            progressPercentage={0}
-            daysLeft={0}
-            dailyBudget={0}
-          />
-
           <QuickActionsCard
             onAddExpense={() => setShowAddExpenseModal(true)}
             onEditBudget={function (): void {

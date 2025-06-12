@@ -51,6 +51,7 @@ const FinancialGoalsScreen = () => {
         animatedValue={headerAnimation}
         onBack={() => router.back()}
         onProfilePress={() => router.push("/profile")}
+        gradientColors={["rgb(251, 193, 105)", "rgb(198, 119, 0)"]}
       />
 
       <AnimatedCard delay={150}>

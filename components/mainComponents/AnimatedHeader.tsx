@@ -16,6 +16,7 @@ interface AnimatedHeaderProps {
   animatedValue: Animated.Value;
   onBack?: () => void;
   onProfilePress?: () => void;
+  gradientColors?: [string, string, ...string[]]; // At least two colors required
 }
 
 const AnimatedHeader: React.FC<AnimatedHeaderProps> = ({
@@ -24,6 +25,10 @@ const AnimatedHeader: React.FC<AnimatedHeaderProps> = ({
   animatedValue,
   onBack,
   onProfilePress,
+  gradientColors = ["rgba(75, 108, 183, 0.8)", "rgba(24, 40, 72, 0.8)"] as [
+    string,
+    string
+  ], // Default
 }) => {
   const insets = useSafeAreaInsets();
 
@@ -45,7 +50,7 @@ const AnimatedHeader: React.FC<AnimatedHeaderProps> = ({
       ]}
     >
       <LinearGradient
-        colors={["rgb(251, 193, 105)", "rgb(198, 119, 0)"]}
+        colors={gradientColors}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={[styles.headerGradient, { paddingTop: insets.top + 16 }]}
@@ -89,14 +94,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
-
   iconButton: {
     padding: 8,
   },
   spacer: {
     flex: 1,
   },
-
   titleContainer: {
     position: "absolute",
     left: 0,

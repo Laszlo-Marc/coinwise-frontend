@@ -11,6 +11,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import BudgetList from "@/components/budgetsComponents/BudgetList";
+import EnhancedBudgetOverviewCard from "@/components/budgetsComponents/BudgetOverviewCard";
 import AnimatedHeader from "@/components/mainComponents/AnimatedHeader";
 import { useBudgets } from "@/contexts/BudgetsContext";
 import { useBudgetsScreen } from "@/hooks/budget-screen/useBudgetScreen";
@@ -50,8 +51,12 @@ const BudgetsScreen = () => {
         animatedValue={headerAnimation}
         onBack={() => router.back()}
         onProfilePress={() => router.push("/profile")}
+        gradientColors={["rgba(75, 108, 183, 0.8)", "rgba(24, 40, 72, 0.8)"]}
       />
-
+      <EnhancedBudgetOverviewCard
+        budgets={budgets}
+        progressAnim={new Animated.Value(0)}
+      />
       {/* Budget List */}
       <BudgetList
         budgets={budgets}
