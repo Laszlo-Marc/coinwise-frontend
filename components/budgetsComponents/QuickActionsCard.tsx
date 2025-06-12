@@ -1,7 +1,15 @@
+// QuickActionsCard.tsx - Redesigned
 import { colors } from "@/constants/colors";
-import { Feather } from "@expo/vector-icons";
+import { Feather, FontAwesome5 } from "@expo/vector-icons";
+import { BlurView } from "expo-blur";
 import React from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  Vibration,
+  View,
+} from "react-native";
 
 interface QuickActionsCardProps {
   onAddExpense: () => void;
@@ -12,87 +20,185 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
   onAddExpense,
   onEditBudget,
 }) => {
+  const handleAddExpense = () => {
+    Vibration.vibrate(50);
+    onAddExpense();
+  };
+
+  const handleEditBudget = () => {
+    Vibration.vibrate(50);
+    onEditBudget();
+  };
+
   return (
-    <View style={styles.cardContainer}>
-      <Text style={[styles.sectionTitle, { color: colors.text }]}>
-        Quick Actions
-      </Text>
+    <View style={styles.container}>
+      <BlurView intensity={20} tint="light" style={styles.glassCard}>
+        <View style={styles.header}>
+          <Text style={[styles.title, { color: colors.text }]}>
+            Quick Actions
+          </Text>
+          <Feather name="zap" size={18} color={colors.primary[500]} />
+        </View>
 
-      <View style={styles.actionsRow}>
-        <TouchableOpacity
-          onPress={onAddExpense}
-          style={[
-            styles.actionButton,
-            {
-              backgroundColor: colors.primary[500] + "20",
-              borderColor: colors.primary[500] + "40",
-            },
-          ]}
-        >
-          <Feather name="plus" size={24} color={colors.primary[500]} />
-          <Text
-            style={[styles.actionButtonText, { color: colors.primary[500] }]}
+        <View style={styles.actionsGrid}>
+          <TouchableOpacity
+            onPress={handleAddExpense}
+            style={[
+              styles.primaryAction,
+              {
+                backgroundColor: colors.primary[500] + "20",
+                borderColor: colors.primary[500] + "40",
+              },
+            ]}
+            activeOpacity={0.7}
           >
-            Add Expense
-          </Text>
-        </TouchableOpacity>
+            <View
+              style={[
+                styles.actionIconContainer,
+                {
+                  backgroundColor: colors.primary[500],
+                },
+              ]}
+            >
+              <Feather name="plus" size={22} color="white" />
+            </View>
+            <View style={styles.actionTextContainer}>
+              <Text
+                style={[styles.actionTitle, { color: colors.primary[500] }]}
+              >
+                Add Expense
+              </Text>
+              <Text
+                style={[styles.actionSubtitle, { color: colors.primary[400] }]}
+              >
+                Track new spending
+              </Text>
+            </View>
+            <Feather name="arrow-right" size={16} color={colors.primary[500]} />
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          onPress={onEditBudget}
-          style={styles.actionButtonSecondary}
-        >
-          <Feather name="edit-3" size={24} color={colors.text} />
-          <Text style={[styles.actionButtonText, { color: colors.text }]}>
-            Edit Budget
+          <TouchableOpacity
+            onPress={handleEditBudget}
+            style={styles.secondaryAction}
+            activeOpacity={0.7}
+          >
+            <View
+              style={[
+                styles.actionIconContainer,
+                {
+                  backgroundColor: "rgba(255,255,255,0.2)",
+                },
+              ]}
+            >
+              <Feather name="edit-3" size={20} color={colors.text} />
+            </View>
+            <View style={styles.actionTextContainer}>
+              <Text style={[styles.actionTitle, { color: colors.text }]}>
+                Edit Budget
+              </Text>
+              <Text
+                style={[styles.actionSubtitle, { color: colors.textSecondary }]}
+              >
+                Modify settings
+              </Text>
+            </View>
+            <Feather
+              name="arrow-right"
+              size={16}
+              color={colors.textSecondary}
+            />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.quickTips}>
+          <FontAwesome5
+            name="lightbulb"
+            size={14}
+            color={colors.textSecondary}
+          />
+          <Text style={[styles.tipText, { color: colors.textSecondary }]}>
+            Tip: Long press actions for more options
           </Text>
-        </TouchableOpacity>
-      </View>
+        </View>
+      </BlurView>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  cardContainer: {
+  container: {
+    marginBottom: 20,
     borderRadius: 20,
-    marginBottom: 16,
     overflow: "hidden",
-    backgroundColor: "rgba(255,255,255,0.1)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
+  },
+  glassCard: {
     padding: 20,
+    borderRadius: 20,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 16,
-  },
-  actionsRow: {
+  header: {
     flexDirection: "row",
     justifyContent: "space-between",
-  },
-  actionButton: {
-    flex: 1,
-    borderRadius: 16,
-    padding: 16,
     alignItems: "center",
-    marginRight: 8,
+    marginBottom: 20,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: "700",
+    fontFamily: "Montserrat",
+  },
+  actionsGrid: {
+    gap: 12,
+    marginBottom: 16,
+  },
+  primaryAction: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    borderRadius: 16,
     borderWidth: 1,
+    gap: 12,
   },
-  actionButtonSecondary: {
-    flex: 1,
-    backgroundColor: "rgba(255,255,255,0.1)",
-    borderRadius: 16,
-    padding: 16,
+  secondaryAction: {
+    flexDirection: "row",
     alignItems: "center",
-    marginLeft: 8,
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: "rgba(255,255,255,0.1)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.2)",
+    gap: 12,
   },
-  actionButtonText: {
-    fontSize: 14,
+  actionIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  actionTextContainer: {
+    flex: 1,
+  },
+  actionTitle: {
+    fontSize: 16,
     fontWeight: "600",
-    marginTop: 8,
+    marginBottom: 2,
+  },
+  actionSubtitle: {
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  quickTips: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.1)",
+  },
+  tipText: {
+    fontSize: 12,
+    fontWeight: "500",
+    flex: 1,
   },
 });
-
 export default QuickActionsCard;

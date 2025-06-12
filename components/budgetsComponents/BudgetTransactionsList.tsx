@@ -71,7 +71,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     overflow: "hidden",
     marginBottom: 16,
-    marginHorizontal: 20,
   },
   glassCardBlur: {
     borderRadius: 20,

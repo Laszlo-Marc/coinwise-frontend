@@ -289,7 +289,7 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: 20,
     padding: 20,
-    marginVertical: 12,
+    marginVertical: 8,
 
     backgroundColor: "rgba(255, 255, 255, 0.1)",
     backdropFilter: "blur(20px)",
