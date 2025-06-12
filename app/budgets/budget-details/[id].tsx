@@ -71,9 +71,9 @@ const BudgetDetailsScreen = () => {
         >
           <QuickActionsCard
             onAddExpense={() => setShowAddExpenseModal(true)}
-            onEditBudget={function (): void {
-              throw new Error("Function not implemented.");
-            }}
+            onEditBudget={() =>
+              router.push(`/budgets/edit-budget/${budget.id}`)
+            }
           />
           <BudgetTransactionsList transactions={budgetTxn} />
         </Animated.ScrollView>

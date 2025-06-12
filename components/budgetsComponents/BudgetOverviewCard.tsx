@@ -288,9 +288,9 @@ const EnhancedBudgetOverviewCard: React.FC<Props> = ({
 const styles = StyleSheet.create({
   card: {
     borderRadius: 20,
-    marginHorizontal: 16,
-    marginVertical: 8,
     padding: 20,
+    marginVertical: 12,
+
     backgroundColor: "rgba(255, 255, 255, 0.1)",
     backdropFilter: "blur(20px)",
     borderWidth: 1,

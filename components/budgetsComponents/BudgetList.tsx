@@ -17,6 +17,7 @@ type Props = {
   onEditBudget: (id: string) => void;
   onDeleteBudget: (budgetId: string) => void;
   onRefresh?: () => Promise<void>;
+  headerComponent?: React.ReactElement;
 };
 
 const BudgetList = ({
@@ -24,6 +25,7 @@ const BudgetList = ({
   onEditBudget,
   onDeleteBudget,
   onRefresh,
+  headerComponent,
 }: Props) => {
   const [refreshing, setRefreshing] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -97,6 +99,7 @@ const BudgetList = ({
       renderItem={renderBudgetItem}
       keyExtractor={(item) => item.id || ""}
       ListEmptyComponent={renderEmptyState}
+      ListHeaderComponent={headerComponent}
       showsVerticalScrollIndicator={false}
       refreshControl={
         onRefresh ? (

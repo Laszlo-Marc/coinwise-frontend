@@ -31,7 +31,7 @@ const BudgetDetailsHeader: React.FC<BudgetDetailsHeaderProps> = ({
 
         <View style={styles.headerCenter}>
           <Text style={[styles.headerTitle, { color: colors.text }]}>
-            Budget Details
+            {budget.title}
           </Text>
         </View>
 
@@ -43,21 +43,16 @@ const BudgetDetailsHeader: React.FC<BudgetDetailsHeaderProps> = ({
           />
         </View>
       </View>
-
+      {budget.description && (
+        <Text style={styles.budgetDescription}>{budget.description}</Text>
+      )}
       <View style={styles.budgetInfo}>
         <View style={styles.budgetDetails}>
-          <Text style={[styles.budgetTitle, { color: colors.text }]}>
-            {budget.title}
-          </Text>
           <Text style={styles.budgetSubtitle}>
             {budget.category} • {budget.is_recurring ? "Recurring" : "One-time"}
           </Text>
         </View>
       </View>
-
-      {budget.description && (
-        <Text style={styles.budgetDescription}>{budget.description}</Text>
-      )}
     </LinearGradient>
   );
 };

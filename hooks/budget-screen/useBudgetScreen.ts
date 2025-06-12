@@ -7,7 +7,6 @@ import { Alert, Animated } from "react-native";
 export const useBudgetsScreen = () => {
   const { budgets, deleteBudget, fetchBudgets } = useBudgets();
   const router = useRouter();
-
   const headerAnimation = useRef(new Animated.Value(0)).current;
   const fabAnimation = useRef(new Animated.Value(0)).current;
 
@@ -36,8 +35,8 @@ export const useBudgetsScreen = () => {
     );
   };
 
-  const handleEditBudget = (id: string) => {
-    router.push(`./budgets/edit-budget/${id}`);
+  const handleEditBudget = (budgetId: string) => {
+    router.push(`/budgets/edit-budget/${budgetId}`);
   };
 
   useEffect(() => {

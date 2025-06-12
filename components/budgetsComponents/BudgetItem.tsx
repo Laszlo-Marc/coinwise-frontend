@@ -37,14 +37,12 @@ const BudgetItem = ({ budget, onEdit, onDelete }: Props) => {
   useEffect(() => {
     const progress = Math.min(budget.spent / budget.amount, 1);
 
-    // Animate progress bar
     Animated.timing(progressAnim, {
       toValue: progress,
       duration: 1200,
       useNativeDriver: false,
     }).start();
 
-    // Animate glow effect
     Animated.loop(
       Animated.sequence([
         Animated.timing(glowAnim, {
@@ -296,7 +294,6 @@ const BudgetItem = ({ budget, onEdit, onDelete }: Props) => {
 
 const styles = StyleSheet.create({
   cardContainer: {
-    marginHorizontal: 16,
     marginVertical: 12,
   },
   glassBackground: {

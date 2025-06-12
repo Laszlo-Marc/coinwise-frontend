@@ -53,16 +53,19 @@ const BudgetsScreen = () => {
         onProfilePress={() => router.push("/profile")}
         gradientColors={["rgba(75, 108, 183, 0.8)", "rgba(24, 40, 72, 0.8)"]}
       />
-      <EnhancedBudgetOverviewCard
-        budgets={budgets}
-        progressAnim={new Animated.Value(0)}
-      />
+
       {/* Budget List */}
       <BudgetList
         budgets={budgets}
         onEditBudget={handleEditBudget}
         onDeleteBudget={handleDeleteBudget}
         onRefresh={handleRefresh}
+        headerComponent={
+          <EnhancedBudgetOverviewCard
+            budgets={budgets}
+            progressAnim={new Animated.Value(0)}
+          />
+        }
       />
       {/* Floating Action Button */}
       <Animated.View

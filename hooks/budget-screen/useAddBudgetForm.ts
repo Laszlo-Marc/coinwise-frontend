@@ -1,8 +1,13 @@
-import { BudgetModel } from "@/models/budget";
+import { useBudgets } from "@/contexts/BudgetsContext";
 import * as Haptics from "expo-haptics";
-import { useState } from "react";
+import { useRouter } from "expo-router";
+import { useRef, useState } from "react";
+import { Animated } from "react-native";
 
-export const useAddBudgetForm = (onSubmit: (data: BudgetModel) => void) => {
+export const useAddBudgetForm = () => {
+  const { addBudget } = useBudgets();
+  const router = useRouter();
+  const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -20,6 +25,8 @@ export const useAddBudgetForm = (onSubmit: (data: BudgetModel) => void) => {
 
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [showTargetDatePicker, setShowTargetDatePicker] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const successOpacity = useRef(new Animated.Value(0)).current;
 
   const handleInputChange = (field: any, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -41,10 +48,12 @@ export const useAddBudgetForm = (onSubmit: (data: BudgetModel) => void) => {
     return true;
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (isSaving) return;
+    setIsSaving(true);
     if (!validateForm()) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      return;
+      return false;
     }
 
     const amount = parseFloat(formData.amount);
@@ -55,17 +64,44 @@ export const useAddBudgetForm = (onSubmit: (data: BudgetModel) => void) => {
       spent: 0,
       remaining: amount,
       start_date: formData.start_date,
+      end_date: formData.end_date,
       is_recurring: formData.isRecurring,
       recurring_frequency: formData.recurring_frequency,
       category: formData.category,
-      end_date: formData.end_date,
       notificationsEnabled: formData.notificationsEnabled,
       notificationsThreshold: formData.notificationThreshold,
-      transactions: [],
     };
 
-    onSubmit(budgetData);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    try {
+      await addBudget(budgetData);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setShowSuccess(true);
+
+      await new Promise((resolve) => {
+        Animated.sequence([
+          Animated.timing(successOpacity, {
+            toValue: 1,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+          Animated.delay(1000),
+          Animated.timing(successOpacity, {
+            toValue: 0,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+        ]).start(() => resolve(null));
+      });
+
+      setShowSuccess(false);
+      router.replace("/budgets");
+      setIsSaving(false);
+      return true;
+    } catch (error) {
+      console.error("Failed to add budget:", error);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      return false;
+    }
   };
 
   return {
@@ -77,5 +113,7 @@ export const useAddBudgetForm = (onSubmit: (data: BudgetModel) => void) => {
     handleInputChange,
     handleSave,
     validateForm,
+    showSuccess,
+    successOpacity,
   };
 };
