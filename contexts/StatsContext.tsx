@@ -23,7 +23,7 @@ interface StatsContextType {
   goalStats: GoalStats | null;
   loading: boolean;
   error: string | null;
-  refreshStats: () => Promise<void>;
+  refreshStats: (range: string) => Promise<void>;
 }
 
 const StatsContext = createContext<StatsContextType | undefined>(undefined);
@@ -45,7 +45,7 @@ export const StatsProvider: React.FC<{ children: React.ReactNode }> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const refreshStats = async () => {
+  const refreshStats = async (range: string = "this_month") => {
     setLoading(true);
     setError(null);
 
@@ -57,6 +57,8 @@ export const StatsProvider: React.FC<{ children: React.ReactNode }> = ({
         "Content-Type": "application/json",
       };
 
+      const queryParam = `?range=${range}`;
+
       const [
         overviewRes,
         expensesRes,
@@ -66,15 +68,26 @@ export const StatsProvider: React.FC<{ children: React.ReactNode }> = ({
         budgetRes,
         goalRes,
       ] = await Promise.all([
-        axios.get<StatsOverview>(`${STATS_API_URL}/overview`, { headers }),
-        axios.get<ExpenseStats>(`${STATS_API_URL}/expenses/full`, { headers }),
-        axios.get<IncomeStats>(`${STATS_API_URL}/income/full`, { headers }),
-        axios.get<TransferStats>(`${STATS_API_URL}/transfers/full`, {
+        axios.get<StatsOverview>(`${STATS_API_URL}/overview${queryParam}`, {
           headers,
         }),
-        axios.get<DepositStats>(`${STATS_API_URL}/deposits/full`, { headers }),
-        axios.get<BudgetStats>(`${STATS_API_URL}/budgets`, { headers }),
-        axios.get<GoalStats>(`${STATS_API_URL}/goals`, { headers }),
+        axios.get<ExpenseStats>(`${STATS_API_URL}/expenses/full${queryParam}`, {
+          headers,
+        }),
+        axios.get<IncomeStats>(`${STATS_API_URL}/income/full${queryParam}`, {
+          headers,
+        }),
+        axios.get<TransferStats>(
+          `${STATS_API_URL}/transfers/full${queryParam}`,
+          { headers }
+        ),
+        axios.get<DepositStats>(`${STATS_API_URL}/deposits/full${queryParam}`, {
+          headers,
+        }),
+        axios.get<BudgetStats>(`${STATS_API_URL}/budgets${queryParam}`, {
+          headers,
+        }),
+        axios.get<GoalStats>(`${STATS_API_URL}/goals`, { headers }), // no filtering here
       ]);
 
       setStatsOverview(overviewRes.data);
@@ -84,13 +97,6 @@ export const StatsProvider: React.FC<{ children: React.ReactNode }> = ({
       setDepositStats(depositRes.data);
       setBudgetStats(budgetRes.data);
       setGoalStats(goalRes.data);
-      console.log("Overview:", overviewRes.data);
-      console.log("Expenses:", expensesRes.data);
-      console.log("Income:", incomeRes.data);
-      console.log("Transfers:", transferRes.data);
-      console.log("Deposits:", depositRes.data);
-      console.log("Budgets:", budgetRes.data);
-      console.log("Goals:", goalRes.data);
     } catch (err: any) {
       setError(
         err?.response?.data?.detail || err.message || "Failed to load stats"

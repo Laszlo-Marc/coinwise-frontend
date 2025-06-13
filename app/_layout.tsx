@@ -2,6 +2,7 @@ import { TransactionProvider } from "@/contexts/AppContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { BudgetsProvider } from "@/contexts/BudgetsContext";
 import { GoalsProvider } from "@/contexts/GoalsContext";
+import { StatsProvider } from "@/contexts/StatsContext";
 
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
@@ -21,15 +22,17 @@ export default function RootLayout() {
         <TransactionProvider>
           <GoalsProvider>
             <BudgetsProvider>
-              <Stack
-                screenOptions={{
-                  headerShown: false,
-                  freezeOnBlur: true,
-                  animation: "fade",
-                  gestureEnabled: true,
-                  animationDuration: 300,
-                }}
-              />
+              <StatsProvider>
+                <Stack
+                  screenOptions={{
+                    headerShown: false,
+                    freezeOnBlur: true,
+                    animation: "fade",
+                    gestureEnabled: true,
+                    animationDuration: 300,
+                  }}
+                />
+              </StatsProvider>
             </BudgetsProvider>
           </GoalsProvider>
         </TransactionProvider>

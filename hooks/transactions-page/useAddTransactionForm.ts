@@ -1,22 +1,21 @@
-// Custom hook for AddTransactionScreen
-
 import { useTransactionContext } from "@/contexts/AppContext";
 import * as Haptics from "expo-haptics";
-import { useRouter } from "expo-router";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { Animated } from "react-native";
 
-export const useAddTransactionForm = () => {
-  const router = useRouter();
+export const useAddTransactionForm = (
+  type: "expense" | "income" | "transfer" | "deposit",
+  onSuccess: () => void
+) => {
   const { addTransaction } = useTransactionContext();
   const successOpacity = useRef(new Animated.Value(0)).current;
 
   const [formData, setFormData] = useState({
-    type: "expense",
+    type,
     amount: "",
     date: new Date().toISOString().split("T")[0],
     description: "",
-    category: "General",
+    category: "Groceries",
     merchant: "",
     currency: "RON",
     sender: "",
@@ -34,25 +33,19 @@ export const useAddTransactionForm = () => {
 
   const validationErrors = useMemo(() => {
     const errs: Record<string, string> = {};
-
     if (!formData.description.trim())
       errs.description = "Description is required.";
-
     const amount = Number(formData.amount);
     if (isNaN(amount) || amount <= 0) errs.amount = "Enter a valid amount.";
-
     if (!formData.date) errs.date = "Date is required.";
-
     if (formData.type === "expense") {
       if (!formData.category) errs.category = "Category is required.";
       if (!formData.merchant.trim()) errs.merchant = "Merchant is required.";
     }
-
     if (formData.type === "transfer") {
       if (!formData.sender.trim()) errs.sender = "Sender is required.";
       if (!formData.receiver.trim()) errs.receiver = "Receiver is required.";
     }
-
     return errs;
   }, [formData]);
 
@@ -70,14 +63,11 @@ export const useAddTransactionForm = () => {
 
     setErrors({});
 
-    const txData = {
-      ...formData,
-      type: formData.type as "expense" | "transfer" | "income" | "deposit",
-      amount: parseFloat(formData.amount),
-    };
-
     try {
-      await addTransaction(txData);
+      await addTransaction({
+        ...formData,
+        amount: parseFloat(formData.amount),
+      });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setShowSuccess(true);
       Animated.sequence([
@@ -94,20 +84,13 @@ export const useAddTransactionForm = () => {
         }),
       ]).start(() => {
         setShowSuccess(false);
-        router.replace("/transactions");
+        onSuccess(); // 👈 use the prop correctly now
       });
     } catch (err) {
       console.error("Error saving transaction:", err);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     }
-  }, [
-    formData,
-    isFormValid,
-    validationErrors,
-    addTransaction,
-    router,
-    successOpacity,
-  ]);
+  }, [formData, isFormValid, validationErrors, addTransaction]);
 
   return {
     formData,

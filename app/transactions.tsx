@@ -136,7 +136,7 @@ export default function TransactionsListScreen() {
         onClose={() => setClassModalVisible(false)}
         onSelect={(type) => {
           setClassModalVisible(false);
-          router.push(`/transaction/add-transaction/${type}`);
+          router.push(`/transaction/add-transaction?type=${type}`);
         }}
       />
       <ProcessingModal visible={isLoading} currentStage={processingStage} />

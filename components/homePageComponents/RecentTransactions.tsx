@@ -35,7 +35,7 @@ const RecentTransactionsCard: React.FC<Props> = ({ transactions }) => {
     .slice(0, 5);
 
   const getIsPositive = (tx: TransactionModel) => {
-    if (tx.type === "income") return true;
+    if (tx.type === "income" || tx.type === "deposit") return true;
     if (
       tx.type === "transfer" &&
       typeof tx.receiver === "string" &&
