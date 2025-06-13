@@ -30,7 +30,7 @@ export default function MainSection({
   const balance = summaryData.allTime.income - summaryData.allTime.expenses;
   return (
     <LinearGradient
-      colors={["rgba(252, 255, 158, 1)", "rgba(198, 119, 0, 1)"]}
+      colors={["rgb(251, 193, 105)", "rgb(198, 119, 0)"]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={styles.mainSection}
@@ -49,6 +49,7 @@ export default function MainSection({
         </View>
       </TouchableWithoutFeedback>
       <View style={styles.balanceContainer}>
+        <Text style={styles.balanceLabel}>Balance</Text>
         <Text style={styles.balanceAmount}>{balance.toFixed(2)} RON</Text>
       </View>
       <View style={styles.quickActions}>{actionButtons}</View>
@@ -64,6 +65,16 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 24,
     overflow: "hidden",
   },
+  greeting: {
+    color: colors.text,
+    fontSize: 26,
+    fontWeight: "700",
+    marginBottom: 8,
+    textAlign: "center",
+    marginTop: Platform.OS === "ios" ? 30 : 20,
+    fontFamily: "Montserrat",
+  },
+
   headerWrapper: {
     position: "absolute",
     top: 0,

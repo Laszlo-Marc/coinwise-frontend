@@ -1,11 +1,12 @@
 import ProcessingModal from "@/components/financesComponents/ProcessingModal";
 import TransactionClassModal from "@/components/financesComponents/TransactionClasssModal";
-import { TransactionList } from "@/components/financesComponents/TransactionList";
-import { TransactionFilters } from "@/components/financesComponents/TransactionsFilters";
+import TransactionList from "@/components/financesComponents/TransactionList";
+import TransactionFilters from "@/components/financesComponents/TransactionsFilters";
 import BottomBar from "@/components/mainComponents/BottomBar";
 import DeleteConfirmModal from "@/components/mainComponents/DeleteModal";
 import MainSection from "@/components/mainComponents/MainSection";
 import { useTransactionContext } from "@/contexts/AppContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useTransactionFilters } from "@/hooks/finances-page/handleFilterChange";
 import { useDocumentUpload } from "@/hooks/transactions-page/useDocumentUpload";
 import { useTransactionUIState } from "@/hooks/transactions-page/useTransactionUIState";
@@ -24,7 +25,8 @@ export default function TransactionsListScreen() {
     deleteTransaction,
     refreshTransactions,
   } = useTransactionContext();
-
+  const { state } = useAuth();
+  const currentUser = state.user?.full_name;
   const {
     refreshing,
     setRefreshing,
@@ -119,6 +121,7 @@ export default function TransactionsListScreen() {
       </View>
 
       <TransactionList
+        currentUser={currentUser}
         transactions={displayedTransactions}
         onEdit={(id) => router.push(`/transaction/edit-transaction/${id}`)}
         onDelete={(id) => {
@@ -128,7 +131,6 @@ export default function TransactionsListScreen() {
         onRefresh={onRefresh}
         refreshing={refreshing}
       />
-
       <TransactionClassModal
         visible={classModalVisible}
         onClose={() => setClassModalVisible(false)}
@@ -137,9 +139,7 @@ export default function TransactionsListScreen() {
           router.push(`/transaction/add-transaction/${type}`);
         }}
       />
-
       <ProcessingModal visible={isLoading} currentStage={processingStage} />
-
       <DeleteConfirmModal
         visible={modalVisible}
         title="Delete Transaction"
@@ -150,7 +150,6 @@ export default function TransactionsListScreen() {
           setModalVisible(false);
         }}
       />
-
       <BottomBar />
     </View>
   );

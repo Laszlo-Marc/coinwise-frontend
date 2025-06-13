@@ -1,106 +1,37 @@
-import { TransactionList } from "@/components/financesComponents/TransactionList";
+import TransactionList from "@/components/financesComponents/TransactionList";
 import TransactionsFiltersPanel from "@/components/financesComponents/TransactionsFilterPanel";
 import TransactionsSummaryCard from "@/components/financesComponents/TransactionsSummaryCard";
 import AnimatedCard from "@/components/homePageComponents/AnimatedCard";
 import ActionBar from "@/components/mainComponents/ActionBar";
 import DeleteConfirmModal from "@/components/mainComponents/DeleteModal";
 import { colors } from "@/constants/colors";
-import { useTransactionContext } from "@/contexts/AppContext";
-import { useAuth } from "@/contexts/AuthContext";
-import { useTransactionFilters } from "@/hooks/finances-page/handleFilterChange";
-import { TransactionModel } from "@/models/transaction";
+
+import { useFinancesScreenState } from "@/hooks/finances-page/useFinancesState";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
-import {
-  Animated,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
-
+import React from "react";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 export default function Finances() {
-  const {
-    transactions,
-    deleteTransaction,
-    refreshTransactions,
-    hasMore,
-    loadMore,
-    isLoadingMore,
-  } = useTransactionContext();
-  const { getStoredUserData } = useAuth();
-  const [selectedClass, setSelectedClass] =
-    useState<TransactionType>("expense");
-  const [focusAnim] = useState(new Animated.Value(0));
   const router = useRouter();
-  const [selectedTransaction, setSelectedTransaction] =
-    useState<TransactionModel | null>(null);
-  type TransactionType = "expense" | "income" | "transfer" | "deposit";
-  const [formType, setFormType] = useState<TransactionType | null>(null);
-  const [showFilters, setShowFilters] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [isFormVisible, setIsFormVisible] = useState(false);
-  const [summary, setSummary] = useState({
-    totalExpenses: 0,
-    totalIncome: 0,
-    balance: 0,
-  });
-  const [modalVisible, setModalVisible] = useState(false);
-  const [selectedTransactionId, setSelectedTransactionId] = useState<
-    string | null
-  >(null);
-  const { displayedTransactions, handleFilterChange, filters } =
-    useTransactionFilters(transactions);
-  useEffect(() => {
-    if (transactions.length > 0) {
-      handleFilterChange({ transactionClass: "expense" });
-    }
-  }, [transactions]);
 
-  const handleEditTransaction = useCallback(
-    (id: string, type: string) => {
-      const transaction = transactions.find((t) => t.id === id);
-      if (!transaction) return;
-
-      setFormType(type as TransactionType);
-      setSelectedTransaction(transaction);
-      setIsFormVisible(true);
-    },
-    [transactions]
-  );
-
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    refreshTransactions();
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 2000);
-  }, []);
-
-  const handleDeleteConfirm = async () => {
-    if (!selectedTransactionId) return;
-    try {
-      await deleteTransaction(selectedTransactionId);
-    } catch (error) {
-      console.error("Error deleting transaction:", error);
-    } finally {
-      setModalVisible(false);
-      setSelectedTransactionId(null);
-    }
-  };
-  const handleDeleteCancel = () => {
-    setModalVisible(false);
-    setSelectedTransactionId(null);
-  };
-  const handleDeleteTransaction = (transactionId: string) => {
-    setSelectedTransactionId(transactionId);
-    setModalVisible(true);
-  };
-
-  const toggleFilters = () => {
-    setShowFilters(!showFilters);
-  };
+  const {
+    selectedClass,
+    showFilters,
+    refreshing,
+    summary,
+    modalVisible,
+    displayedTransactions,
+    hasMore,
+    isLoadingMore,
+    handleEditTransaction,
+    handleDeleteTransaction,
+    onRefresh,
+    handleFilterChange,
+    toggleFilters,
+    handleDeleteConfirm,
+    handleDeleteCancel,
+    loadMore,
+  } = useFinancesScreenState();
 
   return (
     <View style={styles.container}>
@@ -208,7 +139,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 8,
   },
-
   inlineButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -223,7 +153,6 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-
   inlineButtonText: {
     fontSize: 14,
     color: colors.text,

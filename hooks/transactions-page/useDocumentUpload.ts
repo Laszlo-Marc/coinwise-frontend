@@ -1,6 +1,6 @@
 // hooks/useDocumentUpload.ts
 import * as DocumentPicker from "expo-document-picker";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Alert } from "react-native";
 
 export type ProcessingStage =
@@ -16,6 +16,9 @@ export function useDocumentUpload(
 ) {
   const [processingStage, setProcessingStage] = useState<ProcessingStage>("");
   const [isLoading, setIsLoading] = useState(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
 
   const uploadDocument = async () => {
     try {
@@ -24,14 +27,9 @@ export function useDocumentUpload(
         copyToCacheDirectory: true,
       });
 
-      if (result.canceled) return;
-      if (!result.assets || result.assets.length === 0) {
-        throw new Error("No file was selected.");
-      }
+      if (result.canceled || !result.assets?.[0]?.uri) return;
 
       const document = result.assets[0];
-      if (!document.uri) throw new Error("File URI is missing.");
-
       setIsLoading(true);
       setProcessingStage("anonymizing");
       await delay(1000);
@@ -51,29 +49,26 @@ export function useDocumentUpload(
         type: document.mimeType || "application/pdf",
       } as any);
 
-      const response = await uploadBankStatement(formData);
-      console.log("Upload response:", response);
+      await uploadBankStatement(formData);
 
       setProcessingStage("done");
-      setTimeout(() => {
+      timeoutRef.current = setTimeout(() => {
         setIsLoading(false);
         setProcessingStage("");
       }, 1000);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Upload failed:", err);
       setIsLoading(false);
       setProcessingStage("");
-
-      let message = "There was a problem uploading your document.";
-      if (err instanceof Error && err.message) {
-        message = err.message;
-      }
-
-      Alert.alert("Upload Failed", message);
+      Alert.alert("Upload Failed", err.message || "Unknown error occurred.");
     }
   };
 
-  const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
 
   return {
     uploadDocument,

@@ -14,21 +14,18 @@ interface AnimatedHeaderProps {
   title: string;
   subtitle?: string;
   animatedValue: Animated.Value;
-  onBack?: () => void;
   onProfilePress?: () => void;
-  gradientColors?: [string, string, ...string[]]; // At least two colors required
+  gradientColors?: [string, string, ...string[]];
+  leftIcon?: React.ReactNode;
 }
 
 const AnimatedHeader: React.FC<AnimatedHeaderProps> = ({
   title,
   subtitle,
   animatedValue,
-  onBack,
   onProfilePress,
-  gradientColors = ["rgba(75, 108, 183, 0.8)", "rgba(24, 40, 72, 0.8)"] as [
-    string,
-    string
-  ], // Default
+  gradientColors = ["rgba(75, 108, 183, 0.8)", "rgba(24, 40, 72, 0.8)"],
+  leftIcon,
 }) => {
   const insets = useSafeAreaInsets();
 
@@ -56,9 +53,7 @@ const AnimatedHeader: React.FC<AnimatedHeaderProps> = ({
         style={[styles.headerGradient, { paddingTop: insets.top + 16 }]}
       >
         <View style={styles.headerContent}>
-          <TouchableOpacity onPress={onBack} style={styles.iconButton}>
-            <Feather name="arrow-left" size={24} color="#FFF" />
-          </TouchableOpacity>
+          <View style={styles.iconSlot}>{leftIcon}</View>
 
           <View style={styles.spacer} />
 
@@ -93,6 +88,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    width: "100%",
+  },
+  iconSlot: {
+    padding: 8,
   },
   iconButton: {
     padding: 8,

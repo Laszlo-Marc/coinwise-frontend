@@ -1,6 +1,6 @@
 import { TransactionModel } from "@/models/transaction";
 import { TransactionType } from "@/models/transactionType";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 type FilterOptions = {
   transactionClass?: TransactionType | null;
@@ -18,79 +18,47 @@ export function useTransactionFilters(transactions: TransactionModel[]) {
     sortOrder: "desc",
   });
 
-  const [displayedTransactions, setDisplayedTransactions] = useState<
-    TransactionModel[]
-  >([]);
+  const displayedTransactions = useMemo(() => {
+    let filtered = [...transactions];
 
-  const applyFilters = useCallback(
-    (filterOptions: FilterOptions) => {
-      let filtered = transactions;
+    if (filters.transactionClass && filters.transactionClass !== "all") {
+      filtered = filtered.filter((tx) => tx.type === filters.transactionClass);
+    }
 
-      if (
-        filterOptions.transactionClass &&
-        filterOptions.transactionClass !== "all"
-      ) {
-        filtered = filtered.filter(
-          (tx) => tx.type === filterOptions.transactionClass
-        );
-      }
+    if (filters.category && filters.transactionClass === "expense") {
+      filtered = filtered.filter((tx) => tx.category === filters.category);
+    }
 
-      if (
-        filterOptions.category &&
-        filterOptions.transactionClass === "expense"
-      ) {
-        filtered = filtered.filter(
-          (tx) => tx.category === filterOptions.category
-        );
-      }
+    if (filters.startDate || filters.endDate) {
+      filtered = filtered.filter((tx) => {
+        const txDate = new Date(tx.date);
+        const afterStart = filters.startDate
+          ? txDate >= filters.startDate
+          : true;
+        const beforeEnd = filters.endDate ? txDate <= filters.endDate : true;
+        return afterStart && beforeEnd;
+      });
+    }
 
-      if (filterOptions.startDate || filterOptions.endDate) {
-        filtered = filtered.filter((tx) => {
-          const txDate = new Date(tx.date);
-          const afterStart = filterOptions.startDate
-            ? txDate >= filterOptions.startDate
-            : true;
-          const beforeEnd = filterOptions.endDate
-            ? txDate <= filterOptions.endDate
-            : true;
-          return afterStart && beforeEnd;
-        });
-      }
+    if (filters.sortBy) {
+      filtered.sort((a, b) => {
+        const valA =
+          filters.sortBy === "amount" ? a.amount : new Date(a.date).getTime();
+        const valB =
+          filters.sortBy === "amount" ? b.amount : new Date(b.date).getTime();
+        return filters.sortOrder === "asc" ? valA - valB : valB - valA;
+      });
+    }
 
-      if (filterOptions.sortBy) {
-        filtered = [...filtered].sort((a, b) => {
-          let valueA =
-            filterOptions.sortBy === "amount"
-              ? a.amount
-              : new Date(a.date).getTime();
-          let valueB =
-            filterOptions.sortBy === "amount"
-              ? b.amount
-              : new Date(b.date).getTime();
-
-          return filterOptions.sortOrder === "asc"
-            ? valueA - valueB
-            : valueB - valueA;
-        });
-      }
-
-      setDisplayedTransactions(filtered);
-    },
-    [transactions]
-  );
+    return filtered;
+  }, [transactions, filters]);
 
   const handleFilterChange = useCallback(
     (newFilters: Partial<FilterOptions>) => {
-      const updatedFilters = { ...filters, ...newFilters };
-      setFilters(updatedFilters);
-      applyFilters(updatedFilters);
+      setFilters((prev) => ({ ...prev, ...newFilters }));
     },
-    [filters, applyFilters]
+    []
   );
-
-  useEffect(() => {
-    applyFilters(filters);
-  }, [transactions, applyFilters, filters]);
 
   return {
     displayedTransactions,

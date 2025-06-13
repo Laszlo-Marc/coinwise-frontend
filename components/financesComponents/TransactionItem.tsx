@@ -1,120 +1,90 @@
-// TransactionItem.jsx - Improved component
-import { useAuth } from "@/contexts/AuthContext";
+import { colors } from "@/constants/colors";
 import { TransactionModel } from "@/models/transaction";
+import { TransactionType } from "@/models/transactionType";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import React, { useCallback } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { RectButton } from "react-native-gesture-handler";
+import Swipeable from "react-native-gesture-handler/Swipeable";
 import Animated, { FadeIn } from "react-native-reanimated";
 
-type Props = {
+interface Props {
   transaction: TransactionModel;
-};
+  currentUser: string;
+  onEdit?: (id: string, type: TransactionType) => void;
+  onDelete?: (id: string, type: TransactionType) => void;
+}
 
-export default function TransactionItem({ transaction }: Props) {
-  const { id, description, amount, date, type, category, sender, receiver } =
-    transaction;
+const TransactionItem: React.FC<Props> = ({
+  transaction,
+  currentUser,
+  onEdit,
+  onDelete,
+}) => {
   const router = useRouter();
-  const [currentUser, setCurrentUser] = useState<string>("");
-  const { getStoredUserData } = useAuth();
+  const {
+    id,
+    description,
+    amount,
+    date,
+    type,
+    category,
+    sender,
+    receiver,
+    currency,
+  } = transaction;
 
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const userData = await getStoredUserData();
-        if (userData) {
-          setCurrentUser(userData["full_name"] ?? "");
-        }
-      } catch (err) {
-        console.error("Failed to load user", err);
-      }
-    };
-    fetchUser();
-  }, []);
-
-  const isTransferReceiver =
-    type === "transfer" && currentUser && receiver === currentUser;
-  const isTransferSender =
-    type === "transfer" && currentUser && sender === currentUser;
-
-  const getCurrencySymbol = () => {
-    if ("currency" in transaction) {
-      switch (transaction.currency) {
-        case "RON":
-          return "RON";
-        case "EUR":
-          return "€";
-        case "USD":
-          return "$";
-        default:
-          return "RON";
-      }
-    }
-    return "$";
-  };
+  const isTransferReceiver = type === "transfer" && receiver === currentUser;
+  const isTransferSender = type === "transfer" && sender === currentUser;
 
   const formattedAmount = (() => {
-    if (type === "transfer") {
-      if (isTransferReceiver)
-        return `+${getCurrencySymbol()}${amount.toFixed(2)}`;
-      if (isTransferSender)
-        return `-${getCurrencySymbol()}${amount.toFixed(2)}`;
-    }
-    return (
-      (type === "expense" ? "-" : "+") + getCurrencySymbol() + amount.toFixed(2)
-    );
+    const prefix =
+      type === "expense" || isTransferSender
+        ? "-"
+        : type === "income" || type === "deposit" || isTransferReceiver
+        ? "+"
+        : "";
+    const symbol = currency === "EUR" ? "€" : currency === "USD" ? "$" : "RON";
+    return `${prefix}${amount.toFixed(2)} ${symbol}`;
   })();
 
   const amountColor = (() => {
-    if (type === "transfer") {
-      if (isTransferReceiver) return "#4CAF50"; // green
-      if (isTransferSender) return "#F44336"; // red
-    }
+    if (isTransferReceiver) return "#4CAF50";
+    if (isTransferSender) return "#F44336";
     return type === "income" || type === "deposit" ? "#4CAF50" : "#F44336";
   })();
-  const formatDate = (dateString: string | Date | undefined) => {
-    if (!dateString) return "";
 
-    try {
-      const dateObj =
-        typeof dateString === "string" ? new Date(dateString) : dateString;
-
-      return dateObj.toLocaleDateString(undefined, {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      });
-    } catch (error) {
-      console.error("Error formatting date:", error);
-      return "";
-    }
+  const formatDate = (value?: string | Date) => {
+    if (!value) return "";
+    const d = typeof value === "string" ? new Date(value) : value;
+    return d.toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
   };
-
-  const displayDescription = description || "No description";
 
   const getIcon = () => {
     if (type === "expense") {
-      if (category) {
-        switch (category.toLowerCase()) {
-          case "food":
-            return "coffee";
-          case "groceries":
-            return "shopping-cart";
-          case "transportation":
-            return "truck";
-          case "entertainment":
-            return "tv";
-          case "bills":
-            return "file-text";
-          case "health":
-            return "heart";
-          case "travel":
-            return "map";
-          default:
-            return "credit-card";
-        }
+      switch (category?.toLowerCase()) {
+        case "food":
+          return "coffee";
+        case "groceries":
+          return "shopping-cart";
+        case "transportation":
+          return "truck";
+        case "entertainment":
+          return "tv";
+        case "bills":
+          return "file-text";
+        case "health":
+          return "heart";
+        case "travel":
+          return "map";
+        default:
+          return "credit-card";
       }
-      return "arrow-down";
     } else if (type === "income") {
       return "arrow-up";
     } else if (type === "transfer") {
@@ -123,28 +93,58 @@ export default function TransactionItem({ transaction }: Props) {
       return "dollar-sign";
     }
   };
+  const renderLeftActions = useCallback(
+    () => (
+      <View style={styles.hiddenContainer}>
+        <RectButton
+          style={[
+            styles.hiddenButtonLarge,
+            { backgroundColor: colors.primary[500] },
+          ]}
+          onPress={() => onEdit?.(id ?? "", type)}
+        >
+          <Feather name="edit-2" size={24} color="#fff" />
+          <Text style={styles.hiddenText}>Edit</Text>
+        </RectButton>
+        <RectButton
+          style={[styles.hiddenButtonLarge, { backgroundColor: colors.error }]}
+          onPress={() => onDelete?.(id ?? "", type)}
+        >
+          <Feather name="trash-2" size={24} color="#fff" />
+          <Text style={styles.hiddenText}>Delete</Text>
+        </RectButton>
+      </View>
+    ),
+    [id, type, onEdit, onDelete]
+  );
 
   return (
-    <TouchableOpacity onPress={() => router.push(`./transaction/${id}`)}>
-      <Animated.View entering={FadeIn} style={styles.container}>
-        <View style={styles.iconContainer}>
-          <Feather name={getIcon()} size={22} color={amountColor} />
-        </View>
+    <Swipeable
+      renderLeftActions={renderLeftActions}
+      friction={2}
+      rightThreshold={40}
+    >
+      <TouchableOpacity onPress={() => router.push(`./transaction/${id}`)}>
+        <Animated.View entering={FadeIn} style={styles.container}>
+          <View style={styles.iconContainer}>
+            <Feather name={getIcon()} size={22} color={amountColor} />
+          </View>
 
-        <View style={styles.textContainer}>
-          <Text style={styles.title} numberOfLines={1}>
-            {displayDescription}
+          <View style={styles.textContainer}>
+            <Text style={styles.title} numberOfLines={1}>
+              {description || "No description"}
+            </Text>
+            <Text style={styles.subtitle}>{formatDate(date)}</Text>
+          </View>
+
+          <Text style={[styles.amount, { color: amountColor }]}>
+            {formattedAmount}
           </Text>
-          <Text style={styles.subtitle}>{formatDate(date)}</Text>
-        </View>
-
-        <Text style={[styles.amount, { color: amountColor }]}>
-          {formattedAmount}
-        </Text>
-      </Animated.View>
-    </TouchableOpacity>
+        </Animated.View>
+      </TouchableOpacity>
+    </Swipeable>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -191,4 +191,45 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontFamily: "Montserrat",
   },
+  hiddenContainer: {
+    flexDirection: "row",
+    height: "100%",
+    alignItems: "center",
+    justifyContent: "flex-start",
+    marginLeft: 16,
+  },
+  hiddenButton: {
+    width: 60,
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: 8,
+    borderRadius: 10,
+    padding: 8,
+  },
+  hiddenText: {
+    color: colors.text,
+    fontSize: 12,
+    marginTop: 4,
+    fontWeight: "600",
+    fontFamily: "Montserrat",
+  },
+
+  hiddenButtonLarge: {
+    width: 80,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 8,
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+  },
 });
+
+const propsAreEqual = (prev: Props, next: Props) => {
+  return (
+    prev.currentUser === next.currentUser &&
+    prev.transaction.id === next.transaction.id
+  );
+};
+
+export default React.memo(TransactionItem, propsAreEqual);

@@ -31,7 +31,7 @@ const HomeHeader = () => {
       <View style={styles.quickActions}>
         <TouchableOpacity
           style={styles.actionButton}
-          onPress={() => router.replace("./transactions")}
+          onPress={() => router.push("./transactions")}
         >
           <View style={styles.actionIconContainer}>
             <FontAwesome name="bank" size={24} color={colors.text} />

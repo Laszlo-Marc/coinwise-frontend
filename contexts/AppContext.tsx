@@ -1,7 +1,13 @@
 import { API_BASE_URL } from "@/constants/api";
 import axios from "axios";
 import * as SecureStore from "expo-secure-store";
-import React, { createContext, useContext, useMemo, useState } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+} from "react";
 import { PaginatedResponse, TransactionModel } from "../models/transaction";
 
 interface TransactionContextType {
@@ -46,9 +52,10 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({
   const [currentFilter, setCurrentFilter] = useState<string | undefined>();
 
   const pageSize = 100;
+  const maxTransactionCache = 300;
   const hasMore = currentPage < totalPages;
 
-  const transactionsCleanup = () => {
+  const transactionsCleanup = useCallback(() => {
     setTransactions([]);
     setIsLoading(false);
     setIsLoadingMore(false);
@@ -56,14 +63,15 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({
     setCurrentPage(1);
     setTotalPages(1);
     setCurrentFilter(undefined);
-  };
-  const handleApiError = (error: any) => {
+  }, []);
+
+  const handleApiError = useCallback((error: any) => {
     console.error("API Error:", error);
     setError("Something went wrong. Please try again.");
-  };
-  const fixTransferData = async () => {
-    const token = await SecureStore.getItem("auth_token");
+  }, []);
 
+  const fixTransferData = useCallback(async () => {
+    const token = await SecureStore.getItem("auth_token");
     const response = await axios.post(
       `${TRANSACTIONS_API_URL}/fix-transfer-names`,
       {},
@@ -74,202 +82,209 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({
         },
       }
     );
-
     console.log(response.data);
-  };
+  }, []);
 
-  const fetchTransactions = async (
-    page: number = 1,
-    filter?: string
-  ): Promise<void> => {
-    if (page === 1) {
-      setIsLoading(true);
-    } else {
-      setIsLoadingMore(true);
-    }
+  const fetchTransactions = useCallback(
+    async (page: number = 1, filter?: string) => {
+      if (page === 1) setIsLoading(true);
+      else setIsLoadingMore(true);
 
-    setError(null);
+      setError(null);
 
-    try {
-      const reponse = await fixTransferData();
-      const token = await SecureStore.getItem("auth_token");
+      try {
+        await fixTransferData();
+        const token = await SecureStore.getItem("auth_token");
 
-      const params: Record<string, any> = {
-        page,
-        page_size: pageSize,
-      };
+        const params: Record<string, any> = {
+          page,
+          page_size: pageSize,
+        };
 
-      if (filter) {
-        params.type =
-          filter === "expenses"
-            ? "expense"
-            : filter === "incomes"
-            ? "income"
-            : filter === "transfers"
-            ? "transfer"
-            : filter === "deposits"
-            ? "deposit"
-            : undefined;
-      }
-
-      const response = await axios.get<PaginatedResponse>(
-        `${TRANSACTIONS_API_URL}/`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          params,
-        }
-      );
-
-      const { data, page: returnedPage, total_pages } = response.data;
-
-      if (page === 1) {
-        setTransactions(data);
-      } else {
-        setTransactions((prev) => [...prev, ...data]);
-      }
-
-      setCurrentPage(returnedPage);
-      setTotalPages(total_pages);
-
-      if (filter) {
-        setCurrentFilter(filter);
-      }
-    } catch (e) {
-      handleApiError(e);
-    } finally {
-      if (page === 1) {
-        setIsLoading(false);
-      } else {
-        setIsLoadingMore(false);
-      }
-    }
-  };
-  const addTransaction = async (
-    transaction: TransactionModel
-  ): Promise<string | undefined> => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const token = await SecureStore.getItem("auth_token");
-      const { id, ...dataToSend } = transaction;
-      const response = await axios.post(
-        `${TRANSACTIONS_API_URL}/add`,
-        dataToSend,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      const addedTransaction = response.data;
-
-      setTransactions((prev) => [addedTransaction, ...prev]);
-      return response.data.id;
-    } catch (e) {
-      handleApiError(e);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const updateTransaction = async (
-    id: string,
-    updates: Partial<TransactionModel>
-  ): Promise<void> => {
-    try {
-      const token = await SecureStore.getItem("auth_token");
-      const response = await axios.put(
-        `${TRANSACTIONS_API_URL}/edit/${id}`,
-        updates,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      const updatedTransaction = response.data;
-
-      setTransactions((prev) =>
-        prev.map((tx) => (tx.id === id ? updatedTransaction : tx))
-      );
-    } catch (e) {
-      handleApiError(e);
-    }
-  };
-
-  const deleteTransaction = async (id: string): Promise<void> => {
-    try {
-      const token = await SecureStore.getItem("auth_token");
-      await axios.delete(`${TRANSACTIONS_API_URL}/delete/${id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
-
-      setTransactions((prev) => prev.filter((tx) => tx.id !== id));
-    } catch (e) {
-      handleApiError(e);
-    }
-  };
-
-  const uploadBankStatement = async (formData: FormData): Promise<any> => {
-    try {
-      const token = await SecureStore.getItemAsync("auth_token");
-
-      const response = await axios.post(`${UPLOAD_API_URL}/`, formData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "multipart/form-data",
-        },
-      });
-      console.log("Upload response:", response.data);
-      await fetchTransactions();
-    } catch (e: any) {
-      if (e.response) {
-        const status = e.response.status;
-        const detail = e.response.data?.detail || "An unknown error occurred";
-
-        if (
-          status === 400 &&
-          detail.includes("not appear to be a bank statement")
-        ) {
-          alert(
-            "⚠️ The uploaded file does not seem to be a valid bank statement. Please try again."
-          );
-        } else {
-          alert(`Upload failed (${status}): ${detail}`);
+        if (filter) {
+          params.type =
+            filter === "expenses"
+              ? "expense"
+              : filter === "incomes"
+              ? "income"
+              : filter === "transfers"
+              ? "transfer"
+              : filter === "deposits"
+              ? "deposit"
+              : undefined;
         }
 
-        console.warn("Upload error:", status, detail);
-      } else {
-        alert("Upload failed. Please check your internet connection.");
-        console.error("Upload failed:", e.message);
+        const response = await axios.get<PaginatedResponse>(
+          `${TRANSACTIONS_API_URL}/`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            params,
+          }
+        );
+
+        const { data, page: returnedPage, total_pages } = response.data;
+
+        setTransactions((prev) =>
+          page === 1 ? data : [...prev, ...data].slice(-maxTransactionCache)
+        );
+
+        setCurrentPage(returnedPage);
+        setTotalPages(total_pages);
+
+        if (filter) setCurrentFilter(filter);
+      } catch (e) {
+        handleApiError(e);
+      } finally {
+        if (page === 1) setIsLoading(false);
+        else setIsLoadingMore(false);
       }
+    },
+    [fixTransferData, handleApiError]
+  );
 
-      return null;
-    }
-  };
-
-  const refreshTransactions = async () => {
+  const refreshTransactions = useCallback(async () => {
     setCurrentPage(1);
     await fetchTransactions(1, currentFilter);
-  };
+  }, [currentFilter, fetchTransactions]);
 
-  const loadMore = async (transactionClass?: string) => {
-    const filterToUse = transactionClass || currentFilter;
+  const loadMore = useCallback(
+    async (transactionClass?: string) => {
+      const filterToUse = transactionClass || currentFilter;
+      if (hasMore && !isLoadingMore && transactions.length >= pageSize) {
+        await fetchTransactions(currentPage + 1, filterToUse);
+      }
+    },
+    [
+      hasMore,
+      isLoadingMore,
+      transactions.length,
+      currentPage,
+      currentFilter,
+      fetchTransactions,
+    ]
+  );
 
-    if (hasMore && !isLoadingMore && transactions.length >= pageSize) {
-      await fetchTransactions(currentPage + 1, filterToUse);
-    }
-  };
+  const addTransaction = useCallback(
+    async (transaction: TransactionModel) => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const token = await SecureStore.getItem("auth_token");
+        const { id, ...dataToSend } = transaction;
+        const response = await axios.post(
+          `${TRANSACTIONS_API_URL}/add`,
+          dataToSend,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        const addedTransaction = response.data;
+        setTransactions((prev) =>
+          [addedTransaction, ...prev].slice(0, maxTransactionCache)
+        );
+        return response.data.id;
+      } catch (e) {
+        handleApiError(e);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [handleApiError]
+  );
+
+  const updateTransaction = useCallback(
+    async (id: string, updates: Partial<TransactionModel>) => {
+      try {
+        const token = await SecureStore.getItem("auth_token");
+        const response = await axios.put(
+          `${TRANSACTIONS_API_URL}/edit/${id}`,
+          updates,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        const updatedTransaction = response.data;
+        setTransactions((prev) =>
+          prev.map((tx) => (tx.id === id ? updatedTransaction : tx))
+        );
+      } catch (e) {
+        handleApiError(e);
+      }
+    },
+    [handleApiError]
+  );
+
+  const deleteTransaction = useCallback(
+    async (id: string) => {
+      try {
+        const token = await SecureStore.getItem("auth_token");
+        await axios.delete(`${TRANSACTIONS_API_URL}/delete/${id}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+
+        setTransactions((prev) => prev.filter((tx) => tx.id !== id));
+      } catch (e) {
+        handleApiError(e);
+      }
+    },
+    [handleApiError]
+  );
+
+  const uploadBankStatement = useCallback(
+    async (formData: FormData): Promise<any> => {
+      try {
+        const token = await SecureStore.getItemAsync("auth_token");
+
+        const response = await axios.post(`${UPLOAD_API_URL}/`, formData, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data",
+          },
+        });
+
+        console.log("Upload response:", response.data);
+        await fetchTransactions();
+      } catch (e: any) {
+        if (e.response) {
+          const status = e.response.status;
+          const detail = e.response.data?.detail || "An unknown error occurred";
+
+          if (
+            status === 400 &&
+            detail.includes("not appear to be a bank statement")
+          ) {
+            alert(
+              "⚠️ The uploaded file does not seem to be a valid bank statement. Please try again."
+            );
+          } else {
+            alert(`Upload failed (${status}): ${detail}`);
+          }
+
+          console.warn("Upload error:", status, detail);
+        } else {
+          alert("Upload failed. Please check your internet connection.");
+          console.error("Upload failed:", e.message);
+        }
+
+        return null;
+      }
+    },
+    [fetchTransactions]
+  );
 
   const contextValue = useMemo(
     () => ({
@@ -297,7 +312,14 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({
       currentPage,
       totalPages,
       hasMore,
-      currentFilter,
+      loadMore,
+      refreshTransactions,
+      addTransaction,
+      fetchTransactions,
+      deleteTransaction,
+      updateTransaction,
+      uploadBankStatement,
+      transactionsCleanup,
     ]
   );
 

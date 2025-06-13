@@ -1,4 +1,4 @@
-import { Feather } from "@expo/vector-icons";
+import { Feather, Ionicons } from "@expo/vector-icons";
 import React from "react";
 import {
   Animated,
@@ -49,7 +49,11 @@ const FinancialGoalsScreen = () => {
           goals.length === 1 ? "goal" : "goals"
         } active`}
         animatedValue={headerAnimation}
-        onBack={() => router.back()}
+        leftIcon={
+          <TouchableOpacity onPress={() => router.replace("/transactions")}>
+            <Ionicons name="wallet-outline" size={24} color={colors.text} />
+          </TouchableOpacity>
+        }
         onProfilePress={() => router.push("/profile")}
         gradientColors={["rgb(251, 193, 105)", "rgb(198, 119, 0)"]}
       />
