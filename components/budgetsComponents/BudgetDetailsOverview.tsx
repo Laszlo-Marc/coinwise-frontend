@@ -17,7 +17,10 @@ const BudgetDetailsOverviewCard: React.FC<BudgetOverviewCardProps> = ({
 }) => {
   const spentPercentage = (budget.spent / budget.amount) * 100;
   const remaining = budget.amount - budget.spent;
+
   const isOverBudget = budget.spent > budget.amount;
+  const isFullyUsed = budget.spent === budget.amount;
+  const isOnTrack = !isOverBudget && !isFullyUsed;
 
   const getProgressColor = () => {
     if (isOverBudget) return "#FF4757";
@@ -26,6 +29,37 @@ const BudgetDetailsOverviewCard: React.FC<BudgetOverviewCardProps> = ({
     return colors.primary[500];
   };
 
+  // Determine status visuals
+  const getStatusMeta = () => {
+    if (isOverBudget) {
+      return {
+        backgroundColor: "#FF475720",
+        icon: "alert-triangle",
+        iconColor: "#FF4757",
+        text: "Over Budget",
+        textColor: "#FF4757",
+      };
+    } else if (isFullyUsed) {
+      return {
+        backgroundColor: "#FFA72620",
+        icon: "info",
+        iconColor: "#FFA726",
+        text: "Fully Used",
+        textColor: "#FFA726",
+      };
+    } else {
+      return {
+        backgroundColor: "#4ECDC420",
+        icon: "check-circle",
+        iconColor: "#4ECDC4",
+        text: "On Track",
+        textColor: "#4ECDC4",
+      };
+    }
+  };
+
+  const { backgroundColor, icon, iconColor, text, textColor } = getStatusMeta();
+
   return (
     <View style={styles.container}>
       <BlurView intensity={20} tint="light" style={styles.glassCard}>
@@ -33,28 +67,10 @@ const BudgetDetailsOverviewCard: React.FC<BudgetOverviewCardProps> = ({
           <Text style={[styles.title, { color: colors.text }]}>
             Budget Overview
           </Text>
-          <View
-            style={[
-              styles.statusBadge,
-              {
-                backgroundColor: isOverBudget ? "#FF475720" : "#4ECDC420",
-              },
-            ]}
-          >
-            <Feather
-              name={isOverBudget ? "alert-triangle" : "check-circle"}
-              size={12}
-              color={isOverBudget ? "#FF4757" : "#4ECDC4"}
-            />
-            <Text
-              style={[
-                styles.statusText,
-                {
-                  color: isOverBudget ? "#FF4757" : "#4ECDC4",
-                },
-              ]}
-            >
-              {isOverBudget ? "Over Budget" : "On Track"}
+          <View style={[styles.statusBadge, { backgroundColor }]}>
+            <Feather name={icon as any} size={12} color={iconColor} />
+            <Text style={[styles.statusText, { color: textColor }]}>
+              {text}
             </Text>
           </View>
         </View>
@@ -77,9 +93,7 @@ const BudgetDetailsOverviewCard: React.FC<BudgetOverviewCardProps> = ({
             <Text
               style={[
                 styles.remainingAmount,
-                {
-                  color: isOverBudget ? "#FF4757" : colors.primary[500],
-                },
+                { color: isOverBudget ? "#FF4757" : colors.primary[500] },
               ]}
             >
               {formatCurrency(parseFloat(Math.abs(remaining).toFixed(2)))}
@@ -122,7 +136,7 @@ const BudgetDetailsOverviewCard: React.FC<BudgetOverviewCardProps> = ({
               Period
             </Text>
             <Text style={[styles.statValue, { color: colors.text }]}>
-              {budget.is_recurring ? "Monthly" : "One-time"}
+              {budget.is_recurring ? budget.recurring_frequency : "One-time"}
             </Text>
           </View>
 
@@ -240,6 +254,9 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 14,
     fontWeight: "600",
+    fontFamily: "Montserrat",
+    color: colors.text,
+    textTransform: "capitalize",
   },
   divider: {
     width: 1,

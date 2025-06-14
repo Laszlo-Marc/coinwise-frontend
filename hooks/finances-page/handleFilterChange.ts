@@ -19,7 +19,7 @@ export const useTransactionFilters = (
       sortOrder: "desc",
       startDate: start,
       endDate: now,
-      category: "Groceries",
+      category: "",
     };
   });
 

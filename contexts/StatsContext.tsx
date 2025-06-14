@@ -12,7 +12,7 @@ import {
 } from "@/models/stats";
 import axios from "axios";
 import * as SecureStore from "expo-secure-store";
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useState } from "react";
 
 const STATS_API_URL = `${API_BASE_URL}/stats`;
 
@@ -174,17 +174,6 @@ export const StatsProvider: React.FC<{ children: React.ReactNode }> = ({
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    const preloadDefaultStats = async () => {
-      await Promise.all([
-        refreshBudgetStats("this_month"),
-        refreshStats("this_month"),
-        refreshStats("last_3_months"),
-      ]);
-    };
-    preloadDefaultStats();
-  }, []);
 
   return (
     <StatsContext.Provider

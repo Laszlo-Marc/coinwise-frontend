@@ -78,6 +78,8 @@ export type BudgetStats = {
   overBudgetCount: number;
   underBudgetCount: number;
   budgets: BudgetModel[];
+  expiredRecurringBudgets: BudgetModel[];
+  expiredOneTimeBudgets: BudgetModel[];
 };
 
 type GoalProgress = {
@@ -100,13 +102,13 @@ export type GoalStats = {
   topGoals: GoalProgress[];
 };
 
-export type MonthlySummary= {
+export type MonthlySummary = {
   totalIncome: number;
   totalExpenses: number;
   balance: number;
-}
+};
 
-export type HistoricalSummary= {
+export type HistoricalSummary = {
   lastMonth: {
     income: number;
     expenses: number;
@@ -119,4 +121,4 @@ export type HistoricalSummary= {
     income: number;
     expenses: number;
   };
-}
+};

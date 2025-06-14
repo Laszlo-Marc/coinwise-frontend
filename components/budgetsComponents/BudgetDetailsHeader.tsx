@@ -1,4 +1,3 @@
-// BudgetDetailsHeader.tsx - Redesigned
 import { colors } from "@/constants/colors";
 import { BudgetModel } from "@/models/budget";
 import { Feather } from "@expo/vector-icons";
@@ -96,13 +95,6 @@ const BudgetDetailsHeader: React.FC<BudgetDetailsHeaderProps> = ({
         {budget.description && (
           <Text style={styles.budgetDescription}>{budget.description}</Text>
         )}
-      </View>
-
-      {/* Decorative Elements */}
-      <View style={styles.decorativeElements} pointerEvents="none">
-        <View style={[styles.floatingCircle, styles.circle1]} />
-        <View style={[styles.floatingCircle, styles.circle2]} />
-        <View style={[styles.floatingCircle, styles.circle3]} />
       </View>
     </LinearGradient>
   );

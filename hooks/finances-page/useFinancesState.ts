@@ -1,4 +1,5 @@
 import { useTransactionContext } from "@/contexts/AppContext";
+import { useBudgets } from "@/contexts/BudgetsContext";
 import { useStatsContext } from "@/contexts/StatsContext";
 import { TransactionModel } from "@/models/transaction";
 import { TransactionType } from "@/models/transactionType";
@@ -26,7 +27,8 @@ export const useFinancesScreenState = () => {
     string | null
   >(null);
   const { statsOverview } = useStatsContext();
-
+  const { refreshBudgetStats } = useStatsContext();
+  const { fetchBudgets, fetchBudgetTransactions } = useBudgets();
   const [summary, setSummary] = useState({
     totalExpenses: 0,
     totalIncome: 0,

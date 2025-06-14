@@ -1,6 +1,6 @@
 // QuickActionsCard.tsx - Redesigned
 import { colors } from "@/constants/colors";
-import { Feather, FontAwesome5 } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import React from "react";
 import {
@@ -109,17 +109,6 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
             />
           </TouchableOpacity>
         </View>
-
-        <View style={styles.quickTips}>
-          <FontAwesome5
-            name="lightbulb"
-            size={14}
-            color={colors.textSecondary}
-          />
-          <Text style={[styles.tipText, { color: colors.textSecondary }]}>
-            Tip: Long press actions for more options
-          </Text>
-        </View>
       </BlurView>
     </View>
   );
@@ -177,28 +166,18 @@ const styles = StyleSheet.create({
   },
   actionTextContainer: {
     flex: 1,
+    fontFamily: "Montserrat",
   },
   actionTitle: {
     fontSize: 16,
     fontWeight: "600",
     marginBottom: 2,
+    fontFamily: "Montserrat",
   },
   actionSubtitle: {
     fontSize: 13,
     fontWeight: "500",
-  },
-  quickTips: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(255,255,255,0.1)",
-  },
-  tipText: {
-    fontSize: 12,
-    fontWeight: "500",
-    flex: 1,
+    fontFamily: "Montserrat",
   },
 });
 export default QuickActionsCard;

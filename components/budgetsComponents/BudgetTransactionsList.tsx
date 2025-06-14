@@ -26,14 +26,17 @@ const BudgetTransactionsList: React.FC<Props> = ({ transactions }) => {
           <View key={transaction.id} style={styles.transactionItem}>
             <View style={styles.transactionInfo}>
               <Text
-                style={[styles.transactionDescription, { color: colors.text }]}
+                style={[
+                  styles.transactionDescription,
+                  { color: colors.text, fontFamily: "Montserrat" },
+                ]}
               >
                 {transaction.description}
               </Text>
               <Text
                 style={[
                   styles.transactionDate,
-                  { color: colors.textSecondary },
+                  { color: colors.textSecondary, fontFamily: "Montserrat" },
                 ]}
               >
                 {new Date(transaction.date).toLocaleDateString()}
@@ -85,6 +88,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     marginBottom: 12,
+    fontFamily: "Montserrat",
   },
   transactionItem: {
     flexDirection: "row",
@@ -98,6 +102,7 @@ const styles = StyleSheet.create({
   transactionDescription: {
     fontSize: 16,
     fontWeight: "600",
+    fontFamily: "Montserrat",
   },
   transactionDate: {
     fontSize: 13,
@@ -107,6 +112,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "700",
     marginLeft: 12,
+    fontFamily: "Montserrat",
   },
   viewAllButton: {
     marginTop: 10,
@@ -115,6 +121,7 @@ const styles = StyleSheet.create({
   viewAllText: {
     fontSize: 14,
     fontWeight: "600",
+    fontFamily: "Montserrat",
   },
 });
 

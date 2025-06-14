@@ -1,4 +1,3 @@
-// Custom hook for AddGoalScreen
 import { useGoals } from "@/contexts/GoalsContext";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
@@ -21,7 +20,7 @@ export const useAddGoalForm = () => {
     end_date: new Date(new Date().setMonth(new Date().getMonth() + 6))
       .toISOString()
       .split("T")[0],
-    category: "Savings",
+    category: "Housing",
     auto_contribution_enabled: false,
     auto_contribution_amount: "",
     contribution_frequency: "monthly" as ContributionFrequency,

@@ -36,8 +36,6 @@ const BudgetDetailsScreen = () => {
     if (!budgetId) return;
 
     const foundBudget = budgets.find((b) => b.id === budgetId);
-    console.log("Found budget:", foundBudget);
-    console.log("Budget Transactions:", budgetTransactions);
 
     if (foundBudget) {
       setBudget(foundBudget);

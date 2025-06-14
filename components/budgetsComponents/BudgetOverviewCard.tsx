@@ -1,7 +1,7 @@
 import { colors } from "@/constants/colors";
 import { BudgetStats } from "@/models/stats";
 import { Feather } from "@expo/vector-icons";
-import React from "react";
+import React, { useEffect } from "react";
 import { Animated, StyleSheet, Text, View } from "react-native";
 
 interface Props {
@@ -26,6 +26,15 @@ const EnhancedBudgetOverviewCard: React.FC<Props> = ({
   const hasBudgets = (budgets?.length ?? 0) > 0;
 
   const safeBudgetUtilization = budgetUtilization ?? 0;
+  useEffect(() => {
+    progressAnim.setValue(0);
+
+    Animated.timing(progressAnim, {
+      toValue: Math.min(safeBudgetUtilization / 100, 1),
+      duration: 600,
+      useNativeDriver: false,
+    }).start();
+  }, [safeBudgetUtilization]);
 
   const getStatusColor = () => {
     if (safeBudgetUtilization <= 50) return "#4ECDC4";

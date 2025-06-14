@@ -1,6 +1,7 @@
 import TransactionQuickActionsCard from "@/components/financesComponents/TransactionDetailsActions";
 import { colors } from "@/constants/colors";
 import { useTransactionContext } from "@/contexts/AppContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { TransactionModel } from "@/models/transaction";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -23,11 +24,16 @@ export default function TransactionDetailsScreen() {
   const { id } = useLocalSearchParams();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { state } = useAuth();
   const { transactions, deleteTransaction } = useTransactionContext();
   const [transaction, setTransaction] = useState<TransactionModel | null>(null);
   const [loading, setLoading] = useState(true);
   const isExpense = transaction?.type === "expense";
   const isTransfer = transaction?.type === "transfer";
+  const isTransferSentByUser =
+    isTransfer &&
+    transaction.sender &&
+    transaction.sender.toLowerCase() === state.user?.full_name?.toLowerCase();
 
   useEffect(() => {
     const found = transactions.find((t) => t.id === id);
@@ -93,11 +99,17 @@ export default function TransactionDetailsScreen() {
           <Text
             style={[
               styles.value,
-              { color: isExpense ? colors.error : colors.success },
+              {
+                color:
+                  isExpense || isTransferSentByUser
+                    ? colors.error
+                    : colors.success,
+              },
             ]}
           >
-            {isExpense ? "-" : "+"}
-            {transaction.amount.toFixed(2)} RON
+            {(isExpense || isTransferSentByUser ? "-" : "+") +
+              transaction.amount.toFixed(2)}{" "}
+            RON
           </Text>
 
           <Text style={styles.label}>Date</Text>

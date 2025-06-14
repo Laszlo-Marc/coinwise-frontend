@@ -12,6 +12,7 @@ export const useEditBudgetForm = () => {
   const { budgets, updateBudget } = useBudgets();
   const successOpacity = useRef(new Animated.Value(0)).current;
   const { refreshBudgetStats } = useStatsContext();
+  const foundBudget = budgets.find((b) => b.id === budgetId);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -111,7 +112,7 @@ export const useEditBudgetForm = () => {
       title: formData.title,
       description: formData.description,
       amount: parsedAmount,
-      spent: 0,
+      spent: foundBudget?.spent || 0,
       remaining: parsedAmount,
       start_date: formData.start_date,
       end_date: formData.end_date,

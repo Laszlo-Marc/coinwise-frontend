@@ -1,8 +1,8 @@
 import { useTransactionContext } from "@/contexts/AppContext";
-import { useAuth } from "@/contexts/AuthContext";
 import { useBudgets } from "@/contexts/BudgetsContext";
 import { useGoals } from "@/contexts/GoalsContext";
 
+import { BudgetThresholdBanner } from "@/components/budgetsComponents/BudgetAlerts";
 import AnimatedCard from "@/components/homePageComponents/AnimatedCard";
 import ProgressCardSection from "@/components/homePageComponents/GoalsBudgetsCard";
 import HomeHeader from "@/components/homePageComponents/HomeHeader";
@@ -13,8 +13,9 @@ import { useStatsContext } from "@/contexts/StatsContext";
 import { useClosestGoals } from "@/hooks/home-page/useClosestGoals";
 import { useRecentTransactions } from "@/hooks/home-page/useRecentTransactions";
 import { useRiskiestBudgets } from "@/hooks/home-page/useRiskiestBudgets";
+import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   Platform,
   ScrollView,
@@ -25,10 +26,9 @@ import {
 import "react-native-gesture-handler";
 import BottomBar from "../components/mainComponents/BottomBar";
 import { colors } from "../constants/colors";
-
 export default function HomePage() {
   const router = useRouter();
-  const { state } = useAuth();
+
   const { goals } = useGoals();
   const { budgets, budgetTransactions } = useBudgets();
   const { transactions } = useTransactionContext();
@@ -36,6 +36,23 @@ export default function HomePage() {
   const { historicalSummary } = useStatsContext();
   const closestGoals = useClosestGoals(goals);
   const riskiestBudgets = useRiskiestBudgets(budgets, budgetTransactions);
+  const [warnedBudgets, setWarnedBudgets] = useState<string[]>([]);
+
+  useEffect(() => {
+    const triggered = budgets?.filter((b) => {
+      if (!b.notificationsEnabled) return false;
+      const utilization = (b.spent / b.amount) * 100;
+      return (
+        b.notificationsThreshold !== undefined &&
+        utilization >= b.notificationsThreshold
+      );
+    });
+
+    if (triggered?.length > 0) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      setWarnedBudgets(triggered.map((b) => b.title));
+    }
+  }, [budgets]);
 
   return (
     <View style={styles.container}>
@@ -48,6 +65,11 @@ export default function HomePage() {
       >
         <View style={styles.headerWrapper}>
           <HomeHeader />
+          <BudgetThresholdBanner
+            titles={warnedBudgets}
+            visible={warnedBudgets.length > 0}
+            onClose={() => setWarnedBudgets([])}
+          />
         </View>
         <View style={styles.paddedContent}>
           <AnimatedCard delay={100}>

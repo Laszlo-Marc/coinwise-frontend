@@ -97,17 +97,17 @@ export default function Finances() {
 
         {showFilters && (
           <>
-            <TransactionsFiltersPanel
-              visible={showFilters}
-              filters={filters}
-              onChange={handleFilterChange}
-              categories={categories}
-            />
             <TransactionTypeSelector
               value={filters.transactionClass ?? "expense"}
               onChange={(type) =>
                 handleFilterChange({ transactionClass: type })
               }
+            />
+            <TransactionsFiltersPanel
+              visible={showFilters}
+              filters={filters}
+              onChange={handleFilterChange}
+              categories={categories}
             />
           </>
         )}

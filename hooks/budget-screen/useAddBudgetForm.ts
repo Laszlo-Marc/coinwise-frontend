@@ -14,7 +14,7 @@ export const useAddBudgetForm = () => {
     description: "",
     amount: "",
     start_date: new Date().toISOString().split("T")[0],
-    end_date: new Date(new Date().setMonth(new Date().getMonth() + 1))
+    end_date: new Date(new Date().setDate(new Date().getDate() + 7))
       .toISOString()
       .split("T")[0],
     isRecurring: false,

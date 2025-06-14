@@ -6,8 +6,9 @@ import {
   Ionicons,
   MaterialIcons,
 } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import React from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 type Props = {
   expenses: TransactionModel[];
@@ -15,10 +16,10 @@ type Props = {
 
 export const TopExpenses: React.FC<Props> = ({ expenses }) => {
   if (!expenses.length) return null;
-
+  const router = useRouter();
   const getIcon = (category?: string) => {
     switch (category) {
-      case "Dining":
+      case "Food & Takeout":
         return <MaterialIcons name="fastfood" size={20} color={colors.text} />;
       case "Transportation":
         return <AntDesign name="car" size={20} color={colors.text} />;
@@ -58,21 +59,27 @@ export const TopExpenses: React.FC<Props> = ({ expenses }) => {
       <Text style={styles.title}>Top Expenses</Text>
       <View style={styles.list}>
         {expenses.map((expense) => (
-          <View key={expense.id} style={styles.item}>
-            <View style={styles.iconContainer}>
-              <Text style={styles.icon}>{getIcon(expense.category)}</Text>
-            </View>
-            <View style={styles.info}>
-              <Text style={styles.name}>
-                {expense.merchant || expense.description || "Unknown"}
+          <TouchableOpacity
+            onPress={() => router.push(`./transaction/${expense.id}`)}
+          >
+            <View key={expense.id} style={styles.item}>
+              <View style={styles.iconContainer}>
+                <Text style={styles.icon}>{getIcon(expense.category)}</Text>
+              </View>
+              <View style={styles.info}>
+                <Text style={styles.name}>
+                  {expense.merchant || expense.description || "Unknown"}
+                </Text>
+                <Text style={styles.subtext}>
+                  {expense.category || "uncategorized"} •{" "}
+                  {new Date(expense.date).toLocaleDateString()}
+                </Text>
+              </View>
+              <Text style={styles.amount}>
+                -{expense.amount.toFixed(0)} RON
               </Text>
-              <Text style={styles.subtext}>
-                {expense.category || "uncategorized"} •{" "}
-                {new Date(expense.date).toLocaleDateString()}
-              </Text>
             </View>
-            <Text style={styles.amount}>{expense.amount.toFixed(0)} RON</Text>
-          </View>
+          </TouchableOpacity>
         ))}
       </View>
     </View>
@@ -128,7 +135,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   amount: {
-    color: colors.text,
+    color: colors.error,
     fontSize: 16,
     fontWeight: "600",
   },
