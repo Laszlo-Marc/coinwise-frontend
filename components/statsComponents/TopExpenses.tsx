@@ -1,5 +1,11 @@
 import { colors } from "@/constants/colors";
 import { TransactionModel } from "@/models/transaction";
+import {
+  AntDesign,
+  Feather,
+  Ionicons,
+  MaterialIcons,
+} from "@expo/vector-icons";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 
@@ -12,18 +18,38 @@ export const TopExpenses: React.FC<Props> = ({ expenses }) => {
 
   const getIcon = (category?: string) => {
     switch (category) {
-      case "food":
-        return "🍔";
-      case "transport":
-        return "🚗";
-      case "shopping":
-        return "🛒";
-      case "entertainment":
-        return "🎮";
-      case "health":
-        return "💊";
+      case "Dining":
+        return <MaterialIcons name="fastfood" size={20} color={colors.text} />;
+      case "Transportation":
+        return <AntDesign name="car" size={20} color={colors.text} />;
+      case "Groceries":
+        return <Feather name="shopping-cart" size={20} color={colors.text} />;
+      case "Entertainment":
+        return (
+          <Ionicons
+            name="game-controller-outline"
+            size={20}
+            color={colors.text}
+          />
+        );
+      case "Health":
+        return <Feather name="heart" size={20} color={colors.text} />;
+      case "Utilities":
+        return <Ionicons name="water-outline" size={20} color={colors.text} />;
+      case "Subscriptions":
+        return (
+          <MaterialIcons name="subscriptions" size={20} color={colors.text} />
+        );
+      case "Travel":
+        return (
+          <Ionicons name="airplane-outline" size={20} color={colors.text} />
+        );
+      case "Education":
+        return <Feather name="book" size={20} color={colors.text} />;
+      case "Housing":
+        return <Ionicons name="home-outline" size={20} color={colors.text} />;
       default:
-        return "💰";
+        return <MaterialIcons name="payment" size={20} color={colors.text} />;
     }
   };
 

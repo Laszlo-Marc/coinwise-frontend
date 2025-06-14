@@ -1,7 +1,8 @@
 import { colors } from "@/constants/colors";
-import { TransactionType } from "@/models/transactionType";
+
+import { TransactionFilterOptions } from "@/contexts/AppContext";
 import { Feather } from "@expo/vector-icons";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   Modal,
   ScrollView,
@@ -10,118 +11,47 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import Animated, { FadeIn } from "react-native-reanimated";
 import DateRangeSelector from "./DateRangeComponent";
 
 interface TransactionFiltersProps {
-  onFilterChange: (filters: {
-    transactionClass: TransactionType;
-    category?: string;
-    sortBy?: "amount" | "date";
-    sortOrder?: "asc" | "desc";
-    startDate?: Date;
-    endDate?: Date;
-  }) => void;
-  selectedClass: TransactionType;
+  filters: TransactionFilterOptions;
+  onChange: (filters: Partial<TransactionFilterOptions>) => void;
   categories?: string[];
 }
 
-export const TransactionFilters: React.FC<TransactionFiltersProps> = ({
-  onFilterChange,
-  selectedClass,
+const dateRangePresets = [
+  { id: "today", label: "Today" },
+  { id: "week", label: "Last Week" },
+  { id: "month", label: "Last Month" },
+  { id: "3months", label: "Last 3 Months" },
+  { id: "custom", label: "Custom Range" },
+];
+
+const TransactionFilters: React.FC<TransactionFiltersProps> = ({
+  filters,
+  onChange,
   categories = [],
 }) => {
-  const [transactionClass, setTransactionClass] = useState(selectedClass);
-  const [selectedCategory, setSelectedCategory] = useState("");
-  const [sortBy, setSortBy] = useState<"amount" | "date">("date");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
-  const [startDate, setStartDate] = useState(
-    new Date(new Date().setMonth(new Date().getMonth() - 1))
-  );
-  const [endDate, setEndDate] = useState(new Date());
-
   const [categoryDropdownVisible, setCategoryDropdownVisible] = useState(false);
   const [dateRangeDropdownVisible, setDateRangeDropdownVisible] =
     useState(false);
   const [customDateRangeVisible, setCustomDateRangeVisible] = useState(false);
 
-  const filters: {
-    key: TransactionType | "all";
-    label: string;
-    icon: React.ComponentProps<typeof Feather>["name"];
-  }[] = [
-    { key: "all", label: "All", icon: "list" },
-    { key: "expense", label: "Expenses", icon: "arrow-down" },
-    { key: "income", label: "Income", icon: "arrow-up" },
-    { key: "transfer", label: "Transfers", icon: "refresh-cw" },
-    { key: "deposit", label: "Deposits", icon: "dollar-sign" },
-  ];
-
-  const dateRangePresets = [
-    { id: "today", label: "Today" },
-    { id: "week", label: "Last Week" },
-    { id: "month", label: "Last Month" },
-    { id: "3months", label: "Last 3 Months" },
-    { id: "custom", label: "Custom Range" },
-  ];
-
-  useEffect(() => {
-    if (transactionClass) {
-      applyFilters();
-    }
-  }, [
-    transactionClass,
-    selectedCategory,
-    sortBy,
-    sortOrder,
-    startDate,
-    endDate,
-  ]);
-
-  useEffect(() => {
-    if (selectedClass) {
-      setTransactionClass(selectedClass);
-    }
-  }, [selectedClass]);
-
-  const handleTransactionClassChange = (newClass: TransactionType) => {
-    setTransactionClass(newClass);
-
-    if (newClass !== "expense") {
-      setSelectedCategory("");
-    }
-  };
-
-  const handleCategoryChange = (category: string) => {
-    setSelectedCategory(category);
-    setCategoryDropdownVisible(false);
-  };
-
   const handleSortByChange = () => {
-    setSortBy(sortBy === "date" ? "amount" : "date");
+    onChange({
+      sortBy: filters.sortBy === "date" ? "amount" : "date",
+    });
   };
 
   const handleSortOrderChange = () => {
-    setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    onChange({
+      sortOrder: filters.sortOrder === "asc" ? "desc" : "asc",
+    });
   };
 
   const handleDateRangeChange = (start: Date, end: Date) => {
-    setStartDate(start);
-    setEndDate(end);
+    onChange({ startDate: start, endDate: end });
     setCustomDateRangeVisible(false);
-  };
-
-  const applyFilters = () => {
-    onFilterChange({
-      transactionClass,
-      ...(transactionClass === "expense" && selectedCategory
-        ? { category: selectedCategory }
-        : {}),
-      sortBy,
-      sortOrder,
-      startDate,
-      endDate,
-    });
   };
 
   const applyDatePreset = (preset: string) => {
@@ -139,72 +69,37 @@ export const TransactionFilters: React.FC<TransactionFiltersProps> = ({
         start = new Date(now.setHours(0, 0, 0, 0));
         break;
       case "week":
-        start = new Date(now);
         start.setDate(now.getDate() - 7);
         break;
       case "month":
-        start = new Date(now);
         start.setMonth(now.getMonth() - 1);
         break;
       case "3months":
-        start = new Date(now);
         start.setMonth(now.getMonth() - 3);
-        break;
-      default:
         break;
     }
 
-    setStartDate(start);
-    setEndDate(new Date());
+    onChange({ startDate: start, endDate: new Date() });
     setDateRangeDropdownVisible(false);
   };
 
-  const formatDateRange = () => {
-    const formatDate = (date: Date) => {
-      return date.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      });
-    };
+  const handleCategoryChange = (category: string) => {
+    onChange({ category: category || undefined });
+    setCategoryDropdownVisible(false);
+  };
 
-    return `${formatDate(startDate)} - ${formatDate(endDate)}`;
+  const formatDateRange = () => {
+    const formatDate = (date?: Date) =>
+      date?.toLocaleDateString("en-US", { month: "short", day: "numeric" }) ??
+      "";
+
+    return `${formatDate(filters.startDate)} - ${formatDate(filters.endDate)}`;
   };
 
   return (
-    <Animated.View entering={FadeIn} style={styles.container}>
-      <Text style={styles.filterTitle}>Filter Transactions</Text>
+    <View style={styles.container}>
+      <Text style={styles.filterTitle}>Additional Filters</Text>
 
-      {/* Transaction Type Filters */}
-      <View style={styles.filtersRow}>
-        {filters.map((filter) => (
-          <TouchableOpacity
-            key={filter.key}
-            style={[
-              styles.filterButton,
-              transactionClass === filter.key && styles.selectedFilterButton,
-            ]}
-            onPress={() =>
-              handleTransactionClassChange(filter.key as TransactionType)
-            }
-          >
-            <Feather
-              name={filter.icon}
-              size={16}
-              color={transactionClass === filter.key ? "#FFF" : colors.text}
-            />
-            <Text
-              style={[
-                styles.filterText,
-                transactionClass === filter.key && styles.selectedFilterText,
-              ]}
-            >
-              {filter.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {/* Sort and Filter Controls */}
       <View style={styles.controlsContainer}>
         {/* Sort Controls */}
         <View style={styles.sortControlsRow}>
@@ -214,7 +109,7 @@ export const TransactionFilters: React.FC<TransactionFiltersProps> = ({
           >
             <Feather name="bar-chart-2" size={14} color={colors.text} />
             <Text style={styles.sortButtonText}>
-              Sort: {sortBy === "date" ? "Date" : "Amount"}
+              Sort: {filters.sortBy === "date" ? "Date" : "Amount"}
             </Text>
           </TouchableOpacity>
 
@@ -223,7 +118,7 @@ export const TransactionFilters: React.FC<TransactionFiltersProps> = ({
             onPress={handleSortOrderChange}
           >
             <Feather
-              name={sortOrder === "asc" ? "arrow-up" : "arrow-down"}
+              name={filters.sortOrder === "asc" ? "arrow-up" : "arrow-down"}
               size={14}
               color={colors.text}
             />
@@ -266,7 +161,7 @@ export const TransactionFilters: React.FC<TransactionFiltersProps> = ({
         </View>
 
         {/* Category Filter - Only for Expenses */}
-        {transactionClass === "expense" && categories.length > 0 && (
+        {filters.transactionClass === "expense" && categories.length > 0 && (
           <View style={styles.categoryContainer}>
             <TouchableOpacity
               style={styles.categoryButton}
@@ -277,7 +172,7 @@ export const TransactionFilters: React.FC<TransactionFiltersProps> = ({
             >
               <Feather name="tag" size={14} color={colors.text} />
               <Text style={styles.categoryButtonText}>
-                Category: {selectedCategory || "All"}
+                Category: {filters.category || "All"}
               </Text>
               <Feather
                 name={categoryDropdownVisible ? "chevron-up" : "chevron-down"}
@@ -290,40 +185,18 @@ export const TransactionFilters: React.FC<TransactionFiltersProps> = ({
               <View style={styles.categoryDropdownMenu}>
                 <ScrollView style={{ maxHeight: 200 }}>
                   <TouchableOpacity
-                    style={[
-                      styles.dropdownItem,
-                      !selectedCategory && styles.activeDropdownItem,
-                    ]}
+                    style={styles.dropdownItem}
                     onPress={() => handleCategoryChange("")}
                   >
-                    <Text
-                      style={[
-                        styles.dropdownItemText,
-                        !selectedCategory && styles.activeDropdownItemText,
-                      ]}
-                    >
-                      All Categories
-                    </Text>
+                    <Text style={styles.dropdownItemText}>All Categories</Text>
                   </TouchableOpacity>
                   {categories.map((category) => (
                     <TouchableOpacity
                       key={category}
-                      style={[
-                        styles.dropdownItem,
-                        selectedCategory === category &&
-                          styles.activeDropdownItem,
-                      ]}
+                      style={styles.dropdownItem}
                       onPress={() => handleCategoryChange(category)}
                     >
-                      <Text
-                        style={[
-                          styles.dropdownItemText,
-                          selectedCategory === category &&
-                            styles.activeDropdownItemText,
-                        ]}
-                      >
-                        {category}
-                      </Text>
+                      <Text style={styles.dropdownItemText}>{category}</Text>
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
@@ -355,8 +228,8 @@ export const TransactionFilters: React.FC<TransactionFiltersProps> = ({
 
               <View style={styles.modalBody}>
                 <DateRangeSelector
-                  startDate={startDate}
-                  endDate={endDate}
+                  startDate={filters.startDate ?? new Date()}
+                  endDate={filters.endDate ?? new Date()}
                   onDateChange={handleDateRangeChange}
                 />
               </View>
@@ -364,14 +237,13 @@ export const TransactionFilters: React.FC<TransactionFiltersProps> = ({
           </View>
         </Modal>
       )}
-    </Animated.View>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     width: "100%",
-    backgroundColor: "transparent",
     marginBottom: 16,
   },
   filterTitle: {
@@ -379,35 +251,6 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginBottom: 12,
     fontWeight: "500",
-  },
-  filtersRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    flexWrap: "wrap",
-    gap: 8,
-    marginBottom: 12,
-  },
-  filterButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
-    minWidth: 90,
-    justifyContent: "center",
-  },
-  selectedFilterButton: {
-    backgroundColor: colors.primary[500],
-  },
-  filterText: {
-    color: colors.text,
-    marginLeft: 6,
-    fontSize: 12,
-    fontWeight: "500",
-  },
-  selectedFilterText: {
-    color: "#FFFFFF",
   },
   controlsContainer: {
     backgroundColor: "rgba(255, 255, 255, 0.05)",
@@ -465,6 +308,22 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     flex: 1,
   },
+  dropdownMenu: {
+    position: "absolute",
+    top: 34,
+    right: 0,
+    backgroundColor: colors.backgroundLight,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.1)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+    width: 160,
+    zIndex: 1000,
+  },
   categoryContainer: {
     position: "relative",
     zIndex: 1,
@@ -483,22 +342,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "500",
     flex: 1,
-  },
-  dropdownMenu: {
-    position: "absolute",
-    top: 34,
-    right: 0,
-    backgroundColor: colors.backgroundLight,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.1)",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-    width: 160,
-    zIndex: 1000,
   },
   categoryDropdownMenu: {
     position: "absolute",
@@ -522,17 +365,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "rgba(255, 255, 255, 0.05)",
   },
-  activeDropdownItem: {
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
-  },
   dropdownItemText: {
     color: colors.text,
     fontSize: 12,
     fontWeight: "400",
-  },
-  activeDropdownItemText: {
-    fontWeight: "600",
-    color: colors.primary[300],
   },
   modalContainer: {
     flex: 1,

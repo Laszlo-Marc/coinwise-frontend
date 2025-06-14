@@ -1,8 +1,8 @@
 import { colors } from "@/constants/colors";
 import { useTransactionContext } from "@/contexts/AppContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useStatsContext } from "@/contexts/StatsContext";
 import { formatCurrency } from "@/hooks/home-page/formatHooks";
-import { useCurrentBalance } from "@/hooks/home-page/useCurrentBalance";
 import { Feather, FontAwesome } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
@@ -18,7 +18,7 @@ const HomeHeader = () => {
   const router = useRouter();
   const { state } = useAuth();
   const { transactions } = useTransactionContext();
-  const currentBalance = useCurrentBalance(transactions, state.user);
+  const { monthlySummary } = useStatsContext();
 
   return (
     <LinearGradient
@@ -53,7 +53,7 @@ const HomeHeader = () => {
         </Text>
         <Text style={styles.balanceLabel}>Balance</Text>
         <Text style={styles.balanceAmount}>
-          {formatCurrency(currentBalance)}
+          {formatCurrency(monthlySummary?.balance || 0)}
         </Text>
       </View>
     </LinearGradient>
@@ -74,7 +74,7 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
     overflow: "hidden",
-    zIndex: -1, // Send it behind all content
+    zIndex: -1,
   },
 
   quickActions: {
@@ -125,6 +125,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginBottom: 16,
     textAlign: "center",
+    fontFamily: "Montserrat",
   },
 });
 

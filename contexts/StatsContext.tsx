@@ -4,7 +4,9 @@ import {
   DepositStats,
   ExpenseStats,
   GoalStats,
+  HistoricalSummary,
   IncomeStats,
+  MonthlySummary,
   StatsOverview,
   TransferStats,
 } from "@/models/stats";
@@ -13,17 +15,28 @@ import * as SecureStore from "expo-secure-store";
 import { createContext, useContext, useEffect, useState } from "react";
 
 const STATS_API_URL = `${API_BASE_URL}/stats`;
+
+export type StatsRange =
+  | "week"
+  | "this_month"
+  | "last_3_months"
+  | "last_6_months"
+  | "this_year";
+type StatsByRange<T> = { [key in StatsRange]?: T };
+
 interface StatsContextType {
-  statsOverview: StatsOverview | null;
-  expenseStats: ExpenseStats | null;
-  incomeStats: IncomeStats | null;
-  transferStats: TransferStats | null;
-  depositStats: DepositStats | null;
-  budgetStats: BudgetStats | null;
-  goalStats: GoalStats | null;
+  statsOverview: StatsByRange<StatsOverview>;
+  expenseStats: StatsByRange<ExpenseStats>;
+  incomeStats: StatsByRange<IncomeStats>;
+  transferStats: StatsByRange<TransferStats>;
+  depositStats: StatsByRange<DepositStats>;
+  budgetStats: StatsByRange<BudgetStats>;
+  goalStats: StatsByRange<GoalStats>;
+  historicalSummary: HistoricalSummary | null;
+  monthlySummary: MonthlySummary | null;
   loading: boolean;
   error: string | null;
-  refreshStats: (range: string) => Promise<void>;
+  refreshStats: (range: StatsRange) => Promise<void>;
 }
 
 const StatsContext = createContext<StatsContextType | undefined>(undefined);
@@ -31,21 +44,32 @@ const StatsContext = createContext<StatsContextType | undefined>(undefined);
 export const StatsProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [statsOverview, setStatsOverview] = useState<StatsOverview | null>(
+  const [statsOverview, setStatsOverview] = useState<
+    StatsByRange<StatsOverview>
+  >({});
+  const [expenseStats, setExpenseStats] = useState<StatsByRange<ExpenseStats>>(
+    {}
+  );
+  const [incomeStats, setIncomeStats] = useState<StatsByRange<IncomeStats>>({});
+  const [transferStats, setTransferStats] = useState<
+    StatsByRange<TransferStats>
+  >({});
+  const [depositStats, setDepositStats] = useState<StatsByRange<DepositStats>>(
+    {}
+  );
+  const [budgetStats, setBudgetStats] = useState<StatsByRange<BudgetStats>>({});
+  const [goalStats, setGoalStats] = useState<StatsByRange<GoalStats>>({});
+  const [monthlySummary, setMonthlySummary] = useState<MonthlySummary | null>(
     null
   );
-  const [expenseStats, setExpenseStats] = useState<ExpenseStats | null>(null);
-  const [incomeStats, setIncomeStats] = useState<IncomeStats | null>(null);
-  const [transferStats, setTransferStats] = useState<TransferStats | null>(
-    null
-  );
-  const [depositStats, setDepositStats] = useState<DepositStats | null>(null);
-  const [budgetStats, setBudgetStats] = useState<BudgetStats | null>(null);
-  const [goalStats, setGoalStats] = useState<GoalStats | null>(null);
+  const [historicalSummary, setHistoricalSummary] =
+    useState<HistoricalSummary | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const getGranularity = (range: StatsRange) =>
+    range === "this_month" || range === "week" ? "daily" : "monthly";
 
-  const refreshStats = async (range: string = "this_month") => {
+  const refreshStats = async (range: StatsRange = "this_month") => {
     setLoading(true);
     setError(null);
 
@@ -57,7 +81,8 @@ export const StatsProvider: React.FC<{ children: React.ReactNode }> = ({
         "Content-Type": "application/json",
       };
 
-      const queryParam = `?range=${range}`;
+      const granularity = getGranularity(range);
+      const queryParam = `?range=${range}&granularity=${granularity}`;
 
       const [
         overviewRes,
@@ -87,16 +112,29 @@ export const StatsProvider: React.FC<{ children: React.ReactNode }> = ({
         axios.get<BudgetStats>(`${STATS_API_URL}/budgets${queryParam}`, {
           headers,
         }),
-        axios.get<GoalStats>(`${STATS_API_URL}/goals`, { headers }), // no filtering here
+        axios.get<GoalStats>(`${STATS_API_URL}/goals`, { headers }),
       ]);
 
-      setStatsOverview(overviewRes.data);
-      setExpenseStats(expensesRes.data);
-      setIncomeStats(incomeRes.data);
-      setTransferStats(transferRes.data);
-      setDepositStats(depositRes.data);
-      setBudgetStats(budgetRes.data);
-      setGoalStats(goalRes.data);
+      setStatsOverview((prev) => ({ ...prev, [range]: overviewRes.data }));
+      setExpenseStats((prev) => ({ ...prev, [range]: expensesRes.data }));
+      setIncomeStats((prev) => ({ ...prev, [range]: incomeRes.data }));
+      setTransferStats((prev) => ({ ...prev, [range]: transferRes.data }));
+      setDepositStats((prev) => ({ ...prev, [range]: depositRes.data }));
+      setBudgetStats((prev) => ({ ...prev, [range]: budgetRes.data }));
+      setGoalStats((prev) => ({ ...prev, [range]: goalRes.data }));
+
+      if (range === "this_month") {
+        const [monthlySummaryRes, historicalSummaryRes] = await Promise.all([
+          axios.get<MonthlySummary>(`${STATS_API_URL}/summary/month`, {
+            headers,
+          }),
+          axios.get<HistoricalSummary>(`${STATS_API_URL}/summary/history`, {
+            headers,
+          }),
+        ]);
+        setMonthlySummary(monthlySummaryRes.data);
+        setHistoricalSummary(historicalSummaryRes.data);
+      }
     } catch (err: any) {
       setError(
         err?.response?.data?.detail || err.message || "Failed to load stats"
@@ -107,7 +145,13 @@ export const StatsProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   useEffect(() => {
-    refreshStats();
+    const preloadDefaultStats = async () => {
+      await Promise.all([
+        refreshStats("this_month"),
+        refreshStats("last_3_months"),
+      ]);
+    };
+    preloadDefaultStats();
   }, []);
 
   return (
@@ -120,6 +164,8 @@ export const StatsProvider: React.FC<{ children: React.ReactNode }> = ({
         depositStats,
         budgetStats,
         goalStats,
+        historicalSummary,
+        monthlySummary,
         loading,
         error,
         refreshStats,

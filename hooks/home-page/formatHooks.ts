@@ -4,7 +4,7 @@ export const formatCurrency = (amount: string | number | bigint) => {
     style: "currency",
     currency: "RON",
     minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
+    maximumFractionDigits: 0,
   }).format(numericAmount);
 };
 

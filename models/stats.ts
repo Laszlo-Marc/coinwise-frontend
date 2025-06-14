@@ -99,3 +99,24 @@ export type GoalStats = {
   averageContribution: number;
   topGoals: GoalProgress[];
 };
+
+export type MonthlySummary= {
+  totalIncome: number;
+  totalExpenses: number;
+  balance: number;
+}
+
+export type HistoricalSummary= {
+  lastMonth: {
+    income: number;
+    expenses: number;
+  };
+  last3Months: {
+    income: number;
+    expenses: number;
+  };
+  allTime: {
+    income: number;
+    expenses: number;
+  };
+}

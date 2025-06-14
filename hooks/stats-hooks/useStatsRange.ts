@@ -1,3 +1,4 @@
+import { StatsRange } from "@/contexts/StatsContext";
 import { useState } from "react";
 
 const ranges = [
@@ -9,7 +10,7 @@ const ranges = [
 ];
 
 export const useStatsRange = () => {
-  const [selectedRange, setSelectedRange] = useState("this_month");
+  const [selectedRange, setSelectedRange] = useState<StatsRange>("this_month");
   const [modalVisible, setModalVisible] = useState(false);
 
   const label = ranges.find((r) => r.value === selectedRange)?.label || "Month";

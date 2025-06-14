@@ -1,7 +1,7 @@
 import { colors } from "@/constants/colors";
 import { useTransactionContext } from "@/contexts/AppContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { useSummaryData } from "@/hooks/home-page/useSummaryData";
+import { useStatsContext } from "@/contexts/StatsContext";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
@@ -24,10 +24,9 @@ export default function MainSection({
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { state } = useAuth();
-
+  const { monthlySummary } = useStatsContext();
   const { transactions } = useTransactionContext();
-  const summaryData = useSummaryData(transactions, state.user);
-  const balance = summaryData.allTime.income - summaryData.allTime.expenses;
+
   return (
     <LinearGradient
       colors={["rgb(251, 193, 105)", "rgb(198, 119, 0)"]}
@@ -50,7 +49,9 @@ export default function MainSection({
       </TouchableWithoutFeedback>
       <View style={styles.balanceContainer}>
         <Text style={styles.balanceLabel}>Balance</Text>
-        <Text style={styles.balanceAmount}>{balance.toFixed(2)} RON</Text>
+        <Text style={styles.balanceAmount}>
+          {monthlySummary?.balance.toFixed(0)} RON
+        </Text>
       </View>
       <View style={styles.quickActions}>{actionButtons}</View>
     </LinearGradient>

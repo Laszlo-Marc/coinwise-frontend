@@ -1,45 +1,42 @@
 import { useTransactionContext } from "@/contexts/AppContext";
-import { useTransactionFilters } from "@/hooks/finances-page/handleFilterChange";
+import { useStatsContext } from "@/contexts/StatsContext";
 import { TransactionModel } from "@/models/transaction";
 import { TransactionType } from "@/models/transactionType";
 import { useCallback, useEffect, useState } from "react";
+import { useTransactionFilters } from "./handleFilterChange";
 
 export const useFinancesScreenState = () => {
   const {
     transactions,
     deleteTransaction,
-    refreshTransactions,
+    fetchTransactions,
     hasMore,
     loadMore,
     isLoadingMore,
   } = useTransactionContext();
 
-  const [selectedClass, setSelectedClass] =
-    useState<TransactionType>("expense");
   const [selectedTransaction, setSelectedTransaction] =
     useState<TransactionModel | null>(null);
-  const [formType, setFormType] = useState<TransactionType>(null);
+  const [formType, setFormType] = useState<TransactionType | null>(null);
+  const [isFormVisible, setIsFormVisible] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [isFormVisible, setIsFormVisible] = useState(false);
-  const [summary, setSummary] = useState({
-    totalExpenses: 0,
-    totalIncome: 0,
-    balance: 0,
-  });
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedTransactionId, setSelectedTransactionId] = useState<
     string | null
   >(null);
-
-  const { displayedTransactions, handleFilterChange, filters } =
-    useTransactionFilters(transactions);
+  const { statsOverview } = useStatsContext();
+  const [summary, setSummary] = useState({
+    totalExpenses: statsOverview?.totalExpenses || 0,
+    totalIncome: statsOverview?.totalIncome || 0,
+    balance: statsOverview?.balance || 0,
+  });
+  const { filters, handleFilterChange } =
+    useTransactionFilters(fetchTransactions);
 
   useEffect(() => {
-    if (transactions.length > 0) {
-      handleFilterChange({ transactionClass: "expense" });
-    }
-  }, [transactions]);
+    fetchTransactions(1, filters);
+  }, []);
 
   const handleEditTransaction = useCallback(
     (id: string, type: TransactionType) => {
@@ -52,11 +49,16 @@ export const useFinancesScreenState = () => {
     [transactions]
   );
 
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    refreshTransactions();
-    setTimeout(() => setRefreshing(false), 2000);
-  }, [refreshTransactions]);
+    try {
+      await fetchTransactions(1, filters);
+    } catch (e) {
+      console.error("Error refreshing transactions:", e);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [fetchTransactions, filters]);
 
   const handleDeleteConfirm = async () => {
     if (!selectedTransactionId) return;
@@ -83,8 +85,8 @@ export const useFinancesScreenState = () => {
   const toggleFilters = () => setShowFilters((prev) => !prev);
 
   return {
-    selectedClass,
-    setSelectedClass,
+    filters,
+    handleFilterChange,
     selectedTransaction,
     formType,
     isFormVisible,
@@ -92,16 +94,18 @@ export const useFinancesScreenState = () => {
     refreshing,
     summary,
     modalVisible,
-    displayedTransactions,
+    transactions,
     hasMore,
     isLoadingMore,
     handleEditTransaction,
     handleDeleteTransaction,
     onRefresh,
-    handleFilterChange,
     toggleFilters,
     handleDeleteConfirm,
     handleDeleteCancel,
     loadMore,
+    setIsFormVisible,
+    setModalVisible,
+    setSelectedTransactionId,
   };
 };

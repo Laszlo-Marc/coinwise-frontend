@@ -1,4 +1,4 @@
-import { useStatsContext } from "@/contexts/StatsContext";
+import { StatsRange, useStatsContext } from "@/contexts/StatsContext";
 import React, { useEffect } from "react";
 import {
   Dimensions,
@@ -30,7 +30,6 @@ const screenWidth = Dimensions.get("window").width * 0.9;
 export default function StatisticsScreen() {
   const insets = useSafeAreaInsets();
 
-  // Context
   const {
     statsOverview,
     expenseStats,
@@ -41,7 +40,6 @@ export default function StatisticsScreen() {
     refreshStats,
   } = useStatsContext();
 
-  // UI Hooks
   const { activeTab, setActiveTab, chartType, setChartType } = useStatsTabs();
   const {
     selectedRange,
@@ -51,35 +49,54 @@ export default function StatisticsScreen() {
     ranges,
     label: rangeLabel,
   } = useStatsRange();
-
+  const currentStatsOverview = statsOverview[selectedRange];
+  const currentExpenseStats = expenseStats[selectedRange];
+  const currentIncomeStats = incomeStats[selectedRange];
+  const currentTransferStats = transferStats[selectedRange];
   const [refreshing, setRefreshing] = React.useState(false);
+  const cashFlowData = React.useMemo(() => {
+    const incomeTrend = currentIncomeStats?.trend || [];
+    const expenseTrend = currentExpenseStats?.trend || [];
 
-  // Cash flow simulation for savings chart (until you fetch it from context/backend)
-  const mockCashFlow = [
-    { period: "2024-01", net_flow: 200 },
-    { period: "2024-02", net_flow: -50 },
-    { period: "2024-03", net_flow: 120 },
-  ];
+    const incomeMap = new Map(incomeTrend.map((i) => [i.period, i.amount]));
+    const expenseMap = new Map(expenseTrend.map((e) => [e.period, e.amount]));
 
-  // Transformed data for chart/pie
+    const allPeriods = Array.from(
+      new Set([...incomeMap.keys(), ...expenseMap.keys()])
+    ).sort();
+
+    return allPeriods.map((period) => ({
+      period,
+      net_flow: (incomeMap.get(period) || 0) - (expenseMap.get(period) || 0),
+    }));
+  }, [currentIncomeStats, currentExpenseStats]);
+
   const { chartData, pieData, currentStats } = useTransformedStats({
     activeTab,
-    expenseStats,
-    incomeStats,
-    statsOverview,
-    cashFlowData: mockCashFlow,
+    expenseStats: currentExpenseStats,
+    incomeStats: currentIncomeStats,
+    statsOverview: currentStatsOverview,
+    cashFlowData,
   });
-
-  // Initial + range refresh
-  useEffect(() => {
-    refreshStats(selectedRange);
-  }, [selectedRange]);
 
   const onRefresh = async () => {
     setRefreshing(true);
     await refreshStats(selectedRange);
     setRefreshing(false);
   };
+  const isStatsCached = (range: StatsRange) => {
+    return (
+      statsOverview[range] &&
+      expenseStats[range] &&
+      incomeStats[range] &&
+      transferStats[range]
+    );
+  };
+  useEffect(() => {
+    if (!isStatsCached(selectedRange)) {
+      refreshStats(selectedRange);
+    }
+  }, [selectedRange]);
 
   if (loading && !refreshing) {
     return (
@@ -156,18 +173,18 @@ export default function StatisticsScreen() {
               pieData={pieData}
               chartWidth={screenWidth - 32}
             />
-            <TopExpenses expenses={expenseStats?.top5Expenses || []} />
+            <TopExpenses expenses={currentExpenseStats?.top5Expenses || []} />
           </>
         )}
 
         {/* Income Tab Components */}
-        {activeTab === "income" && transferStats && (
-          <TransferOverview data={transferStats} />
+        {activeTab === "income" && currentTransferStats && (
+          <TransferOverview data={currentTransferStats} />
         )}
 
         {/* Savings Tab Components */}
-        {activeTab === "savings" && statsOverview && (
-          <SavingsSummary overview={statsOverview} />
+        {activeTab === "savings" && currentStatsOverview && (
+          <SavingsSummary overview={currentStatsOverview} />
         )}
       </ScrollView>
 
@@ -176,7 +193,7 @@ export default function StatisticsScreen() {
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
         onSelect={(val) => {
-          setSelectedRange(val);
+          setSelectedRange(val as StatsRange);
           setModalVisible(false);
         }}
         selectedRange={selectedRange}

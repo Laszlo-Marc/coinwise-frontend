@@ -1,18 +1,22 @@
-import { TransactionFilters } from "@/components/financesComponents/TransactionsFilters";
+import TransactionFilters from "@/components/financesComponents/TransactionsFilters";
 import { colors } from "@/constants/colors";
+import { TransactionFilterOptions } from "@/contexts/AppContext";
+
 import React, { useEffect, useRef, useState } from "react";
 import { Animated, Easing, StyleSheet } from "react-native";
 
 type Props = {
   visible: boolean;
-  onFilterChange: (filters: any) => void;
-  selectedClass: "expense" | "income" | "transfer" | "deposit" | "all" | null;
+  filters: TransactionFilterOptions;
+  onChange: (newFilters: Partial<TransactionFilterOptions>) => void;
+  categories: string[];
 };
 
 const TransactionsFiltersPanel: React.FC<Props> = ({
   visible,
-  onFilterChange,
-  selectedClass,
+  filters,
+  onChange,
+  categories,
 }) => {
   const translateY = useRef(new Animated.Value(-100)).current;
   const opacity = useRef(new Animated.Value(0)).current;
@@ -66,8 +70,9 @@ const TransactionsFiltersPanel: React.FC<Props> = ({
       ]}
     >
       <TransactionFilters
-        onFilterChange={onFilterChange}
-        selectedClass={selectedClass}
+        filters={filters}
+        onChange={onChange}
+        categories={categories}
       />
     </Animated.View>
   );

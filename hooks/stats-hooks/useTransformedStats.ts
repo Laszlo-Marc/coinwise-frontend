@@ -2,7 +2,24 @@ import { colors } from "@/constants/colors";
 import { ExpenseStats, IncomeStats, StatsOverview } from "@/models/stats";
 import { useMemo } from "react";
 
-// Used for chart rendering in the stats screen
+// Helper to format period label
+const formatPeriodLabel = (period: string): string => {
+  if (period.length === 10) {
+    // Daily format: YYYY-MM-DD
+    const date = new Date(period);
+    if (isNaN(date.getTime())) return "Invalid";
+    return `${date.getDate()} ${date.toLocaleDateString("en-US", {
+      month: "short",
+    })}`; // e.g., "14 Jun"
+  } else if (period.length === 7) {
+    // Monthly format: YYYY-MM
+    const date = new Date(period + "-01");
+    if (isNaN(date.getTime())) return "Invalid";
+    return date.toLocaleDateString("en-US", { month: "short" }); // e.g., "Jun"
+  }
+  return period;
+};
+
 export const useTransformedStats = ({
   activeTab,
   expenseStats,
@@ -11,19 +28,27 @@ export const useTransformedStats = ({
   cashFlowData,
 }: {
   activeTab: "spending" | "income" | "savings";
-  expenseStats: ExpenseStats | null;
-  incomeStats: IncomeStats | null;
-  statsOverview: StatsOverview | null;
+  expenseStats: ExpenseStats | undefined;
+  incomeStats: IncomeStats | undefined;
+  statsOverview: StatsOverview | undefined;
   cashFlowData: { period: string; net_flow: number }[];
 }) => {
   // Unified trend selection
   const trendData = useMemo(() => {
     if (activeTab === "spending") return expenseStats?.trend || [];
     if (activeTab === "income") return incomeStats?.trend || [];
-    if (activeTab === "savings") {
-      return cashFlowData.map((d) => ({
-        period: d.period,
-        amount: d.net_flow,
+    if (activeTab === "savings" && incomeStats && expenseStats) {
+      const incomeMap = new Map(
+        incomeStats.trend.map((i) => [i.period, i.amount])
+      );
+      const expenseMap = new Map(
+        expenseStats.trend.map((e) => [e.period, e.amount])
+      );
+
+      const allPeriods = new Set([...incomeMap.keys(), ...expenseMap.keys()]);
+      return Array.from(allPeriods).map((period) => ({
+        period,
+        amount: (incomeMap.get(period) || 0) - (expenseMap.get(period) || 0),
         count: 0,
       }));
     }
@@ -36,16 +61,20 @@ export const useTransformedStats = ({
       return {
         labels: ["No Data"],
         datasets: [
-          { data: [0], color: () => colors.primary[400], strokeWidth: 2 },
+          {
+            data: [0],
+            color: () => colors.primary[400],
+            strokeWidth: 2,
+          },
         ],
       };
     }
-
+    const labelStep = trendData.length > 7 ? 2 : 1;
     return {
-      labels: trendData.map((item) => {
-        const date = new Date(item.period + "-01");
-        return date.toLocaleDateString("en-US", { month: "short" });
-      }),
+      labels: trendData.map((item, index) =>
+        index % labelStep === 0 ? formatPeriodLabel(item.period) : ""
+      ),
+
       datasets: [
         {
           data: trendData.map((item) => Math.abs(item.amount)),

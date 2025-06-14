@@ -1,11 +1,19 @@
 import { colors } from "@/constants/colors";
+import { useStatsContext } from "@/contexts/StatsContext";
 import { formatCurrency } from "@/hooks/goals-helpers";
+import { useStatsRange } from "@/hooks/stats-hooks/useStatsRange";
 import { BudgetModel } from "@/models/budget";
 import { GoalModel } from "@/models/goal";
 import { AntDesign, Entypo, Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 type Props = {
   title: string;
@@ -22,7 +30,95 @@ export default function ProgressCardSection({
   navigateTo,
   onCreatePress,
 }: Props) {
+  const { budgetStats, goalStats } = useStatsContext();
+  const { selectedRange } = useStatsRange();
+  const currentBudgetStats = budgetStats[selectedRange];
+  const currentGoalStats = goalStats[selectedRange];
   const isGoal = type === "goal";
+
+  const renderStatsSummary = () => {
+    if (isGoal && currentGoalStats) {
+      return (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.scrollStatsRow}
+          contentContainerStyle={styles.statsContainer}
+        >
+          <StatBox
+            icon={<Feather name="target" size={20} color={colors.text} />}
+            label="Total Goals"
+            value={currentGoalStats?.totalGoals}
+          />
+          <StatBox
+            icon={<Feather name="check-circle" size={20} color={colors.text} />}
+            label="Completed"
+            value={currentGoalStats?.completedGoals}
+          />
+          <StatBox
+            icon={<Feather name="activity" size={20} color={colors.text} />}
+            label="Active"
+            value={currentGoalStats?.activeGoals}
+          />
+          <StatBox
+            icon={<Feather name="plus-circle" size={20} color={colors.text} />}
+            label="Contributed"
+            value={formatCurrency(currentGoalStats?.totalContributions)}
+          />
+          <StatBox
+            icon={<Feather name="dollar-sign" size={20} color={colors.text} />}
+            label="Avg Contribution"
+            value={formatCurrency(currentGoalStats?.averageContribution)}
+          />
+        </ScrollView>
+      );
+    }
+
+    if (!isGoal && currentBudgetStats) {
+      return (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.scrollStatsRow}
+          contentContainerStyle={styles.statsContainer}
+        >
+          <StatBox
+            icon={<Feather name="credit-card" size={20} color={colors.text} />}
+            label="Total Budget"
+            value={formatCurrency(currentBudgetStats.totalBudget)}
+          />
+          <StatBox
+            icon={
+              <Feather name="shopping-cart" size={20} color={colors.text} />
+            }
+            label="Spent"
+            value={formatCurrency(currentBudgetStats.totalSpent)}
+          />
+          <StatBox
+            icon={<Feather name="pocket" size={20} color={colors.text} />}
+            label="Remaining"
+            value={formatCurrency(currentBudgetStats.remainingBudget)}
+          />
+          <StatBox
+            icon={
+              <Feather name="alert-circle" size={20} color={colors.error} />
+            }
+            label="Over Budget"
+            value={currentBudgetStats.overBudgetCount}
+          />
+          <StatBox
+            icon={
+              <Feather name="check-circle" size={20} color={colors.success} />
+            }
+            label="Under Budget"
+            value={currentBudgetStats.underBudgetCount}
+          />
+        </ScrollView>
+      );
+    }
+
+    return null;
+  };
 
   const renderProgress = (item: GoalModel | BudgetModel) => {
     const progress = isGoal
@@ -104,12 +200,30 @@ export default function ProgressCardSection({
         <Entypo name="chevron-right" size={24} color={colors.textSecondary} />
       </TouchableOpacity>
 
+      {renderStatsSummary()}
+
       {items && items.length > 0
         ? items.map(renderProgress)
         : renderPlaceholder()}
     </View>
   );
 }
+
+const StatBox = ({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string | number;
+}) => (
+  <View style={styles.statBox}>
+    {icon}
+    <Text style={styles.statValue}>{value}</Text>
+    <Text style={styles.statLabel}>{label}</Text>
+  </View>
+);
 
 const styles = StyleSheet.create({
   card: {
@@ -128,6 +242,36 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "700",
     color: colors.text,
+    fontFamily: "Montserrat",
+  },
+  scrollStatsRow: {
+    marginBottom: 16,
+  },
+  statsContainer: {
+    gap: 12,
+    paddingRight: 12,
+  },
+  statBox: {
+    backgroundColor: `${colors.backgroundDark}10`,
+    padding: 12,
+    borderRadius: 12,
+    minWidth: 120,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  statValue: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: colors.text,
+    marginTop: 4,
+    fontFamily: "Montserrat",
+  },
+  statLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 2,
+    fontFamily: "Montserrat",
+    textAlign: "center",
   },
   cardItem: {
     marginBottom: 16,
@@ -144,18 +288,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: colors.text,
+    marginBottom: 4,
+    fontFamily: "Montserrat",
   },
   itemAmount: {
     fontSize: 14,
     color: colors.textSecondary,
+    fontFamily: "Montserrat",
+    marginBottom: 4,
   },
   itemPercentage: {
     fontSize: 14,
     fontWeight: "600",
-    color: colors.text,
+    color: colors.primaryDark,
+    fontFamily: "Montserrat",
   },
   itemAtRisk: {
-    color: "#EF4444",
+    color: colors.error,
   },
   progressBarBackground: {
     height: 8,
@@ -175,6 +324,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 8,
     textAlign: "center",
+    fontFamily: "Montserrat",
   },
   createButton: {
     backgroundColor: colors.primary[500],
@@ -187,5 +337,6 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 14,
     fontWeight: "600",
+    fontFamily: "Montserrat",
   },
 });

@@ -1,4 +1,5 @@
 import { API_BASE_URL } from "@/constants/api";
+import { TransactionType } from "@/models/transactionType";
 import axios from "axios";
 import * as SecureStore from "expo-secure-store";
 import React, {
@@ -10,6 +11,15 @@ import React, {
 } from "react";
 import { PaginatedResponse, TransactionModel } from "../models/transaction";
 
+export interface TransactionFilterOptions {
+  transactionClass?: TransactionType;
+  category?: string;
+  startDate?: Date;
+  endDate?: Date;
+  sortBy?: "amount" | "date";
+  sortOrder?: "asc" | "desc";
+}
+
 interface TransactionContextType {
   transactions: TransactionModel[];
   isLoading: boolean;
@@ -18,12 +28,15 @@ interface TransactionContextType {
   currentPage: number;
   totalPages: number;
   hasMore: boolean;
-  loadMore: (transactionClass?: string) => Promise<void>;
+  loadMore: () => Promise<void>;
   refreshTransactions: () => Promise<void>;
   addTransaction: (
     transaction: TransactionModel
   ) => Promise<string | undefined>;
-  fetchTransactions: (page?: number, filter?: string) => Promise<void>;
+  fetchTransactions: (
+    page?: number,
+    filters?: TransactionFilterOptions
+  ) => Promise<void>;
   uploadBankStatement: (file: FormData) => Promise<any>;
   deleteTransaction: (id: string) => Promise<void>;
   updateTransaction: (
@@ -31,6 +44,10 @@ interface TransactionContextType {
     updates: Partial<TransactionModel>
   ) => Promise<any>;
   transactionsCleanup: () => void;
+  deduplicateTransactions: () => Promise<{
+    removed_count: number;
+    removed_ids: string[];
+  } | null>;
 }
 
 const TransactionContext = createContext<TransactionContextType | undefined>(
@@ -49,10 +66,11 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [currentFilter, setCurrentFilter] = useState<string | undefined>();
+  const [lastUsedFilters, setLastUsedFilters] =
+    useState<TransactionFilterOptions>();
 
   const pageSize = 100;
-  const maxTransactionCache = 300;
+  const maxTransactionCache = 250;
   const hasMore = currentPage < totalPages;
 
   const transactionsCleanup = useCallback(() => {
@@ -62,7 +80,7 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({
     setError(null);
     setCurrentPage(1);
     setTotalPages(1);
-    setCurrentFilter(undefined);
+    setLastUsedFilters(undefined);
   }, []);
 
   const handleApiError = useCallback((error: any) => {
@@ -86,36 +104,37 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({
   }, []);
 
   const fetchTransactions = useCallback(
-    async (page: number = 1, filter?: string) => {
+    async (
+      page: number = 1,
+      filters: TransactionFilterOptions = lastUsedFilters ?? {}
+    ) => {
       if (page === 1) setIsLoading(true);
       else setIsLoadingMore(true);
 
       setError(null);
 
       try {
-        await fixTransferData();
         const token = await SecureStore.getItem("auth_token");
 
         const params: Record<string, any> = {
           page,
           page_size: pageSize,
+          sort_by: filters.sortBy ?? "date",
+          sort_order: filters.sortOrder ?? "desc",
         };
 
-        if (filter) {
-          params.type =
-            filter === "expenses"
-              ? "expense"
-              : filter === "incomes"
-              ? "income"
-              : filter === "transfers"
-              ? "transfer"
-              : filter === "deposits"
-              ? "deposit"
-              : undefined;
+        if (filters.transactionClass && filters.transactionClass !== "all") {
+          params.transaction_type = filters.transactionClass;
         }
 
+        if (filters.category) params.category = filters.category;
+        if (filters.startDate)
+          params.start_date = filters.startDate.toISOString().split("T")[0];
+        if (filters.endDate)
+          params.end_date = filters.endDate.toISOString().split("T")[0];
+
         const response = await axios.get<PaginatedResponse>(
-          `${TRANSACTIONS_API_URL}/`,
+          `${TRANSACTIONS_API_URL}/filter`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -130,11 +149,9 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({
         setTransactions((prev) =>
           page === 1 ? data : [...prev, ...data].slice(-maxTransactionCache)
         );
-
         setCurrentPage(returnedPage);
         setTotalPages(total_pages);
-
-        if (filter) setCurrentFilter(filter);
+        setLastUsedFilters(filters);
       } catch (e) {
         handleApiError(e);
       } finally {
@@ -142,30 +159,25 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({
         else setIsLoadingMore(false);
       }
     },
-    [fixTransferData, handleApiError]
+    [handleApiError, lastUsedFilters]
   );
 
   const refreshTransactions = useCallback(async () => {
-    setCurrentPage(1);
-    await fetchTransactions(1, currentFilter);
-  }, [currentFilter, fetchTransactions]);
+    await fetchTransactions(1, lastUsedFilters);
+  }, [fetchTransactions, lastUsedFilters]);
 
-  const loadMore = useCallback(
-    async (transactionClass?: string) => {
-      const filterToUse = transactionClass || currentFilter;
-      if (hasMore && !isLoadingMore && transactions.length >= pageSize) {
-        await fetchTransactions(currentPage + 1, filterToUse);
-      }
-    },
-    [
-      hasMore,
-      isLoadingMore,
-      transactions.length,
-      currentPage,
-      currentFilter,
-      fetchTransactions,
-    ]
-  );
+  const loadMore = useCallback(async () => {
+    if (hasMore && !isLoadingMore && transactions.length >= pageSize) {
+      await fetchTransactions(currentPage + 1, lastUsedFilters);
+    }
+  }, [
+    hasMore,
+    isLoadingMore,
+    transactions.length,
+    currentPage,
+    fetchTransactions,
+    lastUsedFilters,
+  ]);
 
   const addTransaction = useCallback(
     async (transaction: TransactionModel) => {
@@ -189,7 +201,7 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({
         setTransactions((prev) =>
           [addedTransaction, ...prev].slice(0, maxTransactionCache)
         );
-        return response.data.id;
+        return addedTransaction.id;
       } catch (e) {
         handleApiError(e);
       } finally {
@@ -244,11 +256,37 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({
     [handleApiError]
   );
 
+  const deduplicateTransactions = useCallback(async (): Promise<{
+    removed_count: number;
+    removed_ids: string[];
+  } | null> => {
+    try {
+      const token = await SecureStore.getItemAsync("auth_token");
+      const response = await axios.delete(
+        `${TRANSACTIONS_API_URL}/remove-duplicates`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      const { removed_count, removed_ids } = response.data;
+      setTransactions((prev) =>
+        prev.filter((tx) => !removed_ids.includes(tx.id))
+      );
+      return { removed_count, removed_ids };
+    } catch (e) {
+      handleApiError(e);
+      return null;
+    }
+  }, [handleApiError]);
+
   const uploadBankStatement = useCallback(
     async (formData: FormData): Promise<any> => {
       try {
         const token = await SecureStore.getItemAsync("auth_token");
-
         const response = await axios.post(`${UPLOAD_API_URL}/`, formData, {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -257,7 +295,8 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({
         });
 
         console.log("Upload response:", response.data);
-        await fetchTransactions();
+        await fixTransferData();
+        await fetchTransactions(1, lastUsedFilters);
       } catch (e: any) {
         if (e.response) {
           const status = e.response.status;
@@ -268,12 +307,11 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({
             detail.includes("not appear to be a bank statement")
           ) {
             alert(
-              "⚠️ The uploaded file does not seem to be a valid bank statement. Please try again."
+              "⚠️ The uploaded file does not seem to be a valid bank statement."
             );
           } else {
             alert(`Upload failed (${status}): ${detail}`);
           }
-
           console.warn("Upload error:", status, detail);
         } else {
           alert("Upload failed. Please check your internet connection.");
@@ -283,7 +321,7 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({
         return null;
       }
     },
-    [fetchTransactions]
+    [fetchTransactions, lastUsedFilters, fixTransferData]
   );
 
   const contextValue = useMemo(
@@ -303,6 +341,7 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({
       updateTransaction,
       uploadBankStatement,
       transactionsCleanup,
+      deduplicateTransactions,
     }),
     [
       transactions,
@@ -320,6 +359,7 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({
       updateTransaction,
       uploadBankStatement,
       transactionsCleanup,
+      deduplicateTransactions,
     ]
   );
 
@@ -332,7 +372,7 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({
 
 export const useTransactionContext = (): TransactionContextType => {
   const context = useContext(TransactionContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error(
       "useTransactionContext must be used within a TransactionProvider"
     );

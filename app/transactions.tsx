@@ -1,19 +1,20 @@
 import ProcessingModal from "@/components/financesComponents/ProcessingModal";
 import TransactionClassModal from "@/components/financesComponents/TransactionClasssModal";
 import TransactionList from "@/components/financesComponents/TransactionList";
-import TransactionFilters from "@/components/financesComponents/TransactionsFilters";
+import TransactionsFiltersPanel from "@/components/financesComponents/TransactionsFilterPanel";
+import { TransactionTypeSelector } from "@/components/financesComponents/TransactionTypeSelector";
 import BottomBar from "@/components/mainComponents/BottomBar";
 import DeleteConfirmModal from "@/components/mainComponents/DeleteModal";
 import MainSection from "@/components/mainComponents/MainSection";
+import { categories } from "@/constants/categories";
 import { useTransactionContext } from "@/contexts/AppContext";
-import { useAuth } from "@/contexts/AuthContext";
 import { useTransactionFilters } from "@/hooks/finances-page/handleFilterChange";
 import { useDocumentUpload } from "@/hooks/transactions-page/useDocumentUpload";
 import { useTransactionUIState } from "@/hooks/transactions-page/useTransactionUIState";
 import { AntDesign, Feather } from "@expo/vector-icons";
 import Ionicons from "@expo/vector-icons/build/Ionicons";
 import { useRouter } from "expo-router";
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { colors } from "../constants/colors";
 
@@ -23,13 +24,9 @@ export default function TransactionsListScreen() {
     transactions,
     uploadBankStatement,
     deleteTransaction,
-    refreshTransactions,
+    fetchTransactions,
   } = useTransactionContext();
-  const { state } = useAuth();
-  const currentUser = state.user?.full_name;
   const {
-    refreshing,
-    setRefreshing,
     classModalVisible,
     setClassModalVisible,
     modalVisible,
@@ -38,22 +35,21 @@ export default function TransactionsListScreen() {
     setSelectedTransactionId,
     showFilters,
     setShowFilters,
-    selectedClass,
   } = useTransactionUIState();
 
   const { uploadDocument, isLoading, processingStage } =
     useDocumentUpload(uploadBankStatement);
 
-  const { displayedTransactions, handleFilterChange } =
-    useTransactionFilters(transactions);
+  const { filters, handleFilterChange } =
+    useTransactionFilters(fetchTransactions);
 
-  const toggleFilters = () => setShowFilters(!showFilters);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const toggleFilters = () => setShowFilters((prev) => !prev);
 
   useEffect(() => {
-    if (transactions.length > 0) {
-      handleFilterChange({ transactionClass: "expense" });
-    }
-  }, [transactions]);
+    fetchTransactions(1, filters);
+  }, []);
 
   const handleOpenModal = useCallback(() => {
     setClassModalVisible(true);
@@ -62,14 +58,14 @@ export default function TransactionsListScreen() {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await refreshTransactions();
+      await fetchTransactions(1, filters);
     } catch (error) {
       Alert.alert("Error", "Failed to refresh transactions.");
       console.error("Refresh failed:", error);
     } finally {
       setRefreshing(false);
     }
-  }, []);
+  }, [fetchTransactions, filters]);
 
   return (
     <View style={styles.container}>
@@ -111,18 +107,26 @@ export default function TransactionsListScreen() {
         />
 
         {showFilters && (
-          <View style={styles.filtersContainer}>
-            <TransactionFilters
-              onFilterChange={handleFilterChange}
-              selectedClass={selectedClass}
+          <>
+            <TransactionTypeSelector
+              value={filters.transactionClass ?? "expense"}
+              onChange={(type) =>
+                handleFilterChange({ transactionClass: type })
+              }
             />
-          </View>
+            <TransactionsFiltersPanel
+              visible={showFilters}
+              filters={filters}
+              onChange={handleFilterChange}
+              categories={categories}
+            />
+          </>
         )}
       </View>
 
       <TransactionList
-        currentUser={currentUser}
-        transactions={displayedTransactions}
+        currentUser="you"
+        transactions={transactions}
         onEdit={(id) => router.push(`/transaction/edit-transaction/${id}`)}
         onDelete={(id) => {
           setSelectedTransactionId(id);
@@ -131,6 +135,7 @@ export default function TransactionsListScreen() {
         onRefresh={onRefresh}
         refreshing={refreshing}
       />
+
       <TransactionClassModal
         visible={classModalVisible}
         onClose={() => setClassModalVisible(false)}
@@ -139,17 +144,22 @@ export default function TransactionsListScreen() {
           router.push(`/transaction/add-transaction?type=${type}`);
         }}
       />
+
       <ProcessingModal visible={isLoading} currentStage={processingStage} />
+
       <DeleteConfirmModal
         visible={modalVisible}
         title="Delete Transaction"
         message="Are you sure you want to delete this transaction?"
         onCancel={() => setModalVisible(false)}
         onConfirm={() => {
-          deleteTransaction(selectedTransactionId);
+          if (selectedTransactionId) {
+            deleteTransaction(selectedTransactionId);
+          }
           setModalVisible(false);
         }}
       />
+
       <BottomBar />
     </View>
   );
@@ -177,15 +187,5 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 14,
     textAlign: "center",
-  },
-  filtersContainer: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: colors.backgroundLight,
-    borderRadius: 12,
-    marginHorizontal: 16,
-    marginBottom: 8,
-    marginTop: 10,
-    zIndex: 1,
   },
 });

@@ -1,22 +1,10 @@
 import { colors } from "@/constants/colors";
 import { formatCurrency } from "@/hooks/goals-helpers";
+import { HistoricalSummary } from "@/models/stats";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
-type SummaryData = {
-  income: number;
-  expenses: number;
-};
-
-type Props = {
-  summaryData: {
-    allTime: SummaryData;
-    lastMonth: SummaryData;
-    last3Months: SummaryData;
-  };
-};
-
-export default function SummaryOverviewSection({ summaryData }: Props) {
+export default function SummaryOverviewSection(summaryData: HistoricalSummary) {
   return (
     <View style={styles.card}>
       <TouchableOpacity style={styles.sectionHeaderButton}>
@@ -74,6 +62,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "700",
     color: colors.text,
+    fontFamily: "Montserrat",
   },
   summaryContainer: {
     gap: 16,
@@ -88,6 +77,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     marginBottom: 12,
+    fontFamily: "Montserrat",
   },
   summaryAmounts: {
     flexDirection: "row",
@@ -100,9 +90,11 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontSize: 14,
     marginBottom: 4,
+    fontFamily: "Montserrat",
   },
   summaryAmount: {
     fontSize: 18,
     fontWeight: "600",
+    fontFamily: "Montserrat",
   },
 });

@@ -1,10 +1,15 @@
 import TransactionList from "@/components/financesComponents/TransactionList";
 import TransactionsFiltersPanel from "@/components/financesComponents/TransactionsFilterPanel";
 import TransactionsSummaryCard from "@/components/financesComponents/TransactionsSummaryCard";
+import { TransactionTypeSelector } from "@/components/financesComponents/TransactionTypeSelector";
 import AnimatedCard from "@/components/homePageComponents/AnimatedCard";
 import ActionBar from "@/components/mainComponents/ActionBar";
 import DeleteConfirmModal from "@/components/mainComponents/DeleteModal";
+import { categories } from "@/constants/categories";
 import { colors } from "@/constants/colors";
+import { useTransactionContext } from "@/contexts/AppContext";
+import { useStatsContext } from "@/contexts/StatsContext";
+import { useTransactionFilters } from "@/hooks/finances-page/handleFilterChange";
 
 import { useFinancesScreenState } from "@/hooks/finances-page/useFinancesState";
 import { Feather } from "@expo/vector-icons";
@@ -13,26 +18,25 @@ import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 export default function Finances() {
   const router = useRouter();
-
+  const { transactions, fetchTransactions } = useTransactionContext();
+  const { monthlySummary } = useStatsContext();
   const {
-    selectedClass,
     showFilters,
     refreshing,
-    summary,
+
     modalVisible,
-    displayedTransactions,
     hasMore,
     isLoadingMore,
     handleEditTransaction,
     handleDeleteTransaction,
     onRefresh,
-    handleFilterChange,
     toggleFilters,
     handleDeleteConfirm,
     handleDeleteCancel,
     loadMore,
   } = useFinancesScreenState();
-
+  const { filters, handleFilterChange } =
+    useTransactionFilters(fetchTransactions);
   return (
     <View style={styles.container}>
       <ActionBar
@@ -61,9 +65,9 @@ export default function Finances() {
         ]}
       />
       <TransactionsSummaryCard
-        totalIncome={summary.totalIncome}
-        totalExpenses={summary.totalExpenses}
-        balance={summary.balance}
+        totalIncome={monthlySummary?.totalIncome ?? 0}
+        totalExpenses={monthlySummary?.totalExpenses ?? 0}
+        balance={monthlySummary?.balance ?? 0}
       />
 
       <View style={styles.contentContainer}>
@@ -85,15 +89,27 @@ export default function Finances() {
             </TouchableOpacity>
           </View>
         </AnimatedCard>
-        <TransactionsFiltersPanel
-          visible={showFilters}
-          onFilterChange={handleFilterChange}
-          selectedClass={selectedClass}
-        />
+
+        {showFilters && (
+          <>
+            <TransactionsFiltersPanel
+              visible={showFilters}
+              filters={filters}
+              onChange={handleFilterChange}
+              categories={categories}
+            />
+            <TransactionTypeSelector
+              value={filters.transactionClass ?? "expense"}
+              onChange={(type) =>
+                handleFilterChange({ transactionClass: type })
+              }
+            />
+          </>
+        )}
         <View style={styles.listContainer}>
           <AnimatedCard delay={300}>
             <TransactionList
-              transactions={displayedTransactions}
+              transactions={transactions}
               onEdit={handleEditTransaction}
               onDelete={handleDeleteTransaction}
               onRefresh={onRefresh}
