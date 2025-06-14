@@ -224,11 +224,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
 });
-
 const propsAreEqual = (prev: Props, next: Props) => {
   return (
+    prev.transaction.id === next.transaction.id &&
     prev.currentUser === next.currentUser &&
-    prev.transaction.id === next.transaction.id
+    prev.onEdit === next.onEdit &&
+    prev.onDelete === next.onDelete
   );
 };
 

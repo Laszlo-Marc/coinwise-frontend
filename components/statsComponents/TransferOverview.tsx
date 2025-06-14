@@ -18,7 +18,7 @@ export const TransferOverview: React.FC<Props> = ({ data }) => {
         <View style={styles.statItem}>
           <Text style={styles.label}>Received</Text>
           <Text style={[styles.amount, { color: colors.success }]}>
-            {data.totalReceived.toFixed(0)}
+            {new Intl.NumberFormat("ro-RO").format(data.totalReceived)}
           </Text>
           <Text style={styles.count}>{data.totalTransfers} total</Text>
         </View>
@@ -26,7 +26,7 @@ export const TransferOverview: React.FC<Props> = ({ data }) => {
         <View style={styles.statItem}>
           <Text style={styles.label}>Sent</Text>
           <Text style={[styles.amount, { color: colors.error }]}>
-            {data.totalSent.toFixed(0)}
+            {new Intl.NumberFormat("ro-RO").format(data.totalSent)}
           </Text>
           <Text style={styles.count}>{data.totalTransfers} total</Text>
         </View>
@@ -41,7 +41,7 @@ export const TransferOverview: React.FC<Props> = ({ data }) => {
               },
             ]}
           >
-            {data.netFlow.toFixed(0)}
+            {new Intl.NumberFormat("ro-RO").format(data.netFlow)}
           </Text>
         </View>
       </View>
@@ -112,6 +112,8 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     marginVertical: 4,
+    fontFamily: "Montserrat",
+    textAlign: "center",
   },
   count: {
     fontSize: 10,

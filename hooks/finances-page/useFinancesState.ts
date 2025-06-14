@@ -26,11 +26,22 @@ export const useFinancesScreenState = () => {
     string | null
   >(null);
   const { statsOverview } = useStatsContext();
+
   const [summary, setSummary] = useState({
-    totalExpenses: statsOverview?.totalExpenses || 0,
-    totalIncome: statsOverview?.totalIncome || 0,
-    balance: statsOverview?.balance || 0,
+    totalExpenses: 0,
+    totalIncome: 0,
+    balance: 0,
   });
+  useEffect(() => {
+    if (statsOverview["this_month"]) {
+      setSummary({
+        totalExpenses: statsOverview["this_month"].totalExpenses,
+        totalIncome: statsOverview["this_month"].totalIncome,
+        balance: statsOverview["this_month"].balance,
+      });
+    }
+  }, [statsOverview["this_month"]]);
+
   const { filters, handleFilterChange } =
     useTransactionFilters(fetchTransactions);
 

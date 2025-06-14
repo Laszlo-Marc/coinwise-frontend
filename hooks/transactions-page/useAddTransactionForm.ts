@@ -1,4 +1,6 @@
 import { useTransactionContext } from "@/contexts/AppContext";
+import { useBudgets } from "@/contexts/BudgetsContext";
+import { useStatsContext } from "@/contexts/StatsContext";
 import * as Haptics from "expo-haptics";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { Animated } from "react-native";
@@ -9,7 +11,8 @@ export const useAddTransactionForm = (
 ) => {
   const { addTransaction } = useTransactionContext();
   const successOpacity = useRef(new Animated.Value(0)).current;
-
+  const { fetchBudgetTransactions, fetchBudgets } = useBudgets();
+  const { refreshBudgetStats } = useStatsContext();
   const [formData, setFormData] = useState({
     type,
     amount: "",
@@ -68,6 +71,11 @@ export const useAddTransactionForm = (
         ...formData,
         amount: parseFloat(formData.amount),
       });
+
+      // Wait for backend side effects to complete
+      await fetchBudgetTransactions();
+      await fetchBudgets();
+      await refreshBudgetStats("this_month");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setShowSuccess(true);
       Animated.sequence([
@@ -84,7 +92,7 @@ export const useAddTransactionForm = (
         }),
       ]).start(() => {
         setShowSuccess(false);
-        onSuccess(); // 👈 use the prop correctly now
+        onSuccess();
       });
     } catch (err) {
       console.error("Error saving transaction:", err);

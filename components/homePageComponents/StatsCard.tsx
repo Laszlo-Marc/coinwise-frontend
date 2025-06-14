@@ -10,9 +10,9 @@ export default function StatsOverviewSection() {
   const { statsOverview, expenseStats, incomeStats } = useStatsContext();
   const { selectedRange } = useStatsRange();
 
-  const currentOverview = statsOverview[selectedRange];
-  const currentIncomeStats = incomeStats[selectedRange];
-  const currentExpenseStats = expenseStats[selectedRange];
+  const currentOverview = statsOverview["this_year"];
+  const currentIncomeStats = incomeStats["this_year"];
+  const currentExpenseStats = expenseStats["this_year"];
 
   if (!currentOverview || !currentIncomeStats || !currentExpenseStats)
     return null;

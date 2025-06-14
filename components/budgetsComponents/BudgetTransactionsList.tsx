@@ -1,28 +1,28 @@
 import { colors } from "@/constants/colors";
 import { TransactionModel } from "@/models/transaction";
 import { BlurView } from "expo-blur";
-import React from "react";
+import React, { useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 interface Props {
   transactions: TransactionModel[];
-  onViewAll?: () => void;
 }
 
-const BudgetTransactionsList: React.FC<Props> = ({
-  transactions,
-  onViewAll,
-}) => {
+const BudgetTransactionsList: React.FC<Props> = ({ transactions }) => {
+  const [showAll, setShowAll] = useState(false);
+
   if (!transactions || transactions.length === 0) return null;
+
+  const visibleTransactions = showAll ? transactions : transactions.slice(0, 5);
 
   return (
     <View style={styles.container}>
       <BlurView intensity={15} tint="light" style={styles.glassCardBlur}>
         <Text style={[styles.sectionTitle, { color: colors.text }]}>
-          Recent Transactions
+          {showAll ? "All Transactions" : "Recent Transactions"}
         </Text>
 
-        {transactions.slice(0, 5).map((transaction) => (
+        {visibleTransactions.map((transaction) => (
           <View key={transaction.id} style={styles.transactionItem}>
             <View style={styles.transactionInfo}>
               <Text
@@ -55,9 +55,14 @@ const BudgetTransactionsList: React.FC<Props> = ({
         ))}
 
         {transactions.length > 5 && (
-          <TouchableOpacity style={styles.viewAllButton} onPress={onViewAll}>
+          <TouchableOpacity
+            style={styles.viewAllButton}
+            onPress={() => setShowAll((prev) => !prev)}
+          >
             <Text style={[styles.viewAllText, { color: colors.primary[500] }]}>
-              View All Transactions ({transactions.length})
+              {showAll
+                ? "Show Less"
+                : `View All Transactions (${transactions.length})`}
             </Text>
           </TouchableOpacity>
         )}

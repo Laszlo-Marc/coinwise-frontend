@@ -14,16 +14,15 @@ import BudgetList from "@/components/budgetsComponents/BudgetList";
 import EnhancedBudgetOverviewCard from "@/components/budgetsComponents/BudgetOverviewCard";
 import AnimatedCard from "@/components/homePageComponents/AnimatedCard";
 import AnimatedHeader from "@/components/mainComponents/AnimatedHeader";
-import { useBudgets } from "@/contexts/BudgetsContext";
+import { useStatsContext } from "@/contexts/StatsContext";
 import { useBudgetsScreen } from "@/hooks/budget-screen/useBudgetScreen";
 import { useRouter } from "expo-router";
 import BottomBar from "../components/mainComponents/BottomBar";
 
 const BudgetsScreen = () => {
   const insets = useSafeAreaInsets();
-  const { deleteBudget } = useBudgets();
   const router = useRouter();
-
+  const { budgetStats } = useStatsContext();
   const {
     budgets,
     budgetCountLabel,
@@ -69,7 +68,7 @@ const BudgetsScreen = () => {
         headerComponent={
           <AnimatedCard delay={100}>
             <EnhancedBudgetOverviewCard
-              budgets={budgets}
+              budgetStats={budgetStats["this_month"]}
               progressAnim={new Animated.Value(0)}
             />
           </AnimatedCard>

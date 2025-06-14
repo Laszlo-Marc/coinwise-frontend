@@ -203,7 +203,7 @@ export const BudgetsProvider: React.FC<{ children: React.ReactNode }> = ({
       fetchBudgetTransactions,
       addTransactionForBudget,
     }),
-    [budgets, error]
+    [budgets, budgetTransactions, error]
   );
 
   return (

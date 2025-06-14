@@ -7,6 +7,7 @@ interface DeleteConfirmModalProps {
   message: string;
   onCancel: () => void;
   onConfirm: () => void;
+  isLoadingDelete: boolean;
 }
 
 const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
@@ -15,6 +16,7 @@ const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
   message,
   onCancel,
   onConfirm,
+  isLoadingDelete = false,
 }) => {
   return (
     <Modal transparent animationType="fade" visible={visible}>
@@ -26,14 +28,23 @@ const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
             <TouchableOpacity
               onPress={onCancel}
               style={[styles.button, styles.cancelButton]}
+              disabled={isLoadingDelete}
             >
               <Text style={styles.cancelText}>Cancel</Text>
             </TouchableOpacity>
+
             <TouchableOpacity
               onPress={onConfirm}
-              style={[styles.button, styles.deleteButton]}
+              style={[
+                styles.button,
+                styles.deleteButton,
+                isLoadingDelete && { opacity: 0.7 },
+              ]}
+              disabled={isLoadingDelete}
             >
-              <Text style={styles.deleteText}>Delete</Text>
+              <Text style={styles.deleteText}>
+                {isLoadingDelete ? "Deleting..." : "Delete"}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>

@@ -11,7 +11,7 @@ export const TransactionTypeSelector = ({
   onChange: (type: TransactionType | "all") => void;
 }) => {
   const filters: {
-    key: TransactionType | "all";
+    key: "all" | "expense" | "income" | "transfer" | "deposit";
     label: string;
     icon: React.ComponentProps<typeof Feather>["name"];
   }[] = [
@@ -22,16 +22,25 @@ export const TransactionTypeSelector = ({
     { key: "deposit", label: "Deposits", icon: "dollar-sign" },
   ];
 
-  return (
-    <View style={styles.filtersRow}>
-      {filters.map((filter) => (
+  const firstRow = filters.slice(0, 2);
+  const secondRow = filters.slice(2);
+
+  const renderRow = (
+    items: ReadonlyArray<{
+      key: "all" | "expense" | "income" | "transfer" | "deposit";
+      label: string;
+      icon: React.ComponentProps<typeof Feather>["name"];
+    }>
+  ) => (
+    <View style={styles.buttonRow}>
+      {items.map((filter) => (
         <TouchableOpacity
           key={filter.key}
           style={[
             styles.filterButton,
             value === filter.key && styles.selectedFilterButton,
           ]}
-          onPress={() => onChange(filter.key as TransactionType | "all")}
+          onPress={() => onChange(filter.key)}
         >
           <Feather
             name={filter.icon}
@@ -50,23 +59,36 @@ export const TransactionTypeSelector = ({
       ))}
     </View>
   );
+
+  return (
+    <View style={styles.container}>
+      {renderRow(firstRow)}
+      {renderRow(secondRow)}
+    </View>
+  );
 };
+
 const styles = StyleSheet.create({
+  container: {
+    paddingHorizontal: 16,
+    gap: 12,
+    marginTop: 12,
+    marginBottom: 16,
+  },
+  buttonRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    gap: 8,
+  },
   filterButton: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
     borderRadius: 20,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
-    minWidth: 90,
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    minWidth: 110,
     justifyContent: "center",
-  },
-
-  selectedFilterText: {
-    color: colors.text,
-    fontWeight: "600",
-    fontFamily: "Montserrat",
   },
   selectedFilterButton: {
     backgroundColor: colors.primary[500],
@@ -77,19 +99,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "500",
   },
-  filterTitle: {
-    fontSize: 14,
-    color: colors.text,
-    marginBottom: 12,
-    fontWeight: "500",
-  },
-  filtersRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    flexWrap: "wrap",
-    gap: 8,
-    marginBottom: 12,
-    marginTop: 12,
-    paddingHorizontal: 16,
+  selectedFilterText: {
+    color: "#fff",
+    fontWeight: "600",
+    fontFamily: "Montserrat",
   },
 });

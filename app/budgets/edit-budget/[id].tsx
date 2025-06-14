@@ -76,7 +76,7 @@ const EditBudgetScreen = () => {
             <Feather name="x" size={24} color={colors.text} />
           </TouchableOpacity>
 
-          <Text style={styles.headerTitle}>Edit Goal</Text>
+          <Text style={styles.headerTitle}>Edit Budget</Text>
 
           <TouchableOpacity
             style={[

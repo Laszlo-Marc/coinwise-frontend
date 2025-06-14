@@ -20,13 +20,13 @@ const TransactionsSummaryCard: React.FC<Props> = ({
         <View style={styles.summaryItem}>
           <Text style={styles.summaryLabel}>Income</Text>
           <Text style={[styles.summaryValue, styles.incomeText]}>
-            ${totalIncome.toFixed(2)}
+            {new Intl.NumberFormat("ro-RO").format(totalIncome)} RON
           </Text>
         </View>
         <View style={styles.summaryItem}>
           <Text style={styles.summaryLabel}>Expenses</Text>
           <Text style={[styles.summaryValue, styles.expensesText]}>
-            ${totalExpenses.toFixed(2)}
+            {new Intl.NumberFormat("ro-RO").format(totalExpenses)} RON
           </Text>
         </View>
         <View style={styles.summaryItem}>
@@ -37,7 +37,7 @@ const TransactionsSummaryCard: React.FC<Props> = ({
               balance >= 0 ? styles.incomeText : styles.expensesText,
             ]}
           >
-            ${balance.toFixed(2)}
+            {new Intl.NumberFormat("ro-RO").format(balance)} RON
           </Text>
         </View>
       </View>

@@ -1,4 +1,6 @@
 import { useTransactionContext } from "@/contexts/AppContext";
+import { useBudgets } from "@/contexts/BudgetsContext";
+import { useStatsContext } from "@/contexts/StatsContext";
 import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -9,6 +11,7 @@ export const useEditTransactionForm = () => {
   const { id } = useLocalSearchParams();
   const { transactions, updateTransaction } = useTransactionContext();
   const successOpacity = useRef(new Animated.Value(0)).current;
+  const { fetchBudgetTransactions, fetchBudgets } = useBudgets();
 
   const existingTransaction = transactions.find((t) => t.id === id);
 
@@ -28,7 +31,7 @@ export const useEditTransactionForm = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
-
+  const { refreshBudgetStats } = useStatsContext();
   useEffect(() => {
     if (existingTransaction) {
       setFormData({
@@ -97,6 +100,9 @@ export const useEditTransactionForm = () => {
 
     try {
       await updateTransaction(id as string, txData);
+      await fetchBudgetTransactions();
+      await fetchBudgets();
+      await refreshBudgetStats("this_month");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setShowSuccess(true);
       Animated.sequence([

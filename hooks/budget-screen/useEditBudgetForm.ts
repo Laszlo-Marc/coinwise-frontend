@@ -1,4 +1,5 @@
 import { useBudgets } from "@/contexts/BudgetsContext";
+import { useStatsContext } from "@/contexts/StatsContext";
 import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -10,7 +11,7 @@ export const useEditBudgetForm = () => {
   const budgetId = params.id as string;
   const { budgets, updateBudget } = useBudgets();
   const successOpacity = useRef(new Animated.Value(0)).current;
-
+  const { refreshBudgetStats } = useStatsContext();
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -123,6 +124,7 @@ export const useEditBudgetForm = () => {
 
     try {
       await updateBudget(budgetId, updatedBudget);
+      await refreshBudgetStats("this_month");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setShowSuccess(true);
       await new Promise((resolve) => {

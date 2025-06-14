@@ -1,4 +1,5 @@
 import { useBudgets } from "@/contexts/BudgetsContext";
+import { useStatsContext } from "@/contexts/StatsContext";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { useRef, useState } from "react";
@@ -22,6 +23,7 @@ export const useAddBudgetForm = () => {
     notificationsEnabled: false,
     notificationThreshold: 80,
   });
+  const { refreshBudgetStats } = useStatsContext();
 
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [showTargetDatePicker, setShowTargetDatePicker] = useState(false);
@@ -74,6 +76,7 @@ export const useAddBudgetForm = () => {
 
     try {
       await addBudget(budgetData);
+      await refreshBudgetStats("this_month");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setShowSuccess(true);
 

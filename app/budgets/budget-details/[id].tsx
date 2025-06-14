@@ -1,13 +1,13 @@
 import AddExpenseModal from "@/components/budgetsComponents/AddExpenseModal";
 import BudgetDetailsHeader from "@/components/budgetsComponents/BudgetDetailsHeader";
 import BudgetDetailsOverviewCard from "@/components/budgetsComponents/BudgetDetailsOverview";
-import BudgetTransactionsChart from "@/components/budgetsComponents/BudgetTransactionsChart";
 import BudgetTransactionsList from "@/components/budgetsComponents/BudgetTransactionsList";
 
 import QuickActionsCard from "@/components/budgetsComponents/QuickActionsCard";
 import AnimatedCard from "@/components/homePageComponents/AnimatedCard";
 import { colors } from "@/constants/colors";
 import { useBudgets } from "@/contexts/BudgetsContext";
+import { useStatsContext } from "@/contexts/StatsContext";
 import { BudgetModel } from "@/models/budget";
 import { TransactionModel } from "@/models/transaction";
 import { LinearGradient } from "expo-linear-gradient";
@@ -20,29 +20,28 @@ const BudgetDetailsScreen = () => {
   const { addTransactionForBudget } = useBudgets();
   const router = useRouter();
   const { budgets, budgetTransactions } = useBudgets();
-  const [budgetTxn, setBudgetTxn] = useState<TransactionModel[]>([]);
   const [budget, setBudget] = useState<BudgetModel | null>(null);
   const [showAddExpenseModal, setShowAddExpenseModal] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
+  const { refreshBudgetStats } = useStatsContext();
+  const budgetId = Array.isArray(id) ? id[0] : id;
 
-  const shouldShowChart = useMemo(() => {
-    if (!budgetTxn || budgetTxn.length === 0) return false;
-
-    const uniqueDays = new Set(
-      budgetTxn.map((txn) => new Date(txn.date).toDateString())
-    );
-
-    return uniqueDays.size >= 2;
-  }, [budgetTxn]);
+  const budgetTxn = useMemo(
+    () => budgetTransactions[budgetId] || [],
+    [budgetTransactions, budgetId]
+  );
 
   useEffect(() => {
-    const budgetId = Array.isArray(id) ? id[0] : id;
+    if (!budgetId) return;
+
     const foundBudget = budgets.find((b) => b.id === budgetId);
+    console.log("Found budget:", foundBudget);
+    console.log("Budget Transactions:", budgetTransactions);
+
     if (foundBudget) {
       setBudget(foundBudget);
-      setBudgetTxn(budgetTransactions[budgetId] || []);
-      console.log("Budget Transactions:", budgetTransactions[budgetId]);
+
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
@@ -78,19 +77,20 @@ const BudgetDetailsScreen = () => {
       merchant: data.merchant,
       description: data.description,
       amount: data.amount,
-      date: new Date().toISOString(),
+      date: new Date().toISOString().split("T")[0],
       category: budget.category,
       currency: "RON",
       type: "expense",
     };
     try {
-      await addTransactionForBudget(newTransaction, id as string);
+      const txId = await addTransactionForBudget(newTransaction, id as string);
+      newTransaction.id = txId;
+      await refreshBudgetStats("this_month");
       setShowAddExpenseModal(false);
       Alert.alert("Success", "Transaction added successfully");
     } catch (error) {
       console.error("Error adding transaction:", error);
     }
-    setBudgetTxn((prev) => [...prev, newTransaction]);
   };
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -122,13 +122,7 @@ const BudgetDetailsScreen = () => {
               }
             />
           </AnimatedCard>
-          <AnimatedCard delay={300}>
-            {shouldShowChart ? (
-              <BudgetTransactionsChart transactions={budgetTxn} />
-            ) : (
-              <BudgetTransactionsChart transactions={[]} showPlaceholder />
-            )}
-          </AnimatedCard>
+
           <AnimatedCard delay={400}>
             <BudgetTransactionsList transactions={budgetTxn} />
           </AnimatedCard>

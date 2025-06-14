@@ -1,3 +1,5 @@
+import { useBudgets } from "@/contexts/BudgetsContext";
+import { useStatsContext } from "@/contexts/StatsContext";
 import { TransactionModel } from "@/models/transaction";
 import { TransactionType } from "@/models/transactionType";
 import { useCallback } from "react";
@@ -31,6 +33,8 @@ export function useTransactionFormHandler({
   setSelectedTransactionId,
   selectedTransactionId,
 }: UseTransactionFormHandlerProps) {
+  const { fetchBudgets, fetchBudgetTransactions } = useBudgets();
+  const { refreshBudgetStats } = useStatsContext();
   const handleEditTransaction = useCallback(
     (id: string, type: TransactionType) => {
       const transaction = transactions.find((t) => t.id === id);
@@ -65,6 +69,9 @@ export function useTransactionFormHandler({
     if (!selectedTransactionId) return;
     try {
       await deleteTransaction(selectedTransactionId);
+      await fetchBudgetTransactions();
+      await fetchBudgets();
+      await refreshBudgetStats("this_month");
     } catch (error) {
       console.error("Error deleting transaction:", error);
     } finally {

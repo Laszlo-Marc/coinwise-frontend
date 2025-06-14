@@ -1,13 +1,13 @@
 import ProcessingModal from "@/components/financesComponents/ProcessingModal";
 import TransactionClassModal from "@/components/financesComponents/TransactionClasssModal";
 import TransactionList from "@/components/financesComponents/TransactionList";
-import TransactionsFiltersPanel from "@/components/financesComponents/TransactionsFilterPanel";
 import { TransactionTypeSelector } from "@/components/financesComponents/TransactionTypeSelector";
 import BottomBar from "@/components/mainComponents/BottomBar";
 import DeleteConfirmModal from "@/components/mainComponents/DeleteModal";
 import MainSection from "@/components/mainComponents/MainSection";
-import { categories } from "@/constants/categories";
 import { useTransactionContext } from "@/contexts/AppContext";
+import { useBudgets } from "@/contexts/BudgetsContext";
+import { useStatsContext } from "@/contexts/StatsContext";
 import { useTransactionFilters } from "@/hooks/finances-page/handleFilterChange";
 import { useDocumentUpload } from "@/hooks/transactions-page/useDocumentUpload";
 import { useTransactionUIState } from "@/hooks/transactions-page/useTransactionUIState";
@@ -26,6 +26,9 @@ export default function TransactionsListScreen() {
     deleteTransaction,
     fetchTransactions,
   } = useTransactionContext();
+  const { fetchBudgets, fetchBudgetTransactions } = useBudgets();
+  const { refreshBudgetStats } = useStatsContext();
+  const [isLoadingDelete, setIsLoadingDelete] = useState(false);
   const {
     classModalVisible,
     setClassModalVisible,
@@ -36,7 +39,6 @@ export default function TransactionsListScreen() {
     showFilters,
     setShowFilters,
   } = useTransactionUIState();
-
   const { uploadDocument, isLoading, processingStage } =
     useDocumentUpload(uploadBankStatement);
 
@@ -67,6 +69,33 @@ export default function TransactionsListScreen() {
     }
   }, [fetchTransactions, filters]);
 
+  const handleEditTransaction = useCallback(
+    (id: string) => {
+      router.push(`/transaction/edit-transaction/${id}`);
+    },
+    [router]
+  );
+  const handleDeleteTransaction = useCallback((transactionId: string) => {
+    setSelectedTransactionId(transactionId);
+    setModalVisible(true);
+  }, []);
+
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!selectedTransactionId) return;
+    try {
+      setIsLoadingDelete(true);
+      await deleteTransaction(selectedTransactionId);
+      await fetchBudgetTransactions();
+      await fetchBudgets();
+      await refreshBudgetStats("this_month");
+    } catch (error) {
+      console.error("Error deleting transaction:", error);
+    } finally {
+      setModalVisible(false);
+      setSelectedTransactionId(null);
+      setIsLoadingDelete(false);
+    }
+  }, [selectedTransactionId]);
   return (
     <View style={styles.container}>
       <View>
@@ -98,40 +127,33 @@ export default function TransactionsListScreen() {
                 onPress={toggleFilters}
               >
                 <View style={styles.actionIconContainer}>
-                  <Ionicons name="filter" size={24} color={colors.text} />
+                  <Ionicons
+                    name={showFilters ? "close" : "filter"}
+                    size={24}
+                    color={colors.text}
+                  />
                 </View>
-                <Text style={styles.actionText}>Filter</Text>
+                <Text style={styles.actionText}>
+                  {showFilters ? "Close" : "Filter"}
+                </Text>
               </TouchableOpacity>
             </>
           }
         />
 
         {showFilters && (
-          <>
-            <TransactionTypeSelector
-              value={filters.transactionClass ?? "expense"}
-              onChange={(type) =>
-                handleFilterChange({ transactionClass: type })
-              }
-            />
-            <TransactionsFiltersPanel
-              visible={showFilters}
-              filters={filters}
-              onChange={handleFilterChange}
-              categories={categories}
-            />
-          </>
+          <TransactionTypeSelector
+            value={filters.transactionClass ?? "expense"}
+            onChange={(type) => handleFilterChange({ transactionClass: type })}
+          />
         )}
       </View>
 
       <TransactionList
         currentUser="you"
         transactions={transactions}
-        onEdit={(id) => router.push(`/transaction/edit-transaction/${id}`)}
-        onDelete={(id) => {
-          setSelectedTransactionId(id);
-          setModalVisible(true);
-        }}
+        onEdit={handleEditTransaction}
+        onDelete={handleDeleteTransaction}
         onRefresh={onRefresh}
         refreshing={refreshing}
       />
@@ -152,12 +174,8 @@ export default function TransactionsListScreen() {
         title="Delete Transaction"
         message="Are you sure you want to delete this transaction?"
         onCancel={() => setModalVisible(false)}
-        onConfirm={() => {
-          if (selectedTransactionId) {
-            deleteTransaction(selectedTransactionId);
-          }
-          setModalVisible(false);
-        }}
+        onConfirm={handleDeleteConfirm}
+        isLoadingDelete={isLoadingDelete}
       />
 
       <BottomBar />

@@ -14,7 +14,7 @@ import { useTransactionFilters } from "@/hooks/finances-page/handleFilterChange"
 import { useFinancesScreenState } from "@/hooks/finances-page/useFinancesState";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 export default function Finances() {
   const router = useRouter();
@@ -23,7 +23,6 @@ export default function Finances() {
   const {
     showFilters,
     refreshing,
-
     modalVisible,
     hasMore,
     isLoadingMore,
@@ -37,6 +36,7 @@ export default function Finances() {
   } = useFinancesScreenState();
   const { filters, handleFilterChange } =
     useTransactionFilters(fetchTransactions);
+  const [isLoadingDelete, setIsLoadingDelete] = useState(false);
   return (
     <View style={styles.container}>
       <ActionBar
@@ -82,10 +82,15 @@ export default function Finances() {
             </TouchableOpacity>
             <TouchableOpacity
               onPress={toggleFilters}
-              style={styles.inlineButton}
+              style={[
+                styles.inlineButton,
+                showFilters && styles.inlineButtonActive,
+              ]}
             >
               <Feather name="filter" size={20} color={colors.text} />
-              <Text style={styles.inlineButtonText}>Filter</Text>
+              <Text style={styles.inlineButtonText}>
+                {showFilters ? "Close" : "Filter"}
+              </Text>
             </TouchableOpacity>
           </View>
         </AnimatedCard>
@@ -128,6 +133,7 @@ export default function Finances() {
         message="Are you sure you want to delete this transaction?"
         onCancel={handleDeleteCancel}
         onConfirm={handleDeleteConfirm}
+        isLoadingDelete={isLoadingDelete}
       />
     </View>
   );
@@ -138,6 +144,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  inlineButtonActive: {
+    backgroundColor: colors.primary[500],
+    borderWidth: 1,
+    borderColor: colors.primary[300],
+  },
+
   contentContainer: {
     flex: 1,
     paddingTop: 8,

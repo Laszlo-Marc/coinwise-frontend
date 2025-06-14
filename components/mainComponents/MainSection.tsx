@@ -1,8 +1,6 @@
 import { colors } from "@/constants/colors";
-import { useTransactionContext } from "@/contexts/AppContext";
-import { useAuth } from "@/contexts/AuthContext";
 import { useStatsContext } from "@/contexts/StatsContext";
-import { Feather } from "@expo/vector-icons";
+import { Feather, Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import {
@@ -23,9 +21,7 @@ export default function MainSection({
 }) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { state } = useAuth();
   const { monthlySummary } = useStatsContext();
-  const { transactions } = useTransactionContext();
 
   return (
     <LinearGradient
@@ -37,6 +33,13 @@ export default function MainSection({
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={[styles.headerWrapper, { paddingTop: insets.top }]}>
           <View style={styles.headerContainer}>
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={() => router.push("./finances")}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="wallet-outline" size={24} color={colors.text} />
+            </TouchableOpacity>
             <TouchableOpacity
               style={styles.iconButton}
               onPress={() => router.push("./profile")}
@@ -86,7 +89,7 @@ const styles = StyleSheet.create({
   },
   headerContainer: {
     flexDirection: "row",
-    justifyContent: "flex-end",
+    justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 12,

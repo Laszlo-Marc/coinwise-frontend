@@ -37,6 +37,7 @@ interface StatsContextType {
   loading: boolean;
   error: string | null;
   refreshStats: (range: StatsRange) => Promise<void>;
+  refreshBudgetStats: (range: StatsRange) => Promise<void>;
 }
 
 const StatsContext = createContext<StatsContextType | undefined>(undefined);
@@ -143,10 +144,41 @@ export const StatsProvider: React.FC<{ children: React.ReactNode }> = ({
       setLoading(false);
     }
   };
+  const refreshBudgetStats = async (range: StatsRange = "this_month") => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const token = await SecureStore.getItemAsync("auth_token");
+
+      const headers = {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      };
+
+      const granularity = getGranularity(range);
+      const queryParam = `?range=${range}&granularity=${granularity}`;
+
+      const [budgetRes] = await Promise.all([
+        axios.get<BudgetStats>(`${STATS_API_URL}/budgets${queryParam}`, {
+          headers,
+        }),
+      ]);
+
+      setBudgetStats((prev) => ({ ...prev, [range]: budgetRes.data }));
+    } catch (err: any) {
+      setError(
+        err?.response?.data?.detail || err.message || "Failed to load stats"
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     const preloadDefaultStats = async () => {
       await Promise.all([
+        refreshBudgetStats("this_month"),
         refreshStats("this_month"),
         refreshStats("last_3_months"),
       ]);
@@ -169,6 +201,7 @@ export const StatsProvider: React.FC<{ children: React.ReactNode }> = ({
         loading,
         error,
         refreshStats,
+        refreshBudgetStats,
       }}
     >
       {children}

@@ -1,4 +1,3 @@
-// Refactored: TransactionList.tsx
 import { Feather } from "@expo/vector-icons";
 import React, { useCallback, useMemo } from "react";
 import {
