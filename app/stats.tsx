@@ -96,10 +96,6 @@ export default function StatisticsScreen() {
     if (!isStatsCached(selectedRange)) {
       refreshStats(selectedRange);
     }
-    // console.log("Stats overview:", statsOverview[selectedRange]);
-    // console.log("Expense stats:", expenseStats[selectedRange]);
-    // console.log("Income stats:", incomeStats[selectedRange]);
-    // console.log("Transfer stats:", transferStats[selectedRange]);
   }, [selectedRange]);
 
   if (loading && !refreshing) {

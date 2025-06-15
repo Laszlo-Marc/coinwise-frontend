@@ -141,16 +141,13 @@ const BudgetModal = ({
   };
 
   const formatAmountInput = (text: string) => {
-    // Remove any non-numeric characters except decimal point
     const cleaned = text.replace(/[^0-9.]/g, "");
 
-    // Ensure only one decimal point
     const parts = cleaned.split(".");
     if (parts.length > 2) {
       return parts[0] + "." + parts.slice(1).join("");
     }
 
-    // Limit decimal places to 2
     if (parts[1] && parts[1].length > 2) {
       return parts[0] + "." + parts[1].slice(0, 2);
     }

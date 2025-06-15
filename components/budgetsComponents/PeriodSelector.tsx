@@ -59,7 +59,7 @@ const PeriodSelector = ({
             <Text style={styles.dateLabel}>Start Date</Text>
             <TouchableOpacity
               style={styles.dateInput}
-              onPress={() => onChangePeriod("custom")} // trigger calendar open indirectly if you manage modally
+              onPress={() => onChangePeriod("custom")}
             >
               <Text style={styles.dateInputText}>
                 {startDate.toLocaleDateString()}

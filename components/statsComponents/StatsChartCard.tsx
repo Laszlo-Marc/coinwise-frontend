@@ -53,6 +53,16 @@ export const StatsChartCard: React.FC<Props> = ({
       stroke: `${colors.backgroundDark}80`,
     },
   };
+  const barWidthPerItem = 60;
+  const minWidth = width;
+  const computedWidth = Math.max(
+    minWidth,
+    chartData.labels.length * barWidthPerItem
+  );
+  if (chartData.labels.length === 1) {
+    chartData.labels.push("");
+    chartData.datasets[0].data.push(0);
+  }
 
   return (
     <View style={styles.container}>
@@ -131,12 +141,12 @@ export const StatsChartCard: React.FC<Props> = ({
         <ScrollView horizontal contentContainerStyle={{ paddingRight: 16 }}>
           <BarChart
             data={chartData}
-            width={chartData.labels.length * 60}
+            width={computedWidth}
             height={220}
             chartConfig={chartConfig}
             showValuesOnTopOfBars
             yAxisLabel=""
-            yAxisSuffix=" RON"
+            yAxisSuffix=""
             style={styles.chart}
           />
         </ScrollView>
@@ -200,6 +210,5 @@ const styles = StyleSheet.create({
   chart: {
     marginTop: 10,
     borderRadius: 16,
-    overflow: "hidden",
   },
 });

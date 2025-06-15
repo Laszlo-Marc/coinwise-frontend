@@ -2,20 +2,17 @@ import { colors } from "@/constants/colors";
 import { ExpenseStats, IncomeStats, StatsOverview } from "@/models/stats";
 import { useMemo } from "react";
 
-// Helper to format period label
 const formatPeriodLabel = (period: string): string => {
   if (period.length === 10) {
-    // Daily format: YYYY-MM-DD
     const date = new Date(period);
     if (isNaN(date.getTime())) return "Invalid";
     return `${date.getDate()} ${date.toLocaleDateString("en-US", {
       month: "short",
-    })}`; // e.g., "14 Jun"
+    })}`;
   } else if (period.length === 7) {
-    // Monthly format: YYYY-MM
     const date = new Date(period + "-01");
     if (isNaN(date.getTime())) return "Invalid";
-    return date.toLocaleDateString("en-US", { month: "short" }); // e.g., "Jun"
+    return date.toLocaleDateString("en-US", { month: "short" });
   }
   return period;
 };
@@ -33,7 +30,6 @@ export const useTransformedStats = ({
   statsOverview: StatsOverview | undefined;
   cashFlowData: { period: string; net_flow: number }[];
 }) => {
-  // Unified trend selection
   const trendData = useMemo(() => {
     if (activeTab === "spending") return expenseStats?.trend || [];
     if (activeTab === "income") return incomeStats?.trend || [];
@@ -55,7 +51,6 @@ export const useTransformedStats = ({
     return [];
   }, [activeTab, expenseStats, incomeStats, cashFlowData]);
 
-  // Format trendData for chart rendering
   const chartData = useMemo(() => {
     if (!trendData.length) {
       return {
@@ -85,7 +80,6 @@ export const useTransformedStats = ({
     };
   }, [trendData]);
 
-  // Extract current tab total value and optionally change %
   const currentStats = useMemo(() => {
     if (!statsOverview) return { total: 0, change: 0 };
 
@@ -101,7 +95,6 @@ export const useTransformedStats = ({
     }
   }, [statsOverview, activeTab]);
 
-  // Format topCategories into pie chart format
   const pieData = useMemo(() => {
     const palette = [
       colors.primary[300],

@@ -34,11 +34,11 @@ const FinancialGoalsScreen = () => {
     handleDeleteCancel,
     handleDeleteConfirm,
     handleSelectGoal,
-
     selectedGoalId,
     fabAnimation,
     headerAnimation,
     animateFAB,
+    isLoadingDelete,
   } = useFinancialGoalsScreen();
 
   return (
@@ -109,6 +109,7 @@ const FinancialGoalsScreen = () => {
         message="Are you sure you want to delete this goal?"
         onCancel={handleDeleteCancel}
         onConfirm={handleDeleteConfirm}
+        isLoadingDelete={isLoadingDelete}
       />
     </View>
   );

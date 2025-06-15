@@ -44,7 +44,6 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
 
     if (datePickerMode === "start") {
       setTempStartDate(selectedDate);
-      // Keep end date valid
       if (selectedDate > tempEndDate) {
         setTempEndDate(selectedDate);
       }
@@ -52,7 +51,6 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
       setTempEndDate(selectedDate);
     }
 
-    // On Android, commit immediately and close
     if (Platform.OS === "android") {
       const newStart =
         datePickerMode === "start" ? selectedDate : tempStartDate;

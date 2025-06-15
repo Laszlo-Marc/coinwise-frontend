@@ -8,7 +8,7 @@ import { Animated } from "react-native";
 export const useFinancialGoalsScreen = () => {
   const { goals, deleteGoal } = useGoals();
   const router = useRouter();
-
+  const [isLoadingDelete, setIsLoadingDelete] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
   const fabAnimation = useRef(new Animated.Value(0)).current;
@@ -45,12 +45,14 @@ export const useFinancialGoalsScreen = () => {
   const handleDeleteConfirm = async () => {
     if (!selectedGoalId) return;
     try {
+      setIsLoadingDelete(true);
       await deleteGoal(selectedGoalId);
     } catch (error) {
       console.error("Error deleting goal:", error);
     } finally {
       setModalVisible(false);
       setSelectedGoalId(null);
+      setIsLoadingDelete(false);
     }
   };
 
@@ -96,5 +98,6 @@ export const useFinancialGoalsScreen = () => {
     handleDeleteConfirm,
     handleDeleteCancel,
     animateFAB,
+    isLoadingDelete,
   };
 };

@@ -4,8 +4,8 @@ export type StatsOverview = {
   totalExpenses: number;
   totalIncome: number;
   totalDeposits: number;
-  balance: number; // income + deposits - expenses
-  netCashFlow: number; // income - expenses
+  balance: number;
+  netCashFlow: number;
   totalTransactions: number;
 };
 

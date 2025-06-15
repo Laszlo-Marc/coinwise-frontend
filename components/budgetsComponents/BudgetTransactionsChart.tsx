@@ -17,7 +17,7 @@ const BudgetTransactionsChart: React.FC<BudgetTransactionsChartProps> = ({
   showPlaceholder = false,
 }) => {
   const screenWidth = Dimensions.get("window").width;
-  const chartWidth = screenWidth - 80; // Account for padding
+  const chartWidth = screenWidth - 80; 
 
   const chartData = useMemo(() => {
     if (!transactions || transactions.length === 0) {
