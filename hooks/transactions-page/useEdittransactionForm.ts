@@ -26,7 +26,7 @@ export const useEditTransactionForm = () => {
     currency: "RON",
     type: "expense" as "expense" | "income" | "transfer" | "deposit",
   });
-
+  const [isSubmiting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showSuccess, setShowSuccess] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -99,15 +99,16 @@ export const useEditTransactionForm = () => {
     };
 
     try {
+      setIsSubmitting(true);
       await updateTransaction(id as string, txData);
-      console.log("Calling refreshOverview...");
+
       await Promise.all([
         fetchBudgetTransactions(),
         fetchBudgets(),
         refreshBudgetStats("this_month"),
         refreshSummary(),
       ]);
-      console.log("Finished all refresh calls.");
+      setIsSubmitting(false);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setShowSuccess(true);
       Animated.sequence([
@@ -144,5 +145,7 @@ export const useEditTransactionForm = () => {
     setShowDatePicker,
     setShowCategoryPicker,
     isFormValid,
+    isSubmiting,
+    setIsSubmitting,
   };
 };

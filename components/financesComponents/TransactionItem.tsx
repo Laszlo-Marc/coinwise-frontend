@@ -35,8 +35,24 @@ const TransactionItem: React.FC<Props> = ({
     currency,
   } = transaction;
 
-  const isTransferReceiver = type === "transfer" && receiver === currentUser;
-  const isTransferSender = type === "transfer" && sender === currentUser;
+  const normalize = (value?: string) =>
+    value
+      ?.trim()
+      .toLowerCase()
+      .replace(/[^a-z\s]/gi, "") || "";
+
+  const nameIncludes = (a: string, b: string) => {
+    const tokensA = normalize(a).split(/\s+/);
+    const tokensB = normalize(b).split(/\s+/);
+
+    return tokensB.every((token) => tokensA.includes(token));
+  };
+
+  const isTransferReceiver =
+    type === "transfer" && nameIncludes(currentUser, receiver || "");
+
+  const isTransferSender =
+    type === "transfer" && nameIncludes(currentUser, sender || "");
 
   const formattedAmount = (() => {
     const prefix =

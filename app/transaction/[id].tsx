@@ -69,7 +69,7 @@ export default function TransactionDetailsScreen() {
     try {
       setIsDeleting(true);
       await deleteTransaction(transaction.id as string);
-
+      router.back();
       await Promise.all([
         fetchBudgetTransactions(),
         fetchBudgets(),
@@ -81,7 +81,6 @@ export default function TransactionDetailsScreen() {
     } finally {
       setIsDeleting(false);
       setModalVisible(false);
-      router.back();
     }
   };
 

@@ -7,6 +7,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React from "react";
 import {
+  ActivityIndicator,
   Animated,
   KeyboardAvoidingView,
   Platform,
@@ -38,6 +39,7 @@ const TransactionForm: React.FC<Props> = ({ type, onSuccess }) => {
     setShowDatePicker,
     setShowCategoryPicker,
     showCategoryPicker,
+    isSubmitting,
   } = useAddTransactionForm(type, onSuccess);
   const router = useRouter();
   return (
@@ -65,16 +67,22 @@ const TransactionForm: React.FC<Props> = ({ type, onSuccess }) => {
               <Text style={styles.headerTitle}>Add a new transaction</Text>
             </View>
 
-            <TouchableOpacity
-              style={[
-                styles.saveButton,
-                !isFormValid && styles.saveButtonDisabled,
-              ]}
-              onPress={handleSave}
-              disabled={!isFormValid}
-            >
-              <Text style={styles.saveButtonText}>Save</Text>
-            </TouchableOpacity>
+            {isSubmitting ? (
+              <View style={styles.spinnerButton}>
+                <ActivityIndicator size="small" color={colors.text} />
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={[
+                  styles.saveButton,
+                  !isFormValid && styles.saveButtonDisabled,
+                ]}
+                onPress={handleSave}
+                disabled={!isFormValid}
+              >
+                <Text style={styles.saveButtonText}>Save</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </LinearGradient>
 
@@ -203,7 +211,14 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 8,
   },
-
+  spinnerButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: colors.primary[400],
+    justifyContent: "center",
+    alignItems: "center",
+  },
   backButton: {
     width: 40,
     height: 40,

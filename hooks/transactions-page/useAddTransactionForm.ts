@@ -13,6 +13,7 @@ export const useAddTransactionForm = (
   const successOpacity = useRef(new Animated.Value(0)).current;
   const { fetchBudgetTransactions, fetchBudgets } = useBudgets();
   const { refreshBudgetStats, refreshSummary } = useStatsContext();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     type,
     amount: "",
@@ -67,6 +68,7 @@ export const useAddTransactionForm = (
     setErrors({});
 
     try {
+      setIsSubmitting(true);
       await addTransaction({
         ...formData,
         amount: parseFloat(formData.amount),
@@ -78,6 +80,7 @@ export const useAddTransactionForm = (
         refreshBudgetStats("this_month"),
         refreshSummary(),
       ]);
+      setIsSubmitting(false);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setShowSuccess(true);
       Animated.sequence([
@@ -114,5 +117,6 @@ export const useAddTransactionForm = (
     showCategoryPicker,
     setShowCategoryPicker,
     isFormValid,
+    isSubmitting,
   };
 };

@@ -94,7 +94,9 @@ export const StatsProvider: React.FC<{ children: React.ReactNode }> = ({
         depositRes,
         goalRes,
       ] = await Promise.all([
-        axios.get<StatsOverview>(`${STATS_API_URL}/overview`, { headers }),
+        axios.get<StatsOverview>(`${STATS_API_URL}/overview${queryParam}`, {
+          headers,
+        }),
         axios.get<ExpenseStats>(`${STATS_API_URL}/expenses/full${queryParam}`, {
           headers,
         }),

@@ -8,6 +8,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React from "react";
 import {
+  ActivityIndicator,
   Animated,
   KeyboardAvoidingView,
   Platform,
@@ -34,6 +35,7 @@ export default function EditTransactionScreen() {
     setShowDatePicker,
     showCategoryPicker,
     setShowCategoryPicker,
+    isSubmiting,
   } = useEditTransactionForm();
 
   return (
@@ -57,17 +59,22 @@ export default function EditTransactionScreen() {
           </TouchableOpacity>
 
           <Text style={styles.headerTitle}>Edit Transaction</Text>
-
-          <TouchableOpacity
-            style={[
-              styles.saveButton,
-              !isFormValid && styles.saveButtonDisabled,
-            ]}
-            onPress={handleSave}
-            disabled={!isFormValid}
-          >
-            <Text style={styles.saveButtonText}>Save</Text>
-          </TouchableOpacity>
+          {isSubmiting ? (
+            <View style={styles.spinnerButton}>
+              <ActivityIndicator size="small" color={colors.text} />
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={[
+                styles.saveButton,
+                !isFormValid && styles.saveButtonDisabled,
+              ]}
+              onPress={handleSave}
+              disabled={!isFormValid}
+            >
+              <Text style={styles.saveButtonText}>Save</Text>
+            </TouchableOpacity>
+          )}
         </LinearGradient>
 
         <ScrollView style={styles.form}>
@@ -172,6 +179,14 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: colors.text,
     fontFamily: "Montserrat",
+  },
+  spinnerButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: colors.primary[400],
+    justifyContent: "center",
+    alignItems: "center",
   },
   saveButton: {
     backgroundColor: colors.primary[400],

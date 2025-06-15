@@ -6,6 +6,7 @@ import BottomBar from "@/components/mainComponents/BottomBar";
 import DeleteConfirmModal from "@/components/mainComponents/DeleteModal";
 import MainSection from "@/components/mainComponents/MainSection";
 import { useTransactionContext } from "@/contexts/AppContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useBudgets } from "@/contexts/BudgetsContext";
 import { useStatsContext } from "@/contexts/StatsContext";
 import { useTransactionFilters } from "@/hooks/finances-page/handleFilterChange";
@@ -26,6 +27,7 @@ export default function TransactionsListScreen() {
     deleteTransaction,
     fetchTransactions,
   } = useTransactionContext();
+  const { state } = useAuth();
   const { fetchBudgets, fetchBudgetTransactions } = useBudgets();
   const { refreshBudgetStats, refreshSummary } = useStatsContext();
   const [isLoadingDelete, setIsLoadingDelete] = useState(false);
@@ -153,7 +155,7 @@ export default function TransactionsListScreen() {
       </View>
 
       <TransactionList
-        currentUser="you"
+        currentUser={state.user?.full_name ?? ""}
         transactions={transactions}
         onEdit={handleEditTransaction}
         onDelete={handleDeleteTransaction}

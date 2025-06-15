@@ -1,7 +1,13 @@
 import { colors } from "@/constants/colors";
 import { Feather } from "@expo/vector-icons";
 import React from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { BarChart, LineChart } from "react-native-chart-kit";
 
 type Props = {
@@ -122,16 +128,18 @@ export const StatsChartCard: React.FC<Props> = ({
           style={styles.chart}
         />
       ) : (
-        <BarChart
-          data={chartData}
-          width={width}
-          height={220}
-          yAxisLabel=""
-          chartConfig={chartConfig}
-          showValuesOnTopOfBars
-          style={styles.chart}
-          yAxisSuffix=""
-        />
+        <ScrollView horizontal contentContainerStyle={{ paddingRight: 16 }}>
+          <BarChart
+            data={chartData}
+            width={chartData.labels.length * 60}
+            height={220}
+            chartConfig={chartConfig}
+            showValuesOnTopOfBars
+            yAxisLabel=""
+            yAxisSuffix=" RON"
+            style={styles.chart}
+          />
+        </ScrollView>
       )}
     </View>
   );
@@ -141,9 +149,9 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: colors.backgroundLight,
     borderRadius: 16,
-    marginHorizontal: 16,
-    marginBottom: 16,
     padding: 16,
+    marginBottom: 16,
+    marginHorizontal: 16,
   },
   header: {
     flexDirection: "row",
@@ -192,5 +200,6 @@ const styles = StyleSheet.create({
   chart: {
     marginTop: 10,
     borderRadius: 16,
+    overflow: "hidden",
   },
 });

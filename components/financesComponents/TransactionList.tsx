@@ -28,7 +28,7 @@ interface TransactionListProps {
 
 export const TransactionList: React.FC<TransactionListProps> = ({
   transactions,
-  currentUser = "",
+  currentUser,
   onEdit,
   onDelete,
   onRefresh,
@@ -41,7 +41,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
     ({ item }) => (
       <TransactionItem
         transaction={item}
-        currentUser={currentUser}
+        currentUser={currentUser ?? ""}
         onEdit={onEdit}
         onDelete={onDelete}
       />

@@ -36,7 +36,7 @@ export const CategoryBreakdown: React.FC<Props> = ({ pieData, chartWidth }) => {
           }}
           accessor="amount"
           backgroundColor="transparent"
-          paddingLeft="15"
+          paddingLeft="0"
           absolute
         />
       </View>
@@ -77,7 +77,7 @@ const styles = StyleSheet.create({
   },
   chartContainer: {
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: 24,
   },
   breakdownList: {
     marginTop: 8,
@@ -93,6 +93,8 @@ const styles = StyleSheet.create({
   labelRow: {
     flexDirection: "row",
     alignItems: "center",
+    maxWidth: "60%",
+    flexShrink: 1,
   },
   colorBox: {
     width: 12,
@@ -103,6 +105,9 @@ const styles = StyleSheet.create({
   labelText: {
     color: colors.text,
     fontSize: 14,
+    flexShrink: 1,
+    flexWrap: "wrap",
+    overflow: "hidden",
   },
   amountRow: {
     alignItems: "flex-end",

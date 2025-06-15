@@ -8,6 +8,7 @@ import DeleteConfirmModal from "@/components/mainComponents/DeleteModal";
 import { categories } from "@/constants/categories";
 import { colors } from "@/constants/colors";
 import { useTransactionContext } from "@/contexts/AppContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useStatsContext } from "@/contexts/StatsContext";
 import { useTransactionFilters } from "@/hooks/finances-page/handleFilterChange";
 
@@ -36,6 +37,7 @@ export default function Finances() {
   } = useFinancesScreenState();
   const { filters, handleFilterChange } =
     useTransactionFilters(fetchTransactions);
+  const { state } = useAuth();
   const [isLoadingDelete, setIsLoadingDelete] = useState(false);
   return (
     <View style={styles.container}>
@@ -122,6 +124,7 @@ export default function Finances() {
               onEndReached={loadMore}
               hasMore={hasMore}
               loadingMore={isLoadingMore}
+              currentUser={state.user?.full_name || ""}
             />
           </AnimatedCard>
         </View>
