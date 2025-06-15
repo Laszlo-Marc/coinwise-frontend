@@ -11,7 +11,7 @@ export const AmountInput = ({ amount, onChange }: Props) => (
   <View style={styles.container}>
     <Text style={styles.label}>Amount</Text>
     <View style={styles.inputWrapper}>
-      <Text style={styles.currency}>$</Text>
+      <Text style={styles.currency}>RON</Text>
       <TextInput
         style={styles.input}
         value={amount}

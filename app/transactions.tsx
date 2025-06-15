@@ -27,7 +27,7 @@ export default function TransactionsListScreen() {
     fetchTransactions,
   } = useTransactionContext();
   const { fetchBudgets, fetchBudgetTransactions } = useBudgets();
-  const { refreshBudgetStats } = useStatsContext();
+  const { refreshBudgetStats, refreshSummary } = useStatsContext();
   const [isLoadingDelete, setIsLoadingDelete] = useState(false);
   const {
     classModalVisible,
@@ -85,9 +85,12 @@ export default function TransactionsListScreen() {
     try {
       setIsLoadingDelete(true);
       await deleteTransaction(selectedTransactionId);
-      await fetchBudgetTransactions();
-      await fetchBudgets();
-      await refreshBudgetStats("this_month");
+      await Promise.all([
+        fetchBudgetTransactions(),
+        await fetchBudgets(),
+        await refreshBudgetStats("this_month"),
+        await refreshSummary(),
+      ]);
     } catch (error) {
       console.error("Error deleting transaction:", error);
     } finally {

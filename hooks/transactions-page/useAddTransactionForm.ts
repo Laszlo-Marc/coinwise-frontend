@@ -12,7 +12,7 @@ export const useAddTransactionForm = (
   const { addTransaction } = useTransactionContext();
   const successOpacity = useRef(new Animated.Value(0)).current;
   const { fetchBudgetTransactions, fetchBudgets } = useBudgets();
-  const { refreshBudgetStats } = useStatsContext();
+  const { refreshBudgetStats, refreshSummary } = useStatsContext();
   const [formData, setFormData] = useState({
     type,
     amount: "",
@@ -72,10 +72,12 @@ export const useAddTransactionForm = (
         amount: parseFloat(formData.amount),
       });
 
-      // Wait for backend side effects to complete
-      await fetchBudgetTransactions();
-      await fetchBudgets();
-      await refreshBudgetStats("this_month");
+      await Promise.all([
+        fetchBudgetTransactions(),
+        fetchBudgets(),
+        refreshBudgetStats("this_month"),
+        refreshSummary(),
+      ]);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setShowSuccess(true);
       Animated.sequence([

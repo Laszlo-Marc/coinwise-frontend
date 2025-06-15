@@ -44,18 +44,6 @@ export const GoalDetailsCard = ({ goal }: { goal: GoalModel }) => {
         </Text>
       </View>
 
-      {goal.auto_contribution_enabled && (
-        <>
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Auto Contribution:</Text>
-            <Text style={styles.detailValue}>
-              {formatCurrency(goal.auto_contribution_amount || 0)} /{" "}
-              {goal.contribution_frequency}
-            </Text>
-          </View>
-        </>
-      )}
-
       <View style={styles.timeline}>
         <View style={styles.timelinePoint}>
           <Text style={styles.timelineDate}>{startDate}</Text>

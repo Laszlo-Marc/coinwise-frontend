@@ -60,9 +60,10 @@ export const TopExpenses: React.FC<Props> = ({ expenses }) => {
       <View style={styles.list}>
         {expenses.map((expense) => (
           <TouchableOpacity
+            key={expense.id}
             onPress={() => router.push(`./transaction/${expense.id}`)}
           >
-            <View key={expense.id} style={styles.item}>
+            <View style={styles.item}>
               <View style={styles.iconContainer}>
                 <Text style={styles.icon}>{getIcon(expense.category)}</Text>
               </View>

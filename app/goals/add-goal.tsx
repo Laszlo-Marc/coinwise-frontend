@@ -1,9 +1,7 @@
 import { CategorySelector } from "@/components/goalsComponents/goalFormComponents/CategorySelector";
-import ContributionFields from "@/components/goalsComponents/goalFormComponents/ContributionFields";
 import { DatePickerField } from "@/components/goalsComponents/goalFormComponents/DatePickerInput";
 import { GoalDescriptionInput } from "@/components/goalsComponents/goalFormComponents/GoalDescritionInput";
 import GoalTitleInput from "@/components/goalsComponents/goalFormComponents/GoalTitleInput";
-import { SwitchField } from "@/components/goalsComponents/goalFormComponents/SwitchField";
 import { TargetAmountInput } from "@/components/goalsComponents/goalFormComponents/TargetAmountInput";
 import { useAddGoalForm } from "@/hooks/goals-hooks/useAddGoalForm";
 import { Feather } from "@expo/vector-icons";
@@ -126,29 +124,6 @@ const AddGoalScreen = () => {
             isExpanded={showCategoryPicker}
             toggleExpand={() => setShowCategoryPicker((prev) => !prev)}
           />
-
-          <SwitchField
-            label="Auto Contributions"
-            value={formData.auto_contribution_enabled || false}
-            onChange={(val) =>
-              handleInputChange("auto_contribution_enabled", val)
-            }
-            helperText="Enable to contribute automatically on a schedule"
-          />
-
-          {formData.auto_contribution_enabled && (
-            <ContributionFields
-              contributionAmount={formData.auto_contribution_amount}
-              contributionFrequency={formData.contribution_frequency}
-              onAmountChange={(val) =>
-                handleInputChange("auto_contribution_amount", val)
-              }
-              onFrequencyChange={(val) =>
-                handleInputChange("contribution_frequency", val)
-              }
-              error={errors.contributionAmount}
-            />
-          )}
         </ScrollView>
         {showSuccess && (
           <Animated.View

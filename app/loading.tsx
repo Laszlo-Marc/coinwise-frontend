@@ -14,7 +14,8 @@ const Loading = () => {
   const { fetchBudgets, fetchBudgetTransactions } = useBudgets();
   const { fetchGoals, fetchContributions } = useGoals();
   const { fetchTransactions } = useTransactionContext();
-  const { refreshStats, refreshBudgetStats } = useStatsContext();
+  const { refreshStats, refreshBudgetStats, refreshSummary } =
+    useStatsContext();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -30,6 +31,7 @@ const Loading = () => {
         fetchBudgets(),
         fetchGoals(),
         refreshStats("this_month"),
+        refreshSummary(),
       ]);
 
       router.replace("/home");
@@ -37,9 +39,6 @@ const Loading = () => {
       setTimeout(() => {
         fetchContributions();
         fetchBudgetTransactions();
-        refreshStats("last_3_months");
-        refreshStats("last_6_months");
-        refreshStats("this_year");
         refreshBudgetStats("this_month");
       }, 0);
 

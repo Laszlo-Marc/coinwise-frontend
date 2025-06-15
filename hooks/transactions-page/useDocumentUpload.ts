@@ -1,4 +1,5 @@
 // hooks/useDocumentUpload.ts
+import { useStatsContext } from "@/contexts/StatsContext";
 import * as DocumentPicker from "expo-document-picker";
 import { useEffect, useRef, useState } from "react";
 import { Alert } from "react-native";
@@ -17,7 +18,7 @@ export function useDocumentUpload(
   const [processingStage, setProcessingStage] = useState<ProcessingStage>("");
   const [isLoading, setIsLoading] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
+  const { refreshSummary } = useStatsContext();
   const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
 
   const uploadDocument = async () => {
@@ -50,7 +51,7 @@ export function useDocumentUpload(
       } as any);
 
       await uploadBankStatement(formData);
-
+      await refreshSummary();
       setProcessingStage("done");
       timeoutRef.current = setTimeout(() => {
         setIsLoading(false);

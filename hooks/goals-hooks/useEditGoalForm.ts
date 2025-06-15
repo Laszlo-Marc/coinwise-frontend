@@ -4,8 +4,6 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Animated } from "react-native";
 
-type ContributionFrequency = "daily" | "weekly" | "monthly";
-
 export const useEditGoalForm = () => {
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -21,9 +19,6 @@ export const useEditGoalForm = () => {
     start_date: "",
     end_date: "",
     category: "Savings",
-    auto_contribution_enabled: false,
-    auto_contribution_amount: "",
-    contribution_frequency: "monthly" as ContributionFrequency,
     is_active: true,
   });
 
@@ -58,14 +53,6 @@ export const useEditGoalForm = () => {
           start_date: formatDateForInput(goal.start_date),
           end_date: formatDateForInput(goal.end_date),
           category: goal.category || "Savings",
-          auto_contribution_enabled: goal.auto_contribution_enabled || false,
-          auto_contribution_amount:
-            goal.auto_contribution_amount?.toString() || "",
-          contribution_frequency: (["daily", "weekly", "monthly"].includes(
-            goal.contribution_frequency ?? ""
-          )
-            ? goal.contribution_frequency
-            : "monthly") as ContributionFrequency,
           is_active: goal.is_active ?? true,
         });
         setIsLoading(false);
@@ -90,12 +77,6 @@ export const useEditGoalForm = () => {
 
     if (formData.end_date <= formData.start_date)
       errs.end_date = "Target date must be after start date.";
-
-    if (formData.auto_contribution_enabled) {
-      const contrib = parseFloat(formData.auto_contribution_amount);
-      if (isNaN(contrib) || contrib <= 0)
-        errs.contributionAmount = "Enter a valid contribution amount.";
-    }
 
     return errs;
   }, [formData]);
@@ -126,13 +107,6 @@ export const useEditGoalForm = () => {
       end_date: formData.end_date,
       category: formData.category,
       is_active: formData.is_active,
-      auto_contribution_enabled: formData.auto_contribution_enabled,
-      auto_contribution_amount: formData.auto_contribution_enabled
-        ? parseFloat(formData.auto_contribution_amount)
-        : undefined,
-      contribution_frequency: formData.auto_contribution_enabled
-        ? formData.contribution_frequency
-        : undefined,
     };
 
     try {

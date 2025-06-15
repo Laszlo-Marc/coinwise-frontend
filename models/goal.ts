@@ -8,9 +8,5 @@ export type GoalModel = {
   start_date: string;
   end_date: string;
   is_active: boolean;
-  auto_contribution_enabled?: boolean;
-  auto_contribution_amount?: number;
-  contribution_frequency?: string;
-
   category: string;
 };

@@ -1,4 +1,3 @@
-// hooks/useFinancialGoalsScreen.ts
 import { useGoals } from "@/contexts/GoalsContext";
 import { GoalModel } from "@/models/goal";
 import * as Haptics from "expo-haptics";

@@ -1,7 +1,7 @@
 import { colors } from "@/constants/colors";
 import { TransactionModel } from "@/models/transaction";
 import { TransactionType } from "@/models/transactionType";
-import { Feather } from "@expo/vector-icons";
+import { Feather, MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useCallback } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -50,9 +50,11 @@ const TransactionItem: React.FC<Props> = ({
   })();
 
   const amountColor = (() => {
-    if (isTransferReceiver) return "#4CAF50";
-    if (isTransferSender) return "#F44336";
-    return type === "income" || type === "deposit" ? "#4CAF50" : "#F44336";
+    if (isTransferReceiver) return colors.success;
+    if (isTransferSender) return colors.error;
+    return type === "income" || type === "deposit"
+      ? colors.success
+      : colors.error;
   })();
 
   const formatDate = (value?: string | Date) => {
@@ -68,29 +70,81 @@ const TransactionItem: React.FC<Props> = ({
   const getIcon = () => {
     if (type === "expense") {
       switch (category?.toLowerCase()) {
-        case "food":
-          return "coffee";
+        case "food & takeout":
+          return (
+            <MaterialIcons name="fastfood" size={22} color={amountColor} />
+          );
+        case "shopping":
+          return (
+            <MaterialIcons name="shopping-bag" size={22} color={amountColor} />
+          );
         case "groceries":
-          return "shopping-cart";
+          return (
+            <MaterialIcons
+              name="shopping-cart-checkout"
+              size={22}
+              color={amountColor}
+            />
+          );
         case "transportation":
-          return "truck";
+          return (
+            <MaterialIcons
+              name="emoji-transportation"
+              size={22}
+              color={amountColor}
+            />
+          );
         case "entertainment":
-          return "tv";
-        case "bills":
-          return "file-text";
+          return (
+            <MaterialIcons
+              name="videogame-asset"
+              size={22}
+              color={amountColor}
+            />
+          );
+        case "utilities":
+          return (
+            <MaterialIcons
+              name="electrical-services"
+              size={22}
+              color={amountColor}
+            />
+          );
         case "health":
-          return "heart";
-        case "travel":
-          return "map";
+          return (
+            <MaterialIcons
+              name="health-and-safety"
+              size={22}
+              color={amountColor}
+            />
+          );
+        case "education":
+          return (
+            <MaterialIcons name="library-books" size={22} color={amountColor} />
+          );
+        case "housing":
+          return (
+            <MaterialIcons name="home-filled" size={22} color={amountColor} />
+          );
+        case "subscriptions":
+          return (
+            <MaterialIcons name="subscriptions" size={22} color={amountColor} />
+          );
         default:
-          return "credit-card";
+          return (
+            <MaterialIcons name="credit-card" size={22} color={amountColor} />
+          );
       }
     } else if (type === "income") {
-      return "arrow-up";
+      return (
+        <MaterialIcons name="arrow-upward" size={22} color={amountColor} />
+      );
     } else if (type === "transfer") {
-      return "refresh-cw";
+      return <MaterialIcons name="refresh" size={22} color={amountColor} />;
     } else {
-      return "dollar-sign";
+      return (
+        <MaterialIcons name="attach-money" size={22} color={amountColor} />
+      );
     }
   };
   const renderLeftActions = useCallback(
@@ -126,9 +180,7 @@ const TransactionItem: React.FC<Props> = ({
     >
       <TouchableOpacity onPress={() => router.push(`./transaction/${id}`)}>
         <Animated.View entering={FadeIn} style={styles.container}>
-          <View style={styles.iconContainer}>
-            <Feather name={getIcon()} size={22} color={amountColor} />
-          </View>
+          <View style={styles.iconContainer}>{getIcon()}</View>
 
           <View style={styles.textContainer}>
             <Text style={styles.title} numberOfLines={1}>

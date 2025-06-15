@@ -1,7 +1,10 @@
 import TransactionQuickActionsCard from "@/components/financesComponents/TransactionDetailsActions";
+import DeleteConfirmModal from "@/components/mainComponents/DeleteModal";
 import { colors } from "@/constants/colors";
 import { useTransactionContext } from "@/contexts/AppContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useBudgets } from "@/contexts/BudgetsContext";
+import { useStatsContext } from "@/contexts/StatsContext";
 import { TransactionModel } from "@/models/transaction";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -25,9 +28,13 @@ export default function TransactionDetailsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { state } = useAuth();
+  const { fetchBudgetTransactions, fetchBudgets } = useBudgets();
+  const { refreshBudgetStats, refreshSummary } = useStatsContext();
   const { transactions, deleteTransaction } = useTransactionContext();
   const [transaction, setTransaction] = useState<TransactionModel | null>(null);
   const [loading, setLoading] = useState(true);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const isExpense = transaction?.type === "expense";
   const isTransfer = transaction?.type === "transfer";
   const isTransferSentByUser =
@@ -53,11 +60,31 @@ export default function TransactionDetailsScreen() {
   };
 
   const handleDelete = () => {
-    if (transaction) {
-      deleteTransaction(id as string);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setModalVisible(true);
+  };
+  const handleConfirmDelete = async () => {
+    if (!transaction) return;
+
+    try {
+      setIsDeleting(true);
+      await deleteTransaction(transaction.id as string);
+
+      await Promise.all([
+        fetchBudgetTransactions(),
+        fetchBudgets(),
+        refreshBudgetStats("this_month"),
+        refreshSummary(),
+      ]);
+    } catch (error) {
+      console.error("Failed to delete transaction:", error);
+    } finally {
+      setIsDeleting(false);
+      setModalVisible(false);
       router.back();
     }
   };
+
   if (!transaction) {
     return <Text style={styles.notFound}>Transaction not found.</Text>;
   }
@@ -151,6 +178,14 @@ export default function TransactionDetailsScreen() {
             onEdit={handleEdit}
             onDelete={handleDelete}
             transactionDescription={transaction.description}
+          />
+          <DeleteConfirmModal
+            visible={modalVisible}
+            title="Delete Transaction"
+            message={`Are you sure you want to delete "${transaction.description}"? This action cannot be undone.`}
+            onCancel={() => setModalVisible(false)}
+            onConfirm={handleConfirmDelete}
+            isLoadingDelete={isDeleting}
           />
         </View>
       </ScrollView>

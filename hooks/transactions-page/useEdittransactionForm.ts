@@ -31,7 +31,7 @@ export const useEditTransactionForm = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
-  const { refreshBudgetStats } = useStatsContext();
+  const { refreshBudgetStats, refreshSummary } = useStatsContext();
   useEffect(() => {
     if (existingTransaction) {
       setFormData({
@@ -100,9 +100,14 @@ export const useEditTransactionForm = () => {
 
     try {
       await updateTransaction(id as string, txData);
-      await fetchBudgetTransactions();
-      await fetchBudgets();
-      await refreshBudgetStats("this_month");
+      console.log("Calling refreshOverview...");
+      await Promise.all([
+        fetchBudgetTransactions(),
+        fetchBudgets(),
+        refreshBudgetStats("this_month"),
+        refreshSummary(),
+      ]);
+      console.log("Finished all refresh calls.");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setShowSuccess(true);
       Animated.sequence([

@@ -3,9 +3,8 @@
 import { colors } from "@/constants/colors";
 import { Feather } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
-import * as Haptics from "expo-haptics";
 import React from "react";
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
 
 interface QuickActionsCardProps {
@@ -19,25 +18,6 @@ export default function TransactionQuickActionsCard({
   onDelete,
   transactionDescription = "transaction",
 }: QuickActionsCardProps) {
-  const handleDelete = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Alert.alert(
-      "Delete Transaction",
-      `Are you sure you want to delete "${transactionDescription}"? This action cannot be undone.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: () => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-            onDelete();
-          },
-        },
-      ]
-    );
-  };
-
   return (
     <Animated.View entering={FadeInUp.duration(400).delay(200)}>
       <BlurView intensity={15} tint="dark" style={styles.card}>
@@ -57,7 +37,7 @@ export default function TransactionQuickActionsCard({
 
             <TouchableOpacity
               style={[styles.button, styles.delete]}
-              onPress={handleDelete}
+              onPress={onDelete}
             >
               <Feather name="trash-2" size={18} color={colors.error} />
               <Text style={[styles.buttonText, { color: colors.error }]}>

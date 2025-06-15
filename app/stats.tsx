@@ -96,6 +96,10 @@ export default function StatisticsScreen() {
     if (!isStatsCached(selectedRange)) {
       refreshStats(selectedRange);
     }
+    console.log("Stats overview:", statsOverview[selectedRange]);
+    console.log("Expense stats:", expenseStats[selectedRange]);
+    console.log("Income stats:", incomeStats[selectedRange]);
+    console.log("Transfer stats:", transferStats[selectedRange]);
   }, [selectedRange]);
 
   if (loading && !refreshing) {
@@ -114,6 +118,103 @@ export default function StatisticsScreen() {
             Loading statistics...
           </Text>
         </View>
+      </View>
+    );
+  }
+  const isEmptyStats =
+    !currentStatsOverview ||
+    currentStatsOverview.totalTransactions === 0 ||
+    (!currentIncomeStats?.trend?.length && !currentExpenseStats?.trend?.length);
+
+  if (isEmptyStats) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <StatusBar barStyle="light-content" />
+
+        <StatsHeader activeTab={activeTab} onTabChange={setActiveTab} />
+
+        {/* Time Range Selector */}
+        <View
+          style={{
+            paddingHorizontal: 16,
+            marginTop: 16,
+            marginBottom: 16,
+          }}
+        >
+          <TouchableOpacity
+            onPress={() => setModalVisible(true)}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              backgroundColor: colors.backgroundLight,
+              padding: 10,
+              borderRadius: 20,
+              alignSelf: "flex-start",
+            }}
+          >
+            <Feather name="calendar" size={18} color={colors.primary[400]} />
+            <Text style={{ color: colors.primary[400], marginHorizontal: 8 }}>
+              {rangeLabel}
+            </Text>
+            <Entypo name="chevron-down" size={18} color={colors.primary[400]} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Empty State */}
+        <View
+          style={{
+            flex: 1,
+            justifyContent: "center",
+            alignItems: "center",
+            padding: 20,
+          }}
+        >
+          <Feather name="bar-chart-2" size={64} color={colors.primary[400]} />
+          <Text
+            style={{
+              color: colors.text,
+              fontSize: 18,
+              textAlign: "center",
+              marginTop: 16,
+            }}
+          >
+            No statistics available
+          </Text>
+          <Text
+            style={{
+              color: colors.textSecondary,
+              fontSize: 14,
+              marginTop: 8,
+              textAlign: "center",
+            }}
+          >
+            There are no transactions recorded for {rangeLabel}.
+          </Text>
+          <Text
+            style={{
+              color: colors.textSecondary,
+              fontSize: 14,
+              marginTop: 4,
+              textAlign: "center",
+            }}
+          >
+            Try selecting another range or add some transactions to get started.
+          </Text>
+        </View>
+
+        {/* Time Range Modal */}
+        <TimeRangeSelectorModal
+          visible={modalVisible}
+          onClose={() => setModalVisible(false)}
+          onSelect={(val) => {
+            setSelectedRange(val as StatsRange);
+            setModalVisible(false);
+          }}
+          selectedRange={selectedRange}
+          options={ranges}
+        />
+
+        <BottomBar />
       </View>
     );
   }

@@ -21,9 +21,6 @@ export const useAddGoalForm = () => {
       .toISOString()
       .split("T")[0],
     category: "Housing",
-    auto_contribution_enabled: false,
-    auto_contribution_amount: "",
-    contribution_frequency: "monthly" as ContributionFrequency,
     is_active: true,
   });
 
@@ -54,12 +51,6 @@ export const useAddGoalForm = () => {
     if (formData.end_date <= formData.start_date)
       errs.end_date = "Target date must be after start date.";
 
-    if (formData.auto_contribution_enabled) {
-      const contribAmount = Number(formData.auto_contribution_amount);
-      if (isNaN(contribAmount) || contribAmount <= 0)
-        errs.contributionAmount = "Enter a valid contribution amount.";
-    }
-
     return errs;
   }, [formData]);
 
@@ -86,13 +77,6 @@ export const useAddGoalForm = () => {
       end_date: formData.end_date,
       category: formData.category,
       is_active: true,
-      auto_contribution_enabled: formData.auto_contribution_enabled,
-      auto_contribution_amount: formData.auto_contribution_enabled
-        ? parseFloat(formData.auto_contribution_amount || "0")
-        : undefined,
-      contribution_frequency: formData.auto_contribution_enabled
-        ? formData.contribution_frequency
-        : undefined,
     };
 
     try {

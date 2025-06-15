@@ -2,7 +2,8 @@ import { StatsRange } from "@/contexts/StatsContext";
 import { useState } from "react";
 
 const ranges = [
-  { label: "Month", value: "this_month" },
+  { label: "Current Month", value: "this_month" },
+  { label: "Last Month", value: "last_month" },
   { label: "3 Months", value: "last_3_months" },
   { label: "6 Months", value: "last_6_months" },
   { label: "Year", value: "this_year" },

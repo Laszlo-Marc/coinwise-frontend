@@ -38,6 +38,7 @@ interface StatsContextType {
   error: string | null;
   refreshStats: (range: StatsRange) => Promise<void>;
   refreshBudgetStats: (range: StatsRange) => Promise<void>;
+  refreshSummary: () => Promise<void>;
 }
 
 const StatsContext = createContext<StatsContextType | undefined>(undefined);
@@ -91,12 +92,9 @@ export const StatsProvider: React.FC<{ children: React.ReactNode }> = ({
         incomeRes,
         transferRes,
         depositRes,
-        budgetRes,
         goalRes,
       ] = await Promise.all([
-        axios.get<StatsOverview>(`${STATS_API_URL}/overview${queryParam}`, {
-          headers,
-        }),
+        axios.get<StatsOverview>(`${STATS_API_URL}/overview`, { headers }),
         axios.get<ExpenseStats>(`${STATS_API_URL}/expenses/full${queryParam}`, {
           headers,
         }),
@@ -110,18 +108,13 @@ export const StatsProvider: React.FC<{ children: React.ReactNode }> = ({
         axios.get<DepositStats>(`${STATS_API_URL}/deposits/full${queryParam}`, {
           headers,
         }),
-        axios.get<BudgetStats>(`${STATS_API_URL}/budgets${queryParam}`, {
-          headers,
-        }),
         axios.get<GoalStats>(`${STATS_API_URL}/goals`, { headers }),
       ]);
-
       setStatsOverview((prev) => ({ ...prev, [range]: overviewRes.data }));
       setExpenseStats((prev) => ({ ...prev, [range]: expensesRes.data }));
       setIncomeStats((prev) => ({ ...prev, [range]: incomeRes.data }));
       setTransferStats((prev) => ({ ...prev, [range]: transferRes.data }));
       setDepositStats((prev) => ({ ...prev, [range]: depositRes.data }));
-      setBudgetStats((prev) => ({ ...prev, [range]: budgetRes.data }));
       setGoalStats((prev) => ({ ...prev, [range]: goalRes.data }));
 
       if (range === "this_month") {
@@ -174,6 +167,36 @@ export const StatsProvider: React.FC<{ children: React.ReactNode }> = ({
       setLoading(false);
     }
   };
+  const refreshSummary = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const token = await SecureStore.getItemAsync("auth_token");
+
+      const headers = {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      };
+
+      const [monthlySummaryRes, historicalSummaryRes] = await Promise.all([
+        axios.get<MonthlySummary>(`${STATS_API_URL}/summary/month`, {
+          headers,
+        }),
+        axios.get<HistoricalSummary>(`${STATS_API_URL}/summary/history`, {
+          headers,
+        }),
+      ]);
+      setMonthlySummary(monthlySummaryRes.data);
+      setHistoricalSummary(historicalSummaryRes.data);
+    } catch (err: any) {
+      setError(
+        err?.response?.data?.detail || err.message || "Failed to load stats"
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <StatsContext.Provider
@@ -191,6 +214,7 @@ export const StatsProvider: React.FC<{ children: React.ReactNode }> = ({
         error,
         refreshStats,
         refreshBudgetStats,
+        refreshSummary,
       }}
     >
       {children}

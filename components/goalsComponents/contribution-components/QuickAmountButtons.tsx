@@ -22,7 +22,7 @@ export const QuickAmountButtons = ({ onSelect }: Props) => (
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
           }}
         >
-          <Text style={styles.text}>${amt}</Text>
+          <Text style={styles.text}>{amt} RON</Text>
         </TouchableOpacity>
       ))}
     </View>
